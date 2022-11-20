@@ -1,0 +1,15 @@
+{
+  "name": "zaphnath",
+  "version": "1.0.0",
+  "description": "",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "author": "beabzk",
+  "license": "ISC",
+  "devDependencies": {
+    "@electron-forge/cli": "^6.0.3",
+    "electron": "21.3.0"
+  }
+}
