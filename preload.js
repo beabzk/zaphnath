@@ -1,4 +1,5 @@
-const { contextBridge, ipcRenderer } = require('electron')
+const { contextBridge } = require('electron')
+// removed ipcRenderer
 
 contextBridge.exposeInMainWorld('versions', {
     node: () => process.versions.node,
