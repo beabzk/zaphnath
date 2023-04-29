@@ -4,13 +4,9 @@ const path = require('path')
 
 const createWindow = () => {
   const win = new BrowserWindow({
-    width: 800,
-    height: 600,
-    webPreferences: {
-        preload: path.join(__dirname, 'preload.js'),
-    },
+    width: 1024,
+    height: 720,
   })
-  ipcMain.handle('ping', () => 'pong')
   win.loadFile('index.html')
 }
 
