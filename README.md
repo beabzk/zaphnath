@@ -1,13 +1,8 @@
 # zaphnath
 
-a simple electron app made following along the docs at https://www.electronjs.org/docs/latest/tutorial/tutorial-prerequisites
+a simple electron app that is a Bible
 
-### get the app
-`git clone https://github.com/beabzk/zaphnath.git`
-
-### run it
-
-`npm run start`
+This app contains Bible KJV text taken from https://github.com/aruljohn/Bible-kjv
 
 ---
 

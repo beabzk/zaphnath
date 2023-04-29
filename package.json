@@ -10,6 +10,6 @@
   "license": "ISC",
   "devDependencies": {
     "@electron-forge/cli": "^6.0.3",
-    "electron": "21.3.0"
+    "electron": "^21.3.0"
   }
 }
