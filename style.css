@@ -4,10 +4,15 @@ body {
     padding: 0;
 }
 
-#chapSelector {
+select {
     font-size: 20px;
     padding: 5px;
-    margin-bottom: 1rem;
+    /* margin-bottom: 1rem; */
+    /* width: 100%; */
+    text-align: center;
+    margin-top: 20px;
+    margin-left: 20px;
+    margin-right: 20px;
 }
 
 #bookName {
@@ -22,6 +27,7 @@ body {
     border: 1px solid #ccc;
     border-radius: 0.5rem;
     background-color: #f5f5f5;
+    margin: 20px;
 }
 h1{
     padding-left: 10px;
