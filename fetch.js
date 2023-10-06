@@ -1,6 +1,6 @@
-const selectElement = document.querySelector('#mySelect');
+const selectElement = document.querySelector('#chapSelector');
 const bookNameElement = document.querySelector('#bookName');
-const outputElement = document.querySelector('#output');
+const contentPageElement = document.querySelector('#contentPage');
 
 const bookNameToFile = {
 
@@ -72,6 +72,7 @@ const bookNameToFile = {
   "Zephaniah": "Zephaniah"
 };
 
+// fetches the names of the books
 fetch('Bible-kjv/Books.json')
   .then(response => response.json())
   .then(jsonBooks => {
@@ -90,15 +91,15 @@ selectElement.addEventListener('change', (event) => {
   fetch(`Bible-kjv/${fileName}.json`)
     .then(response => response.json())
     .then(jsonBook => {
-      outputElement.innerHTML = '';
+      contentPageElement.innerHTML = '';
       jsonBook.chapters.forEach(chapter => {
         const chapterElement = document.createElement('h2');
         chapterElement.textContent = `Chapter ${chapter.chapter}`;
-        outputElement.appendChild(chapterElement);
+        contentPageElement.appendChild(chapterElement);
         chapter.verses.forEach(verse => {
           const verseElement = document.createElement('p');
           verseElement.textContent = `${verse.verse}. ${verse.text}`;
-          outputElement.appendChild(verseElement);
+          contentPageElement.appendChild(verseElement);
         });
       });
     });

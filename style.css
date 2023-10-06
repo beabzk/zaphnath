@@ -1,0 +1,38 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+}
+
+#chapSelector {
+    font-size: 20px;
+    padding: 5px;
+    margin-bottom: 1rem;
+}
+
+#bookName {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+}
+
+#contentPage {
+    font-size: 1.2rem;
+    line-height: 1.5;
+    padding: 20px;
+    border: 1px solid #ccc;
+    border-radius: 0.5rem;
+    background-color: #f5f5f5;
+}
+h1{
+    padding-left: 10px;
+}
+h2 {
+    font-size: 1.5rem;
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+}
+
+p {
+    margin: 0;
+    padding: 0;
+}
