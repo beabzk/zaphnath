@@ -6,7 +6,7 @@ const chapterSelectElement = document.querySelector('#chapSelector');
 const bookNameToFile = {
 
   "1 Chronicles": "1Chronicles",
-  "1 Corinthians": "1 Corinthians",
+  "1 Corinthians": "1Corinthians",
   "1 John": "1John",
   "1 Kings": "1Kings",
   "1 Peter": "1Peter",
@@ -14,7 +14,7 @@ const bookNameToFile = {
   "1 Thessalonians": "1Thessalonians",
   "1 Timothy": "1Timothy",
   "2 Chronicles": "2Chronicles",
-  "2 Corinthians": "2 Corinthians",
+  "2 Corinthians": "2Corinthians",
   "2 John": "2John",
   "2 Kings": "2Kings",
   "2 Peter": "2Peter",
