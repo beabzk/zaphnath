@@ -74,7 +74,7 @@ const bookNameToFile = {
 };
 
 // fetches the names of the books
-fetch('Bible-kjv/Books.json')
+fetch('../Bible-kjv/Books.json')
   .then(response => response.json())
   .then(jsonBooks => {
     jsonBooks.forEach(book => {
@@ -89,7 +89,7 @@ fetch('Bible-kjv/Books.json')
 function updateBook(selectedBook) {
   // bookNameElement.textContent = selectedBook;
   const fileName = bookNameToFile[selectedBook];
-  fetch(`Bible-kjv/${fileName}.json`)
+  fetch(`../Bible-kjv/${fileName}.json`)
     .then(response => response.json())
     .then(jsonBook => {
       // Clear any existing options in the chapter selector
@@ -133,7 +133,7 @@ selectElement.addEventListener('change', (event) => {
 chapterSelectElement.addEventListener('change', (event) => {
   const selectedBook = selectElement.value;
   const fileName = bookNameToFile[selectedBook];
-  fetch(`Bible-kjv/${fileName}.json`)
+  fetch(`../Bible-kjv/${fileName}.json`)
     .then(response => response.json())
     .then(jsonBook => {
       updateChapter(jsonBook, event.target.value - 1);
