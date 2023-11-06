@@ -1,8 +1,8 @@
 {
   "name": "zaphnath",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "a simple electron app that is a Bible",
-  "main": "main.js",
+  "main": "src/app.js",
   "scripts": {
     "start": "electron .",
     "pack": "electron-builder --dir",
