@@ -23,7 +23,7 @@
   },
   "devDependencies": {
     "electron": "^28.1.0",
-    "electron-builder": "^24.6.4"
+    "electron-builder": "^24.9.1"
   },
   "license": "ISC",
   "author": "beabzk"
