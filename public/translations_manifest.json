@@ -10,5 +10,17 @@
           "folder": "Amharic Bible 1962"
         }
       ]
+    },
+    {
+      "code": "eng",
+      "name": "English",
+      "translations": [
+        {
+          "id": "KJV",
+          "name": "King James Version",
+          "year": 1611,
+          "folder": "King James Version"
+        }
+      ]
     }
   ]

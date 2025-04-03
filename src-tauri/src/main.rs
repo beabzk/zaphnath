@@ -40,7 +40,8 @@ struct Verse {
 // Structure matching the chapter object in your book JSON files
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct Chapter {
-    chapter: u32, // The chapter number (seems 1-based in your JSON)
+    #[serde(default)]
+    chapter: serde_json::Value, // Can be a number or string
     verses: Vec<Verse>,
 }
 
@@ -110,35 +111,70 @@ fn get_book_manifest(app_handle: tauri::AppHandle, language_code: String, transl
     read_json_file(&manifest_path)
 }
 
+/// Attempts to load a book file with different naming conventions
+fn load_book_file(app_handle: &tauri::AppHandle, language_code: &str, translation_folder: &str, book_abbr: &str) -> Result<(PathBuf, BookFile), String> {
+    // First try with the abbreviation as provided (lowercase convention like "gen.json")
+    let base_path = get_public_dir(app_handle)?
+        .join(language_code)
+        .join(translation_folder)
+        .join("json");
+
+    // Try lowercase abbreviation first (Amharic style)
+    let lowercase_path = base_path.join(format!("{}.json", book_abbr.to_lowercase()));
+    println!("Trying to read chapter content from: {:?}", lowercase_path);
+
+    if lowercase_path.exists() {
+        let book_data: BookFile = read_json_file(&lowercase_path)?;
+        return Ok((lowercase_path, book_data));
+    }
+
+    // Try with the exact abbreviation as provided (KJV style with full book name)
+    let exact_path = base_path.join(format!("{}.json", book_abbr));
+    println!("Trying to read chapter content from: {:?}", exact_path);
+
+    if exact_path.exists() {
+        let book_data: BookFile = read_json_file(&exact_path)?;
+        return Ok((exact_path, book_data));
+    }
+
+    // If we're here, neither file exists
+    Err(format!("Book file not found for '{}' in {}/{}/json/", book_abbr, language_code, translation_folder))
+}
+
 /// Fetches the verses for a specific chapter of a book in a given translation.
 #[tauri::command]
 fn get_chapter_content(
     app_handle: tauri::AppHandle, // Tauri automatically provides this
     language_code: String,        // e.g., "eng"
     translation_folder: String,   // e.g., "KJV"
-    book_abbr: String,            // e.g., "gen"
+    book_abbr: String,            // e.g., "gen" or "Genesis"
     chapter_number: u32,          // 1-based chapter number from frontend
 ) -> Result<Vec<Verse>, String> {
-    let book_file_path = get_public_dir(&app_handle)?
-        .join(&language_code)
-        .join(&translation_folder)
-        .join("json")
-        .join(format!("{}.json", book_abbr));
+    // Try to load the book file with different naming conventions
+    let (file_path, book_data) = load_book_file(&app_handle, &language_code, &translation_folder, &book_abbr)?;
+    println!("Successfully loaded book file from: {:?}", file_path);
 
-    println!("Reading chapter content from: {:?}", book_file_path); // Debug print
+    // Convert chapter_number to string for comparison
+    let chapter_str = chapter_number.to_string();
 
-    if !book_file_path.exists() {
-        return Err(format!("Book file not found: {}", book_file_path.to_string_lossy()));
+    // Find the chapter by comparing either numeric or string values
+    for chapter in &book_data.chapters {
+        // Check if chapter.chapter is a number that matches chapter_number
+        if let Some(num) = chapter.chapter.as_u64() {
+            if num as u32 == chapter_number {
+                return Ok(chapter.verses.clone());
+            }
+        }
+
+        // Check if chapter.chapter is a string that matches chapter_str
+        if let Some(str_val) = chapter.chapter.as_str() {
+            if str_val == chapter_str {
+                return Ok(chapter.verses.clone());
+            }
+        }
     }
 
-    let book_data: BookFile = read_json_file(&book_file_path)?;
-
-    // Find the correct chapter based on the 'chapter' field in the JSON
-    // Assuming the 'chapter' field in your JSON is 1-based like the input `chapter_number`
-    match book_data.chapters.into_iter().find(|c| c.chapter == chapter_number) {
-        Some(chapter_data) => Ok(chapter_data.verses),
-        None => Err(format!("Chapter {} not found in book file for {}", chapter_number, book_abbr)),
-    }
+    Err(format!("Chapter {} not found in book file for {}", chapter_number, book_abbr))
 }
 
 
