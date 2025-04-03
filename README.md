@@ -11,6 +11,10 @@ Zaphnath is a cross-platform Bible reading application built with Tauri, React, 
 - Adjustable font size
 - Responsive design
 
+## Project Progress
+
+For detailed information about the project's current progress, implemented features, and future development plans, please see [PROGRESS.md](PROGRESS.md).
+
 ## Design System
 
 Zaphnath uses a comprehensive design system to ensure consistency across the application. The design system is documented in `src/design-system.md` and includes:
