@@ -1,0 +1,33 @@
+@import "tailwindcss";
+
+/* Custom styles for Scripture display */
+.verse-container {
+  margin-bottom: 0.5rem;
+}
+
+/* Custom scrollbar for better reading experience */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: rgba(156, 163, 175, 0.5);
+  border-radius: 20px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(107, 114, 128, 0.7);
+}
+
+/* Dark mode scrollbar */
+.dark ::-webkit-scrollbar-thumb {
+  background-color: rgba(75, 85, 99, 0.5);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(107, 114, 128, 0.7);
+}
