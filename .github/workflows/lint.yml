@@ -1,0 +1,61 @@
+name: Lint
+
+on:
+  pull_request:
+    paths:
+      - "**/*.ts"
+      - "**/*.tsx"
+      - "**/*.js"
+      - "**/*.jsx"
+      - "**/*.json"
+      - ".eslintrc*"
+      - "package*.json"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "latest"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run TypeScript check
+        run: npm run typecheck
+
+      - name: Check for ESLint config
+        id: eslint-check
+        run: |
+          if [ -f ".eslintrc.js" ] || [ -f ".eslintrc.json" ] || [ -f "eslint.config.js" ]; then
+            echo "has-eslint=true" >> $GITHUB_OUTPUT
+          else
+            echo "has-eslint=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run ESLint
+        if: steps.eslint-check.outputs.has-eslint == 'true'
+        run: npx eslint . --ext .ts,.tsx,.js,.jsx --max-warnings 50
+
+      - name: Check for Prettier config
+        id: prettier-check
+        run: |
+          if [ -f ".prettierrc" ] || [ -f ".prettierrc.json" ] || [ -f "prettier.config.js" ]; then
+            echo "has-prettier=true" >> $GITHUB_OUTPUT
+          else
+            echo "has-prettier=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run Prettier check
+        if: steps.prettier-check.outputs.has-prettier == 'true'
+        run: npx prettier --check .

@@ -1,0 +1,100 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release-type:
+        description: 'Release type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+          - prerelease
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "latest"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Get current version
+        id: current-version
+        run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+
+      - name: Bump version
+        id: bump-version
+        run: |
+          case "${{ github.event.inputs.release-type }}" in
+            "patch")
+              npm run version:patch
+              ;;
+            "minor")
+              npm run version:minor
+              ;;
+            "major")
+              npm run version:major
+              ;;
+            "prerelease")
+              npm run version:prerelease
+              ;;
+          esac
+          echo "new-version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+
+      - name: Update version in all packages
+        run: npm run version:set
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Simple changelog generation - you can enhance this with conventional-changelog
+          echo "## What's Changed" > CHANGELOG_TEMP.md
+          echo "" >> CHANGELOG_TEMP.md
+          git log v${{ steps.current-version.outputs.version }}..HEAD --pretty=format:"- %s (%h)" >> CHANGELOG_TEMP.md
+          echo "" >> CHANGELOG_TEMP.md
+          echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/v${{ steps.current-version.outputs.version }}...v${{ steps.bump-version.outputs.new-version }}" >> CHANGELOG_TEMP.md
+
+      - name: Commit version bump
+        run: |
+          git add .
+          git commit -m "chore(release): bump version to ${{ steps.bump-version.outputs.new-version }}"
+          git push origin main
+
+      - name: Create and push tag
+        run: |
+          git tag -a "v${{ steps.bump-version.outputs.new-version }}" -m "Release v${{ steps.bump-version.outputs.new-version }}"
+          git push origin "v${{ steps.bump-version.outputs.new-version }}"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.bump-version.outputs.new-version }}
+          name: Zaphnath Bible Reader v${{ steps.bump-version.outputs.new-version }}
+          body_path: CHANGELOG_TEMP.md
+          draft: false
+          prerelease: ${{ github.event.inputs.release-type == 'prerelease' }}
+          generate_release_notes: true

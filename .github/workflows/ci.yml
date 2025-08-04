@@ -1,32 +1,74 @@
-# This workflow is the entry point for all CI processes.
-# It is from here that all other workflows are launched.
-name: Entry CI
+# Main CI/CD workflow for Zaphnath Bible Reader
+name: CI/CD
 on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+    paths-ignore:
+      - "**.md"
+      - .editorconfig
+      - ".idea/**"
+      - ".vscode/**"
+  pull_request:
+    paths-ignore:
+      - "**.md"
+      - .editorconfig
+      - ".idea/**"
+      - ".vscode/**"
   workflow_call:
     inputs:
       distribution-channel:
-        description: Distribution channel for release. It can be `beta`, `alpha` or any string.
+        description: Distribution channel for release. It can be `release`, `dev` or any string.
         type: string
         required: true
       renderer-template:
         description: Define what vite template should be used to create renderer in case if renderer package doesn't exist
         required: false
         type: string
-        default: ''
+        default: ""
 
 concurrency:
-  group: ${{github.workflow}}-${{ github.ref }}-${{inputs.distribution-channel}}
+  group: ${{github.workflow}}-${{ github.ref }}-${{inputs.distribution-channel || 'direct'}}
   cancel-in-progress: true
 
 permissions:
   contents: write
   id-token: write
   attestations: write
+  pull-requests: write
 
 jobs:
+  # Determine if this is a release build
+  check-release:
+    runs-on: ubuntu-latest
+    outputs:
+      is-release: ${{ steps.check.outputs.is-release }}
+      version: ${{ steps.check.outputs.version }}
+      distribution-channel: ${{ steps.check.outputs.distribution-channel }}
+    steps:
+      - name: Check if release
+        id: check
+        run: |
+          if [[ $GITHUB_REF == refs/tags/v* ]]; then
+            echo "is-release=true" >> $GITHUB_OUTPUT
+            echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+            echo "distribution-channel=release" >> $GITHUB_OUTPUT
+          elif [[ "${{ inputs.distribution-channel }}" != "" ]]; then
+            echo "is-release=false" >> $GITHUB_OUTPUT
+            echo "version=dev" >> $GITHUB_OUTPUT
+            echo "distribution-channel=${{ inputs.distribution-channel }}" >> $GITHUB_OUTPUT
+          else
+            echo "is-release=false" >> $GITHUB_OUTPUT
+            echo "version=dev" >> $GITHUB_OUTPUT
+            echo "distribution-channel=dev" >> $GITHUB_OUTPUT
+          fi
+
   prepare:
     name: Prepare shared data for multi-platform compilation
     runs-on: ubuntu-latest
+    needs: check-release
     outputs:
       APP_VERSION: ${{ steps.APP_VERSION.outputs.APP_VERSION }}
       COMMIT_TIMESTAMP: ${{ steps.COMMIT_TIMESTAMP.outputs.COMMIT_TIMESTAMP }}
@@ -38,15 +80,22 @@ jobs:
       - id: APP_VERSION
         run: echo "APP_VERSION=$(jq -r .version package.json)" >> $GITHUB_OUTPUT
       - id: APP_FULL_VERSION
-        run: echo "APP_FULL_VERSION=${{ steps.APP_VERSION.outputs.APP_VERSION }}-${{inputs.distribution-channel}}.${{ steps.COMMIT_TIMESTAMP.outputs.COMMIT_TIMESTAMP }}" >> $GITHUB_OUTPUT
+        run: |
+          if [[ "${{ needs.check-release.outputs.is-release }}" == "true" ]]; then
+            echo "APP_FULL_VERSION=${{ steps.APP_VERSION.outputs.APP_VERSION }}" >> $GITHUB_OUTPUT
+          else
+            echo "APP_FULL_VERSION=${{ steps.APP_VERSION.outputs.APP_VERSION }}-${{ needs.check-release.outputs.distribution-channel }}.${{ steps.COMMIT_TIMESTAMP.outputs.COMMIT_TIMESTAMP }}" >> $GITHUB_OUTPUT
+          fi
       - run: |
           echo "- \`COMMIT_TIMESTAMP\`: ${{ steps.COMMIT_TIMESTAMP.outputs.COMMIT_TIMESTAMP }}" >> $GITHUB_STEP_SUMMARY
           echo "- \`APP_VERSION\`: ${{ steps.APP_VERSION.outputs.APP_VERSION }}" >> $GITHUB_STEP_SUMMARY
           echo "- \`APP_FULL_VERSION\`: ${{ steps.APP_FULL_VERSION.outputs.APP_FULL_VERSION }}" >> $GITHUB_STEP_SUMMARY
+          echo "- \`IS_RELEASE\`: ${{ needs.check-release.outputs.is-release }}" >> $GITHUB_STEP_SUMMARY
 
   compile-and-test:
     needs:
       - prepare
+      - check-release
     permissions:
       contents: write
       id-token: write
@@ -55,16 +104,33 @@ jobs:
     with:
       renderer-template: ${{ inputs.renderer-template }}
       app-version: ${{ needs.prepare.outputs.APP_FULL_VERSION }}
-      distribution-channel: ${{inputs.distribution-channel}}
+      distribution-channel: ${{ needs.check-release.outputs.distribution-channel }}
 
-  deploy:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+  # Release only on tag push
+  release:
+    if: needs.check-release.outputs.is-release == 'true'
     permissions:
       contents: write
     needs:
       - prepare
       - compile-and-test
-    uses: ./.github/workflows/deploy.yml
-    with:
-      distribution-channel: ${{ inputs.renderer-template }}
-      app-version: ${{ needs.prepare.outputs.APP_FULL_VERSION }}
+      - check-release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: "*-release"
+          path: dist
+          merge-multiple: true
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/**/*
+          tag_name: v${{ needs.check-release.outputs.version }}
+          name: Zaphnath Bible Reader v${{ needs.check-release.outputs.version }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true

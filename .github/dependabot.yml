@@ -5,10 +5,66 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    reviewers:
+      - "beabzk"
+    assignees:
+      - "beabzk"
 
-  # Maintain dependencies for npm
+  # Maintain dependencies for npm (root)
   - package-ecosystem: "npm"
     versioning-strategy: increase
     directory: "/"
     schedule:
-      interval: "daily"
+      interval: "weekly"
+    reviewers:
+      - "beabzk"
+    assignees:
+      - "beabzk"
+    groups:
+      electron:
+        patterns:
+          - "electron*"
+      playwright:
+        patterns:
+          - "@playwright/*"
+          - "playwright"
+      build-tools:
+        patterns:
+          - "vite*"
+          - "@vitejs/*"
+          - "typescript"
+          - "electron-builder"
+
+  # Maintain dependencies for main package
+  - package-ecosystem: "npm"
+    directory: "/packages/main"
+    schedule:
+      interval: "weekly"
+    reviewers:
+      - "beabzk"
+
+  # Maintain dependencies for preload package
+  - package-ecosystem: "npm"
+    directory: "/packages/preload"
+    schedule:
+      interval: "weekly"
+    reviewers:
+      - "beabzk"
+
+  # Maintain dependencies for renderer package
+  - package-ecosystem: "npm"
+    directory: "/packages/renderer"
+    schedule:
+      interval: "weekly"
+    reviewers:
+      - "beabzk"
+    groups:
+      react:
+        patterns:
+          - "react*"
+          - "@types/react*"
+      ui:
+        patterns:
+          - "@radix-ui/*"
+          - "tailwind*"
+          - "lucide-react"

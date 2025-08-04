@@ -136,7 +136,7 @@ Zaphnath is built with modern web technologies and follows best practices for se
 Zaphnath is organized as a monorepo with clear separation of concerns:
 
 ```
-zaphnath-bible-reader/
+zaphnath/
 ├── packages/
 │   ├── main/                 # Electron main process
 │   │   ├── src/
@@ -157,7 +157,6 @@ zaphnath-bible-reader/
 │       │   ├── types/        # TypeScript type definitions
 │       │   └── App.tsx       # Main React component
 │       └── package.json
-├── plans/                    # Development plans and documentation
 ├── tests/                    # End-to-end tests
 └── package.json             # Root package configuration
 ```
