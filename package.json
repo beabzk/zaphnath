@@ -49,7 +49,7 @@
   },
   "devDependencies": {
     "@npmcli/map-workspaces": "4.0.2",
-    "@playwright/test": "1.53.1",
+    "@playwright/test": "1.54.2",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "24.0.3",
     "electron": "^36.5.0",
