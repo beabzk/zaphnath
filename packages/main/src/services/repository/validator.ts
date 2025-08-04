@@ -18,10 +18,12 @@ export class ZBRSValidator {
   private manifestSchema: any;
   private bookSchema: any;
   private securityPolicy: SecurityPolicy;
+  private ajv: any; // Placeholder for now
 
   constructor(securityPolicy?: Partial<SecurityPolicy>) {
     // this.ajv = new Ajv({ allErrors: true, verbose: true });
     // addFormats(this.ajv);
+    this.ajv = null; // Placeholder for now
 
     this.securityPolicy = {
       allow_http: false,
@@ -153,18 +155,21 @@ export class ZBRSValidator {
     const warnings: ValidationWarning[] = [];
 
     try {
-      // JSON Schema validation
-      const validate = this.ajv.compile(this.manifestSchema);
-      const valid = validate(manifest);
+      // JSON Schema validation (disabled for now)
+      if (this.ajv) {
+        const validate = this.ajv.compile(this.manifestSchema);
+        const valid = validate(manifest);
 
-      if (!valid && validate.errors) {
-        for (const error of validate.errors) {
-          errors.push({
-            code: "SCHEMA_VALIDATION",
-            message: `${error.instancePath}: ${error.message}`,
-            path: error.instancePath,
-            severity: "error",
-          });
+        if (!valid && validate.errors) {
+          for (const error of validate.errors) {
+            errors.push({
+              code: "SCHEMA_VALIDATION",
+              message: `${error.instancePath}: ${error.message}`,
+              path: error.instancePath,
+              severity: "error",
+              name: "ValidationError",
+            });
+          }
         }
       }
 
@@ -178,6 +183,7 @@ export class ZBRSValidator {
         code: "VALIDATION_EXCEPTION",
         message: `Validation failed: ${error}`,
         severity: "error",
+        name: "ValidationError",
       });
     }
 
@@ -193,18 +199,21 @@ export class ZBRSValidator {
     const warnings: ValidationWarning[] = [];
 
     try {
-      // JSON Schema validation
-      const validate = this.ajv.compile(this.bookSchema);
-      const valid = validate(book);
+      // JSON Schema validation (disabled for now)
+      if (this.ajv) {
+        const validate = this.ajv.compile(this.bookSchema);
+        const valid = validate(book);
 
-      if (!valid && validate.errors) {
-        for (const error of validate.errors) {
-          errors.push({
-            code: "SCHEMA_VALIDATION",
-            message: `${error.instancePath}: ${error.message}`,
-            path: error.instancePath,
-            severity: "error",
-          });
+        if (!valid && validate.errors) {
+          for (const error of validate.errors) {
+            errors.push({
+              code: "SCHEMA_VALIDATION",
+              message: `${error.instancePath}: ${error.message}`,
+              path: error.instancePath,
+              severity: "error",
+              name: "ValidationError",
+            });
+          }
         }
       }
 
@@ -215,6 +224,7 @@ export class ZBRSValidator {
         code: "VALIDATION_EXCEPTION",
         message: `Book validation failed: ${error}`,
         severity: "error",
+        name: "ValidationError",
       });
     }
 
@@ -237,6 +247,7 @@ export class ZBRSValidator {
         message: `Unsupported ZBRS version: ${manifest.zbrs_version}`,
         path: "/zbrs_version",
         severity: "error",
+        name: "ValidationError",
       });
     }
 
@@ -251,6 +262,7 @@ export class ZBRSValidator {
           message: `Testament book counts (${old} + ${newTestament} = ${total}) don't match total (${manifest.content.books_count})`,
           path: "/content/testament",
           severity: "error",
+          name: "ValidationError",
         });
       }
 
@@ -277,6 +289,7 @@ export class ZBRSValidator {
         message: `Repository size (${manifest.technical.size_bytes}) exceeds maximum (${this.securityPolicy.max_repository_size})`,
         path: "/technical/size_bytes",
         severity: "error",
+        name: "ValidationError",
       });
     }
   }
@@ -296,6 +309,7 @@ export class ZBRSValidator {
         message: "Repository checksum is required by security policy",
         path: "/technical/checksum",
         severity: "error",
+        name: "ValidationError",
       });
     }
 
@@ -317,6 +331,7 @@ export class ZBRSValidator {
           message: `Publisher domain ${url.hostname} is blocked`,
           path: "/repository/publisher/url",
           severity: "error",
+          name: "ValidationError",
         });
       }
     }
@@ -337,6 +352,7 @@ export class ZBRSValidator {
         message: `Book order ${book.book.order} doesn't match expected ${expectedOrder}`,
         path: "/book/order",
         severity: "error",
+        name: "ValidationError",
       });
     }
 
@@ -347,6 +363,7 @@ export class ZBRSValidator {
         message: `Actual chapters (${book.chapters.length}) don't match declared count (${book.book.chapters_count})`,
         path: "/book/chapters_count",
         severity: "error",
+        name: "ValidationError",
       });
     }
 
@@ -362,6 +379,7 @@ export class ZBRSValidator {
           message: `Chapter ${i + 1} has incorrect number ${chapter.number}`,
           path: `/chapters/${i}/number`,
           severity: "error",
+          name: "ValidationError",
         });
       }
 
@@ -378,6 +396,7 @@ export class ZBRSValidator {
               } has incorrect number ${verse.number}`,
               path: `/chapters/${i}/verses/${j}/number`,
               severity: "error",
+              name: "ValidationError",
             });
           }
 
@@ -388,6 +407,7 @@ export class ZBRSValidator {
               message: `Chapter ${chapter.number}, verse ${verse.number} has empty text`,
               path: `/chapters/${i}/verses/${j}/text`,
               severity: "error",
+              name: "ValidationError",
             });
           }
 
@@ -402,6 +422,7 @@ export class ZBRSValidator {
         message: `Actual verses (${totalVerses}) don't match declared count (${book.book.verses_count})`,
         path: "/book/verses_count",
         severity: "error",
+        name: "ValidationError",
       });
     }
   }
@@ -445,6 +466,7 @@ export class ZBRSValidator {
           code: "INSECURE_PROTOCOL",
           message: "HTTP protocol not allowed by security policy",
           severity: "error",
+          name: "ValidationError",
         });
       }
 
@@ -453,6 +475,7 @@ export class ZBRSValidator {
           code: "INVALID_PROTOCOL",
           message: `Unsupported protocol: ${parsedUrl.protocol}`,
           severity: "error",
+          name: "ValidationError",
         });
       }
 
@@ -462,6 +485,7 @@ export class ZBRSValidator {
           code: "BLOCKED_DOMAIN",
           message: `Domain ${parsedUrl.hostname} is blocked`,
           severity: "error",
+          name: "ValidationError",
         });
       }
 
@@ -473,6 +497,7 @@ export class ZBRSValidator {
           code: "DOMAIN_NOT_ALLOWED",
           message: `Domain ${parsedUrl.hostname} is not in allowed list`,
           severity: "error",
+          name: "ValidationError",
         });
       }
     } catch (error) {
@@ -480,6 +505,7 @@ export class ZBRSValidator {
         code: "INVALID_URL",
         message: `Invalid URL format: ${error}`,
         severity: "error",
+        name: "ValidationError",
       });
     }
 

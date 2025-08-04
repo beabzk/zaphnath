@@ -1,3 +1,4 @@
+import { app } from "electron";
 import type { AppInitConfig } from "./AppInitConfig.js";
 import { createModuleRunner } from "./ModuleRunner.js";
 import { disallowMultipleAppInstance } from "./modules/SingleInstanceApp.js";
@@ -21,7 +22,7 @@ export async function initApp(initConfig: AppInitConfig) {
     .init(terminateAppOnLastWindowClose())
     .init(hardwareAccelerationMode({ enable: false }))
     .init(autoUpdater())
-    .init(new IpcHandlers({}))
+    .init(new IpcHandlers({ app }))
 
     // Install DevTools extension if needed
     // .init(chromeDevToolsExtension({extension: 'VUEJS3_DEVTOOLS'}))

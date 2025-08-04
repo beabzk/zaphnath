@@ -1,15 +1,15 @@
-import { net } from 'electron';
-import { createHash } from 'crypto';
+import { net } from "electron";
+import { createHash } from "crypto";
 import type {
   RepositoryIndex,
   RepositoryIndexEntry,
   RepositorySource,
   ZBRSManifest,
   ValidationResult,
-  NetworkError,
-  SecurityPolicy
-} from './types.js';
-import { ZBRSValidator } from './validator.js';
+  SecurityPolicy,
+} from "./types.js";
+import { NetworkError } from "./types.js";
+import { ZBRSValidator } from "./validator.js";
 
 export class RepositoryDiscoveryService {
   private validator: ZBRSValidator;
@@ -25,18 +25,18 @@ export class RepositoryDiscoveryService {
   private initializeDefaultSources(): void {
     // Official Zaphnath repository index
     this.repositorySources.push({
-      type: 'official',
-      url: 'https://repositories.zaphnath.org/index.json',
-      name: 'Official Zaphnath Repositories',
-      enabled: true
+      type: "official",
+      url: "https://repositories.zaphnath.org/index.json",
+      name: "Official Zaphnath Repositories",
+      enabled: true,
     });
 
     // Example third-party sources (would be configurable)
     this.repositorySources.push({
-      type: 'third-party',
-      url: 'https://bible-repositories.example.com/index.json',
-      name: 'Community Bible Repositories',
-      enabled: false
+      type: "third-party",
+      url: "https://bible-repositories.example.com/index.json",
+      name: "Community Bible Repositories",
+      enabled: false,
     });
   }
 
@@ -58,15 +58,17 @@ export class RepositoryDiscoveryService {
     }
 
     // Remove duplicates based on repository ID
-    const uniqueRepositories = allRepositories.filter((repo, index, array) => 
-      array.findIndex(r => r.id === repo.id) === index
+    const uniqueRepositories = allRepositories.filter(
+      (repo, index, array) => array.findIndex((r) => r.id === repo.id) === index
     );
 
     console.log(`Discovered ${uniqueRepositories.length} unique repositories`);
     return uniqueRepositories;
   }
 
-  public async fetchRepositoryIndex(indexUrl: string): Promise<RepositoryIndexEntry[]> {
+  public async fetchRepositoryIndex(
+    indexUrl: string
+  ): Promise<RepositoryIndexEntry[]> {
     // Check cache first
     const cached = this.cache.get(indexUrl);
     if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
@@ -77,7 +79,9 @@ export class RepositoryDiscoveryService {
     const urlValidation = this.validator.validateRepositoryUrl(indexUrl);
     if (!urlValidation.valid) {
       throw new NetworkError(
-        `Invalid repository index URL: ${urlValidation.errors.map(e => e.message).join(', ')}`,
+        `Invalid repository index URL: ${urlValidation.errors
+          .map((e) => e.message)
+          .join(", ")}`,
         indexUrl
       );
     }
@@ -88,24 +92,29 @@ export class RepositoryDiscoveryService {
 
       // Validate index structure
       if (!index.version || !Array.isArray(index.repositories)) {
-        throw new Error('Invalid repository index format');
+        throw new Error("Invalid repository index format");
       }
 
       // Cache the result
       this.cache.set(indexUrl, {
         data: index.repositories,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       });
 
       return index.repositories;
     } catch (error) {
-      throw new NetworkError(`Failed to fetch repository index: ${error}`, indexUrl);
+      throw new NetworkError(
+        `Failed to fetch repository index: ${error}`,
+        indexUrl
+      );
     }
   }
 
-  public async fetchRepositoryManifest(repositoryUrl: string): Promise<ZBRSManifest> {
+  public async fetchRepositoryManifest(
+    repositoryUrl: string
+  ): Promise<ZBRSManifest> {
     // Ensure URL ends with manifest.json
-    const manifestUrl = repositoryUrl.endsWith('/') 
+    const manifestUrl = repositoryUrl.endsWith("/")
       ? `${repositoryUrl}manifest.json`
       : `${repositoryUrl}/manifest.json`;
 
@@ -113,46 +122,62 @@ export class RepositoryDiscoveryService {
     const urlValidation = this.validator.validateRepositoryUrl(manifestUrl);
     if (!urlValidation.valid) {
       throw new NetworkError(
-        `Invalid repository URL: ${urlValidation.errors.map(e => e.message).join(', ')}`,
+        `Invalid repository URL: ${urlValidation.errors
+          .map((e) => e.message)
+          .join(", ")}`,
         manifestUrl
       );
     }
 
     try {
-      const manifest = await this.fetchJson(manifestUrl) as ZBRSManifest;
-      
+      const manifest = (await this.fetchJson(manifestUrl)) as ZBRSManifest;
+
       // Validate manifest
       const validation = this.validator.validateManifest(manifest);
       if (!validation.valid) {
-        throw new Error(`Invalid manifest: ${validation.errors.map(e => e.message).join(', ')}`);
+        throw new Error(
+          `Invalid manifest: ${validation.errors
+            .map((e) => e.message)
+            .join(", ")}`
+        );
       }
 
       return manifest;
     } catch (error) {
-      throw new NetworkError(`Failed to fetch repository manifest: ${error}`, manifestUrl);
+      throw new NetworkError(
+        `Failed to fetch repository manifest: ${error}`,
+        manifestUrl
+      );
     }
   }
 
-  public async validateRepository(repositoryUrl: string): Promise<ValidationResult> {
+  public async validateRepository(
+    repositoryUrl: string
+  ): Promise<ValidationResult> {
     try {
       const manifest = await this.fetchRepositoryManifest(repositoryUrl);
       return this.validator.validateManifest(manifest);
     } catch (error) {
       return {
         valid: false,
-        errors: [{
-          code: 'FETCH_ERROR',
-          message: `Failed to validate repository: ${error}`,
-          severity: 'error'
-        }],
-        warnings: []
+        errors: [
+          {
+            code: "FETCH_ERROR",
+            message: `Failed to validate repository: ${error}`,
+            severity: "error",
+            name: "ValidationError",
+          },
+        ],
+        warnings: [],
       };
     }
   }
 
   public addRepositorySource(source: RepositorySource): void {
     // Check if source already exists
-    const existingIndex = this.repositorySources.findIndex(s => s.url === source.url);
+    const existingIndex = this.repositorySources.findIndex(
+      (s) => s.url === source.url
+    );
     if (existingIndex >= 0) {
       this.repositorySources[existingIndex] = source;
     } else {
@@ -161,7 +186,7 @@ export class RepositoryDiscoveryService {
   }
 
   public removeRepositorySource(url: string): boolean {
-    const index = this.repositorySources.findIndex(s => s.url === url);
+    const index = this.repositorySources.findIndex((s) => s.url === url);
     if (index >= 0) {
       this.repositorySources.splice(index, 1);
       return true;
@@ -174,7 +199,7 @@ export class RepositoryDiscoveryService {
   }
 
   public enableRepositorySource(url: string, enabled: boolean): boolean {
-    const source = this.repositorySources.find(s => s.url === url);
+    const source = this.repositorySources.find((s) => s.url === url);
     if (source) {
       source.enabled = enabled;
       return true;
@@ -189,33 +214,36 @@ export class RepositoryDiscoveryService {
   private async fetchJson(url: string): Promise<any> {
     return new Promise((resolve, reject) => {
       const request = net.request({
-        method: 'GET',
+        method: "GET",
         url: url,
         headers: {
-          'User-Agent': 'Zaphnath Bible Reader/1.0',
-          'Accept': 'application/json',
-          'Cache-Control': 'no-cache'
-        }
+          "User-Agent": "Zaphnath Bible Reader/1.0",
+          Accept: "application/json",
+          "Cache-Control": "no-cache",
+        },
       });
 
-      let responseData = '';
+      let responseData = "";
 
-      request.on('response', (response) => {
+      request.on("response", (response) => {
         if (response.statusCode !== 200) {
-          reject(new Error(`HTTP ${response.statusCode}: ${response.statusMessage}`));
+          reject(
+            new Error(`HTTP ${response.statusCode}: ${response.statusMessage}`)
+          );
           return;
         }
 
-        const contentType = response.headers['content-type'];
-        if (contentType && !contentType.includes('application/json')) {
+        const contentType = response.headers["content-type"];
+        if (contentType && !contentType.includes("application/json")) {
           console.warn(`Unexpected content type: ${contentType}`);
         }
 
-        response.on('data', (chunk) => {
+        response.on("data", (chunk) => {
           responseData += chunk.toString();
         });
 
-        response.on('end', () => {
+        response.on("end", () => {
+          clearTimeout(timeout);
           try {
             const jsonData = JSON.parse(responseData);
             resolve(jsonData);
@@ -225,46 +253,58 @@ export class RepositoryDiscoveryService {
         });
       });
 
-      request.on('error', (error) => {
+      request.on("error", (error) => {
+        clearTimeout(timeout);
         reject(new Error(`Network error: ${error.message}`));
       });
 
       // Set timeout
-      request.setTimeout(30000, () => {
+      const timeout = setTimeout(() => {
         request.abort();
-        reject(new Error('Request timeout'));
-      });
+        reject(new Error("Request timeout"));
+      }, 30000);
 
       request.end();
     });
   }
 
-  public async downloadFile(url: string, maxSize: number = 100 * 1024 * 1024): Promise<Buffer> {
+  public async downloadFile(
+    url: string,
+    maxSize: number = 100 * 1024 * 1024
+  ): Promise<Buffer> {
     return new Promise((resolve, reject) => {
       const request = net.request({
-        method: 'GET',
+        method: "GET",
         url: url,
         headers: {
-          'User-Agent': 'Zaphnath Bible Reader/1.0'
-        }
+          "User-Agent": "Zaphnath Bible Reader/1.0",
+        },
       });
 
       const chunks: Buffer[] = [];
       let totalSize = 0;
 
-      request.on('response', (response) => {
+      request.on("response", (response) => {
         if (response.statusCode !== 200) {
-          reject(new Error(`HTTP ${response.statusCode}: ${response.statusMessage}`));
+          reject(
+            new Error(`HTTP ${response.statusCode}: ${response.statusMessage}`)
+          );
           return;
         }
 
-        const contentLength = parseInt(response.headers['content-length'] as string || '0');
+        const contentLength = parseInt(
+          (response.headers["content-length"] as string) || "0"
+        );
         if (contentLength > maxSize) {
-          reject(new Error(`File too large: ${contentLength} bytes (max: ${maxSize})`));
+          reject(
+            new Error(
+              `File too large: ${contentLength} bytes (max: ${maxSize})`
+            )
+          );
           return;
         }
 
-        response.on('data', (chunk) => {
+        response.on("data", (chunk) => {
           totalSize += chunk.length;
           if (totalSize > maxSize) {
             request.abort();
@@ -274,28 +314,30 @@ export class RepositoryDiscoveryService {
           chunks.push(chunk);
         });
 
-        response.on('end', () => {
+        response.on("end", () => {
+          clearTimeout(timeout);
           const buffer = Buffer.concat(chunks);
           resolve(buffer);
         });
       });
 
-      request.on('error', (error) => {
+      request.on("error", (error) => {
+        clearTimeout(timeout);
         reject(new Error(`Download error: ${error.message}`));
       });
 
-      request.setTimeout(60000, () => {
+      const timeout = setTimeout(() => {
         request.abort();
-        reject(new Error('Download timeout'));
-      });
+        reject(new Error("Download timeout"));
+      }, 60000);
 
       request.end();
     });
   }
 
   public calculateChecksum(data: Buffer): string {
-    const hash = createHash('sha256');
+    const hash = createHash("sha256");
     hash.update(data);
-    return `sha256:${hash.digest('hex')}`;
+    return `sha256:${hash.digest("hex")}`;
   }
 }

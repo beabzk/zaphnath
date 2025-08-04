@@ -1,6 +1,6 @@
-import { DatabaseConnection } from './connection.js';
-import { MigrationRunner } from './migrations.js';
-import { DatabaseQueries } from './queries.js';
+import { DatabaseConnection } from "./connection.js";
+import { MigrationRunner } from "./migrations.js";
+import { DatabaseQueries } from "./queries.js";
 
 export class DatabaseService {
   private static instance: DatabaseService;
@@ -11,6 +11,8 @@ export class DatabaseService {
 
   private constructor() {
     this.connection = DatabaseConnection.getInstance();
+    this.queries = new DatabaseQueries();
+    this.migrationRunner = new MigrationRunner(this.connection.connect());
   }
 
   public static getInstance(): DatabaseService {
@@ -26,22 +28,22 @@ export class DatabaseService {
     }
 
     try {
-      console.log('Initializing database service...');
-      
+      console.log("Initializing database service...");
+
       // Connect to database
       const db = this.connection.connect();
-      
+
       // Initialize migration runner and run migrations
       this.migrationRunner = new MigrationRunner(db);
       await this.migrationRunner.runMigrations();
-      
+
       // Initialize queries
       this.queries = new DatabaseQueries();
-      
+
       this.isInitialized = true;
-      console.log('Database service initialized successfully');
+      console.log("Database service initialized successfully");
     } catch (error) {
-      console.error('Failed to initialize database service:', error);
+      console.error("Failed to initialize database service:", error);
       throw error;
     }
   }
@@ -50,13 +52,15 @@ export class DatabaseService {
     if (this.connection) {
       this.connection.disconnect();
       this.isInitialized = false;
-      console.log('Database service shut down');
+      console.log("Database service shut down");
     }
   }
 
   public getQueries(): DatabaseQueries {
     if (!this.isInitialized) {
-      throw new Error('Database service not initialized. Call initialize() first.');
+      throw new Error(
+        "Database service not initialized. Call initialize() first."
+      );
     }
     return this.queries;
   }
@@ -67,7 +71,9 @@ export class DatabaseService {
 
   public getMigrationRunner(): MigrationRunner {
     if (!this.isInitialized) {
-      throw new Error('Database service not initialized. Call initialize() first.');
+      throw new Error(
+        "Database service not initialized. Call initialize() first."
+      );
     }
     return this.migrationRunner;
   }
@@ -89,7 +95,10 @@ export class DatabaseService {
     return this.queries.getVerses(bookId, chapter);
   }
 
-  public searchVerses(query: string, repositoryId?: string): Zaphnath.BibleVerse[] {
+  public searchVerses(
+    query: string,
+    repositoryId?: string
+  ): Zaphnath.BibleVerse[] {
     return this.queries.searchVerses(query, repositoryId);
   }
 
@@ -112,9 +121,9 @@ export class DatabaseService {
 }
 
 // Export individual components for advanced usage
-export { DatabaseConnection } from './connection.js';
-export { MigrationRunner, migrations } from './migrations.js';
-export { DatabaseQueries } from './queries.js';
+export { DatabaseConnection } from "./connection.js";
+export { MigrationRunner, migrations } from "./migrations.js";
+export { DatabaseQueries } from "./queries.js";
 
 // Export the main service as default
 export default DatabaseService;
