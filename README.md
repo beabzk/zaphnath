@@ -3,7 +3,7 @@
 
 A modern, cross-platform Bible reading application built with Electron, React, and TypeScript. Zaphnath provides a beautiful, feature-rich interface for studying the Bible with support for multiple translations, advanced search, bookmarks, and reading plans.
 
-![Zaphnath Bible Reader](https://img.shields.io/badge/version-1.0.0-blue)
+![Zaphnath Bible Reader](https://img.shields.io/badge/version-0.1.0-blue)
 ![Electron](https://img.shields.io/badge/electron-latest-brightgreen)
 ![React](https://img.shields.io/badge/react-18-blue)
 ![TypeScript](https://img.shields.io/badge/typescript-5-blue)
