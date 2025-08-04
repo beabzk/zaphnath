@@ -1,318 +1,318 @@
 
-> [!Important]
-> This project is maintained by developer from Ukraine 🇺🇦
-> 
-> I do my best, but due to Russia's ongoing full-scale invasion of Ukraine, I barely have the energy to support open source projects.
->
-> If my work has been useful to you, please consider [supporting Ukraine](https://stand-with-ukraine.pp.ua/) or [me personally](https://send.monobank.ua/6SmojkkR9i). Even your **$1** has an impact!
-
-![IMG_0875](https://github.com/user-attachments/assets/590de304-e2c4-4935-9814-c18ade52fd8e)
-
-
-# Vite Electron Builder Boilerplate
-
-![GitHub last commit](https://img.shields.io/github/last-commit/cawa-93/vite-electron-builder?label=last%20update)
-![GitHub package.json dev/peer/optional dependency version](https://img.shields.io/github/package-json/dependency-version/cawa-93/vite-electron-builder/dev/electron) 
-![GitHub package.json dev/peer/optional dependency version](https://img.shields.io/github/package-json/dependency-version/cawa-93/vite-electron-builder/dev/electron-builder)
-![GitHub package.json dev/peer/optional dependency version](https://img.shields.io/github/package-json/dependency-version/cawa-93/vite-electron-builder/dev/vite?filename=packages%2Fmain%2Fpackage.json)
-![GitHub package.json dev/peer/optional dependency version](https://img.shields.io/github/package-json/dependency-version/cawa-93/vite-electron-builder/dev/playwright)
-
-This is a template for secure electron applications. Written following the latest safety requirements, recommendations
-and best practices.
-
-## Get started
-
-Follow these steps to get started with the template:
-
-1. Click the **[Use this template](https://github.com/cawa-93/vite-electron-builder/generate)** button (you must be logged in) or just clone this repo.
-2. Go to project folder and run `npm run init`.
-3. Start application in development mode by `npm start`.
-4. Compile executable by `npm run compile`.
- 
-That's all you need. 😉
-
-> [!TIP]
-> You can explore the demo application for various frameworks and operating systems in the [Deployment](https://github.com/cawa-93/vite-electron-builder/deployments) section.
-> This will allow you to see how the application performs across different environments.
-> Additionally, you can verify the auto-update functionality by installing an outdated version of the application.
-
-❤️ **If you like this template, give a ⭐ or [send support](https://www.buymeacoffee.com/kozack/)!**
-
-## Features
-
-### Lightweight
-When designing this template, I tried to keep it minimal, using the platform's native features to the maximum and minimizing the number of third-party dependencies.
-
-### Electron
-
-- This template uses the latest electron version with all the latest security patches.
-- The architecture of the application is built according to the security [guides](https://www.electronjs.org/docs/tutorial/security) and best practices.
-- The latest version of the [electron-builder] is used to package the application.
-
-### Automatic tests
-
-- End-to-end are placed in the root [`tests`](tests) directory and use [playwright].
-- You may write any unit tests inside each package and use whatever you ~~want~~ need.
-
-### Continuous Integration
-
-- The configured workflow will check the types for each push and PR.
-- Code signing supported. See [code-signing documentation](https://www.electron.build/code-signing.html).
-
-### Auto-update
-
-Each time you push changes to the `main` branch,
-the [`ci`](.github/workflows/ci.yml) workflow starts to create and deploy a new application version with then will be downloaded and applied by each app instance.
-
-## Project Structure
-
-The project is designed as monorepo where each part of the application is an independent package.
-Each package could have own tech stack, tests, dependencies, frameworks, etc.
-All internal names are prefixed by `@app/*`.
-There are no technical reasons for this.
-It's just for you to make it easier to understand the architecture.
-
-Initially, the repository contains only a few packages.4
-
-### Packages with building tools:
-
-- [`packages/integrate-renderer`](packages/integrate-renderer) - A helper package that is not included in the runtime.
-  It is used in `npm run init` to configure a new interface package.
-- [`packages/electron-versions`](packages/electron-versions) - A set of helper functions to get the versions of internal components bundled within Electron.
-
-### Packages with app logic:
-
-- [`packages/main`](packages/main) - Implementation of Electron's [**main script**](https://www.electronjs.org/docs/tutorial/quick-start#create-the-main-script-file).
-- [`packages/preload`](packages/preload) - Implementation of Electron's [**preload scripts**](https://www.electronjs.org/docs/latest/tutorial/tutorial-preload).
-
-### Renderer is not included
-
-As you may have noticed, the repository does **not** contain a package that implements the application interface.
-The reason is that since the entire application is a mono-repository,
-you can use any web application based on any framework or bundler as a package for the interface.
-
-There is only one requirement: the template expects to import renderer by `@app/renderer` name.
-
-> [!TIP]
-> You can create new renderer package in interactive mode by `npm run init`.
-
-> [!NOTE]
-> If you are using a bundler other than vite,
-> you may need to slightly change the [dev-mode.js](packages/dev-mode.js) script to run it correctly.
-
-## How It works
-
-### Compile executable
-
-When an application is ready to distribute, you need to compile it into executable.
-We are using [electron-builder] for
-this.
-
-- You can compile application locally by `npm run compile`.
-  In this case, you will get executable that you cat share, but it will not support auto-updates out-of-box.
-- To have auto-updater, you should compile an application and publish it to one or more supported sources for distribution. In this case, all application instances will download and apply all new updates. This is done by GitHub action in [release.yml](.github/workflows/release.yml).
-
-> [!TIP]
-> This template is configured to use GitHub Releases to distribute updates, but you can configure whatever you need.
-> Find more in [electron-builder docs](https://www.electron.build/configuration/publish).
-
-
-### Working with third-party dependencies
-
-Because the `renderer` works and builds like a _regular web application_, you can only use dependencies that support the
-browser or compile to a browser-friendly format.
-
-This means that in the `renderer` you are free to use any frontend dependencies such as Vue, React, lodash, axios and so
-on. However, you _CANNOT_ use any native Node.js APIs, such as, `systeminformation`. These APIs are _only_ available in
-a Node.js runtime environment and will cause your application to crash if used in the `renderer` layer. Instead, if you
-need access to Node.js runtime APIs in your frontend, export a function form the `preload` package.
-
-All dependencies that require Node.js api can be used in
-the [`preload` script](https://www.electronjs.org/docs/latest/tutorial/process-model#preload-scripts).
-
-#### Expose in the main world
-
-Here is an example. Let's say you need to read some data from the file system or database in the renderer.
-
-In the preload context, create a function that reads and returns data. To make the function announced in the preload
-available in the render, you usually need to call
-the [`electron.contextBridge.exposeInMainWorld`](https://www.electronjs.org/ru/docs/latest/api/context-bridge).
-
-However, this template is designed to use all power of ES modules.
-You can import anything from `preload` in `renderer`.
-All the data will quietly throw through the `electron.contextBridge.exposeInMainWorld()`,
-so you don't need to worry about it.
-
-```ts
-// preload/src/index.ts
-import {readFile} from 'node:fs/promises';
-
-// Encapsulate types if you use typescript
-interface UserData {
-  prop: string
-}
-
-// Will call `electron.contextBridge.exposeInMainWorld('getUserData', getUserData)`
-export function getUserData(): Promise<UserData> {
-  return readFile('/path/to/file/in/user/filesystem.json', {encoding: 'utf8'}).then(JSON.parse);
-}
-```
-
-Now you can import and call the method in renderer
-
-```ts
-// renderer/src/anywere/component.ts
-import {getUserData} from '@app/preload'
-
-// Method will came from exposed context
-// const userData = globalThis['getUserData']
-const userData = await getUserData()
-```
-
-> [!TIP]
-> Find more
-> in [Context Isolation tutorial](https://www.electronjs.org/docs/tutorial/context-isolation#security-considerations).
-
-### Working with Electron API
-
-Although the preload has access to all of Node.js API, it **still runs in the BrowserWindow context**, so only limited
-electron modules are available in it.
-
-> [!TIP]
-> Check the [electron docs](https://www.electronjs.org/ru/docs/latest/api/clipboard) for the full list of available
-> methods.
-
-All other electron methods can be invoked in the `main`.
-
-As a result, the architecture of interaction between all modules is as follows:
-
-```mermaid
-sequenceDiagram
-renderer->>+preload: Read data from file system
-preload->>-renderer: Data
-renderer->>preload: Maximize window
-activate preload
-preload-->>main: Invoke IPC command
-activate main
-main-->>preload: IPC response
-deactivate main
-preload->>renderer: Window maximized
-deactivate preload
-```
-
-> [!TIP]
-> Find more in [Inter-Process Communication tutorial](https://www.electronjs.org/docs/latest/tutorial/ipc).
-
-### Modes and Environment Variables
-
-All environment variables are set as part of the `import.meta`, so you can access them vie the following
-way: `import.meta.env`.
-
-> [!NOTE]
-> If you are using TypeScript and want to get code completion,
-> you must add all the environment variables to the [`ImportMetaEnv` in `types/env.d.ts`](types/env.d.ts).
-
-The mode option is used to specify the value of `import.meta.env.MODE` and the corresponding environment variables files
-that need to be loaded.
-
-By default, there are two modes:
-
-- `production` is used by default
-- `development` is used by `npm start` script
-
-When running the build script, the environment variables are loaded from the following files in your project root:
+# Zaphnath Bible Reader
+
+A modern, cross-platform Bible reading application built with Electron, React, and TypeScript. Zaphnath provides a beautiful, feature-rich interface for studying the Bible with support for multiple translations, advanced search, bookmarks, and reading plans.
+
+![Zaphnath Bible Reader](https://img.shields.io/badge/version-1.0.0-blue)
+![Electron](https://img.shields.io/badge/electron-latest-brightgreen)
+![React](https://img.shields.io/badge/react-18-blue)
+![TypeScript](https://img.shields.io/badge/typescript-5-blue)
+
+## ✨ Features
+
+### 📖 Bible Reading
+- **Multiple Translations**: Support for various Bible translations and languages
+- **Repository Management**: Import and manage Bible repositories from URLs
+- **Reading Modes**: Verse-by-verse, paragraph, or chapter reading modes
+- **Cross-References**: Built-in cross-reference support
+- **Footnotes**: Access to detailed footnotes and study notes
+
+### 🎨 User Experience
+- **Modern UI**: Clean, intuitive interface with dark/light theme support
+- **Responsive Design**: Optimized for different screen sizes
+- **Customizable**: Adjustable fonts, sizes, and layout preferences
+- **Accessibility**: Full keyboard navigation and screen reader support
+
+### 🔍 Advanced Features
+- **Search**: Powerful search across all installed translations
+- **Bookmarks**: Save and organize favorite verses
+- **Reading History**: Track your reading progress
+- **Reading Plans**: Structured Bible reading plans
+- **Notes**: Personal study notes and annotations
+
+### 🛠️ Technical Features
+- **Offline First**: Works without internet connection
+- **Cross-Platform**: Windows, macOS, and Linux support
+- **Performance**: Fast search and navigation
+- **Data Management**: Efficient SQLite database storage
+- **Error Handling**: Comprehensive error reporting and recovery
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Node.js 18+
+- npm or yarn
+
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/beabzk/zaphnath.git
+   cd zaphnath
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Start development server**
+   ```bash
+   npm start
+   ```
+
+4. **Build for production**
+   ```bash
+   npm run compile
+   ```
+
+### First Run
+1. Launch the application
+2. Navigate to **Repository Management**
+3. Import your first Bible translation by entering a repository URL
+4. Start reading and exploring!
+
+## 📚 Repository Management
+
+Zaphnath supports importing Bible translations from various sources:
+
+### Supported Formats
+- **ZBRS (Zaphnath Bible Repository Standard)**: Native format with full feature support
+- **USFM**: Universal Standard Format Marker files
+- **JSON**: Structured Bible data in JSON format
+- **XML**: Various XML-based Bible formats
+
+### Repository Sources
+- **Direct URLs**: Import from any accessible URL
+- **Local Files**: Import from local repository files
+- **Repository Discovery**: Automatic discovery of available translations
+
+## 🎯 Usage
+
+### Navigation
+- **Sidebar**: Access all major features and navigation
+- **Search**: Global search across all installed translations
+- **Settings**: Customize appearance, reading preferences, and more
+- **Debug Panel**: Development tools and error reporting (development mode)
+
+### Reading Features
+- **Chapter Navigation**: Easy navigation between books and chapters
+- **Verse Highlighting**: Click verses to highlight and reference
+- **Reading Modes**: Switch between verse, paragraph, and chapter views
+- **Auto-scroll**: Automatic scrolling for hands-free reading
+
+### Customization
+- **Themes**: Light, dark, and system theme support
+- **Typography**: Adjustable fonts, sizes, and line spacing
+- **Layout**: Configurable sidebar width and column layout
+- **Reading Preferences**: Auto-scroll speed, verse numbers, and more
+
+## 🏗️ Architecture
+
+Zaphnath is built with modern web technologies and follows best practices for security and performance:
+
+### Frontend Stack
+- **React 18**: Modern React with hooks and concurrent features
+- **TypeScript**: Full type safety and excellent developer experience
+- **Zustand**: Lightweight state management
+- **Tailwind CSS**: Utility-first CSS framework
+- **Radix UI**: Accessible, unstyled UI components
+
+### Backend Stack
+- **Electron**: Cross-platform desktop application framework
+- **SQLite**: Fast, reliable local database
+- **Node.js**: Server-side JavaScript runtime
+- **TypeScript**: Type-safe backend development
+
+### Key Features
+- **Security**: Follows Electron security best practices
+- **Performance**: Optimized for fast startup and smooth operation
+- **Accessibility**: Full keyboard navigation and screen reader support
+- **Error Handling**: Comprehensive error boundaries and logging
+- **Testing**: End-to-end tests with Playwright
+
+## 📁 Project Structure
+
+Zaphnath is organized as a monorepo with clear separation of concerns:
 
 ```
-.env                # loaded in all cases
-.env.local          # loaded in all cases, ignored by git
-.env.[mode]         # only loaded in specified env mode
-.env.[mode].local   # only loaded in specified env mode, ignored by git
+zaphnath-bible-reader/
+├── packages/
+│   ├── main/                 # Electron main process
+│   │   ├── src/
+│   │   │   ├── services/     # Database and repository services
+│   │   │   ├── modules/      # Application modules
+│   │   │   └── index.ts      # Main entry point
+│   │   └── package.json
+│   ├── preload/              # Electron preload scripts
+│   │   ├── src/
+│   │   │   ├── index.ts      # Preload entry point
+│   │   │   └── versions.ts   # Version information
+│   │   └── package.json
+│   └── renderer/             # React frontend application
+│       ├── src/
+│       │   ├── components/   # React components
+│       │   ├── services/     # Frontend services
+│       │   ├── stores/       # Zustand state management
+│       │   ├── types/        # TypeScript type definitions
+│       │   └── App.tsx       # Main React component
+│       └── package.json
+├── plans/                    # Development plans and documentation
+├── tests/                    # End-to-end tests
+└── package.json             # Root package configuration
 ```
 
-> [!WARNING]
-> To prevent accidentally leaking env variables to the client, only variables prefixed with `VITE_` are exposed to your
-> Vite-processed code.
+### Package Overview
 
-For example, let's take the following `.env` file:
+- **`packages/main`**: Electron main process handling system integration, database operations, and repository management
+- **`packages/preload`**: Secure bridge between main and renderer processes
+- **`packages/renderer`**: React-based user interface with modern UI components and state management
 
-```
-DB_PASSWORD=foobar
-VITE_SOME_KEY=123
-```
+## 🛠️ Development
 
-Only `VITE_SOME_KEY` will be exposed as `import.meta.env.VITE_SOME_KEY` to your client source code, but `DB_PASSWORD`
-will not.
+### Prerequisites
+- Node.js 18 or higher
+- npm or yarn package manager
+- Git for version control
 
-> [!TIP]
-> You can change that prefix or add another. See [`envPrefix`](https://vitejs.dev/config/shared-options.html#envprefix).
+### Development Workflow
 
-### NPM Scripts
+1. **Start development server**
+   ```bash
+   npm start
+   ```
+   This starts both the Electron main process and the React development server with hot reload.
 
-```sh
-npm start
-```
-Start application in development more with hot-reload.
+2. **Type checking**
+   ```bash
+   npm run typecheck
+   ```
+   Runs TypeScript type checking across all packages.
 
----
-```sh
-npm run build
-```
-Runs the `build` command in all workspaces if present.
+3. **Testing**
+   ```bash
+   npm run test
+   ```
+   Runs end-to-end tests using Playwright.
 
----
-```sh
+4. **Building**
+   ```bash
+   npm run build
+   ```
+   Builds all packages for production.
+
+5. **Packaging**
+   ```bash
+   npm run compile
+   ```
+   Creates distributable packages for the current platform.
+
+## 📦 Building and Distribution
+
+### Local Development Build
+```bash
 npm run compile
 ```
-First runs the `build` script,
-then compiles the project into executable using `electron-builder` with the specified configuration.
+Creates a local executable for testing and development.
+
+### Production Release
+The application uses GitHub Actions for automated building and distribution:
+- Automatic builds on version tags
+- Code signing for security
+- Multi-platform support (Windows, macOS, Linux)
+- Auto-updater integration
+
+### Supported Platforms
+- **Windows**: Windows 10/11 (x64, arm64)
+- **macOS**: macOS 10.15+ (Intel and Apple Silicon)
+- **Linux**: Ubuntu 18.04+ and compatible distributions
+
+
+## 🔧 Configuration
+
+### Application Settings
+Zaphnath stores user preferences in a local configuration file:
+- **Appearance**: Theme, fonts, layout preferences
+- **Reading**: Default translations, reading modes, auto-scroll settings
+- **Audio**: Text-to-speech configuration (future feature)
+- **Advanced**: Debug settings, performance options
+
+### Repository Configuration
+Bible repositories are managed through the Repository Management interface:
+- **Import Sources**: Add new repository URLs
+- **Validation**: Automatic repository validation before import
+- **Storage**: Local SQLite database for fast access
+- **Updates**: Check for repository updates and new translations
+
+## 🤝 Contributing
+
+We welcome contributions to Zaphnath Bible Reader! Here's how you can help:
+
+### Development Setup
+1. Fork the repository
+2. Clone your fork locally
+3. Install dependencies: `npm install`
+4. Create a feature branch: `git checkout -b feature/your-feature`
+5. Make your changes and test thoroughly
+6. Submit a pull request
+
+### Contribution Guidelines
+- **Code Style**: Follow the existing TypeScript and React patterns
+- **Testing**: Add tests for new features
+- **Documentation**: Update documentation for user-facing changes
+- **Commits**: Use clear, descriptive commit messages
+
+### Areas for Contribution
+- **Translations**: Help translate the interface to other languages
+- **Repository Formats**: Add support for additional Bible formats
+- **Features**: Implement new reading and study features
+- **Bug Fixes**: Help identify and fix issues
+- **Documentation**: Improve user and developer documentation
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- **Bible Translations**: Thanks to all organizations providing open Bible translations
+- **Open Source Libraries**: Built on the shoulders of amazing open source projects
+- **Community**: Thanks to all contributors and users providing feedback
+- **Electron Team**: For the excellent cross-platform framework
+- **React Team**: For the powerful UI library
+
+## 📞 Support
+
+- **Issues**: Report bugs and request features on [GitHub Issues](https://github.com/beabzk/zaphnath/issues)
+- **Discussions**: Join community discussions on [GitHub Discussions](https://github.com/beabzk/zaphnath/discussions)
+- **Documentation**: Check the [Wiki](https://github.com/beabzk/zaphnath/wiki) for detailed documentation
+
+## 🗺️ Roadmap
+
+### Sprint 1 (Current) ✅
+- ✅ Basic UI layout and navigation
+- ✅ Theme system (dark/light mode)
+- ✅ Repository management
+- ✅ Settings and preferences
+- ✅ State management with Zustand
+- ✅ Logging and error handling
+
+### Sprint 2 (Next)
+- 🔄 Search functionality
+- 🔄 Reading plans
+- 🔄 Bookmarks and notes
+- 🔄 Cross-references
+- 🔄 Performance optimizations
+
+### Future Sprints
+- 📅 Audio features (text-to-speech)
+- 📅 Advanced search with filters
+- 📅 Study tools and commentaries
+- 📅 Synchronization across devices
+- 📅 Plugin system for extensions
 
 ---
-```sh
-npm run compile -- --dir -c.asar=false
-```
-Same as `npm run compile` but pass to `electron-builder` additional parameters to disable asar archive and installer
-creating.
-Useful for debugging compiled application.
 
----
-```sh
-npm run test
-```
-Executes end-to-end tests on **compiled app** using Playwright.
+**Zaphnath Bible Reader** - A modern Bible reading application for the digital age.
 
----
-```sh
-npm run typecheck
-```
-Runs the `typecheck` command in all workspaces if present.
-
----
-```sh
-npm run create-renderer
-```
-Initializes a new Vite project named `renderer`. Basically same as `npm create vite`.
-
----
-```sh
-npm run integrate-renderer
-```
-Starts the integration process of the renderer using the Vite Electron builder.
-
----
-```sh
-npm run init
-```
-Set up the initial environment by creating a new renderer, integrating it, and installing the necessary packages.
-
-## Contribution
-
-See [Contributing Guide](CONTRIBUTING.md).
-
-
-[vite]: https://github.com/vitejs/vite/
-
-[electron]: https://github.com/electron/electron
-
-[electron-builder]: https://github.com/electron-userland/electron-builder
-
-[playwright]: https://playwright.dev
+Built with ❤️ using Electron, React, and TypeScript.

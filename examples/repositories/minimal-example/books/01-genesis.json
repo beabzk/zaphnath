@@ -1,0 +1,76 @@
+{
+  "book": {
+    "id": "genesis",
+    "name": "Genesis",
+    "abbreviation": "Gen",
+    "order": 1,
+    "testament": "old",
+    "chapters_count": 2,
+    "verses_count": 56,
+    "genre": "law",
+    "author": "Moses"
+  },
+  "chapters": [
+    {
+      "number": 1,
+      "verses": [
+        {
+          "number": 1,
+          "text": "In the beginning God created the heaven and the earth."
+        },
+        {
+          "number": 2,
+          "text": "And the earth was without form, and void; and darkness was upon the face of the deep. And the Spirit of God moved upon the face of the waters."
+        },
+        {
+          "number": 3,
+          "text": "And God said, Let there be light: and there was light."
+        },
+        {
+          "number": 4,
+          "text": "And God saw the light, that it was good: and God divided the light from the darkness."
+        },
+        {
+          "number": 5,
+          "text": "And God called the light Day, and the darkness he called Night. And the evening and the morning were the first day."
+        }
+      ]
+    },
+    {
+      "number": 2,
+      "verses": [
+        {
+          "number": 1,
+          "text": "Thus the heavens and the earth were finished, and all the host of them."
+        },
+        {
+          "number": 2,
+          "text": "And on the seventh day God ended his work which he had made; and he rested on the seventh day from all his work which he had made."
+        },
+        {
+          "number": 3,
+          "text": "And God blessed the seventh day, and sanctified it: because that in it he had rested from all his work which God created and made."
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "outline": [
+      {
+        "title": "Creation of the World",
+        "start_chapter": 1,
+        "start_verse": 1,
+        "end_chapter": 1,
+        "end_verse": 31
+      },
+      {
+        "title": "The Sabbath",
+        "start_chapter": 2,
+        "start_verse": 1,
+        "end_chapter": 2,
+        "end_verse": 3
+      }
+    ],
+    "themes": ["Creation", "God's Power", "Rest", "Beginning"]
+  }
+}

@@ -1,13 +1,21 @@
 {
-  "name": "root",
-  "description": "Secure boilerplate for Electron app based on Vite",
-  "version": "3.1.0",
+  "name": "zaphnath",
+  "description": "Zaphnath Bible Reader - A modern, secure Bible study application",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "author": {
-    "email": "kozackunisoft@gmail.com",
-    "name": "Alex Kozack",
-    "url": "https://kozack.me"
+    "email": "beabzk@proton.me",
+    "name": "Beabfekad Zikie",
+    "url": "https://beabzk.github.io"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/beabzk/zaphnath.git"
+  },
+  "homepage": "https://beabzk.github.io/zaphnath",
+  "bugs": {
+    "url": "https://github.com/beabzk/zaphnath/issues"
   },
   "main": "packages/entry-point.mjs",
   "workspaces": [
@@ -24,18 +32,34 @@
     "typecheck": "npm run typecheck -ws --if-present",
     "create-renderer": "cd packages && npm create vite@latest renderer",
     "integrate-renderer": "npm start --workspace @app/integrate-renderer",
-    "init": "npm run create-renderer && npm run integrate-renderer && npm install"
+    "init": "npm run create-renderer && npm run integrate-renderer && npm install",
+    "rebuild": "electron-rebuild",
+    "postinstall": "electron-rebuild",
+    "convert-bible-files": "bash tools/convert-bible-files.sh",
+    "validate-zbrs": "node tools/validators/validate-zbrs.js",
+    "test-import": "node tools/test-import.js",
+    "version:patch": "npm version patch --no-git-tag-version",
+    "version:minor": "npm version minor --no-git-tag-version",
+    "version:major": "npm version major --no-git-tag-version",
+    "version:prerelease": "npm version prerelease --no-git-tag-version",
+    "version:show": "node -p \"require('./package.json').version\"",
+    "version:info": "node tools/version-manager.js show",
+    "version:set": "node tools/version-manager.js set",
+    "version:help": "node tools/version-manager.js help"
   },
   "devDependencies": {
     "@npmcli/map-workspaces": "4.0.2",
     "@playwright/test": "1.53.1",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "24.0.3",
-    "electron": "36.5.0",
+    "electron": "^36.5.0",
     "electron-builder": "26.0.12",
+    "electron-rebuild": "^3.2.9",
     "glob": "11.0.3",
     "playwright": "^1.53.1"
   },
   "dependencies": {
-    "@app/main": "*"
+    "@app/main": "*",
+    "@radix-ui/react-dropdown-menu": "^2.1.15"
   }
 }

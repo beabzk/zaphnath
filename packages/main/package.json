@@ -1,6 +1,11 @@
 {
   "name": "@app/main",
   "type": "module",
+  "author": {
+    "email": "beabzk@proton.me",
+    "name": "Beabfekad Zikie",
+    "url": "https://beabzk.github.io"
+  },
   "scripts": {
     "build": "vite build",
     "typecheck": "tsc --noEmit"
@@ -14,12 +19,14 @@
   "dependencies": {
     "@app/preload": "*",
     "@app/renderer": "*",
+    "better-sqlite3": "^12.2.0",
     "electron-updater": "6.6.2"
   },
   "devDependencies": {
     "@app/electron-versions": "*",
     "electron-devtools-installer": "3.2.0",
+    "electron-rebuild": "^3.2.9",
     "typescript": "5.8.3",
-    "vite": "6.3.5"
+    "vite": "^7.0.4"
   }
 }

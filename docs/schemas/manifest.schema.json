@@ -1,0 +1,251 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.zaphnath.org/zbrs/v1.0/manifest.json",
+  "title": "ZBRS Manifest Schema",
+  "description": "Schema for Zaphnath Bible Repository Standard manifest files",
+  "type": "object",
+  "required": ["zbrs_version", "repository", "content", "technical"],
+  "properties": {
+    "zbrs_version": {
+      "type": "string",
+      "pattern": "^1\\.[0-9]+$",
+      "description": "ZBRS standard version"
+    },
+    "repository": {
+      "type": "object",
+      "required": ["id", "name", "description", "version", "language", "translation", "publisher"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "minLength": 3,
+          "maxLength": 50,
+          "description": "Unique repository identifier"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "description": "Human-readable repository name"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000,
+          "description": "Repository description"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+          "description": "Repository version (semantic versioning)"
+        },
+        "language": {
+          "$ref": "#/$defs/language"
+        },
+        "translation": {
+          "$ref": "#/$defs/translation"
+        },
+        "publisher": {
+          "$ref": "#/$defs/publisher"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Repository creation timestamp"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update timestamp"
+        }
+      }
+    },
+    "content": {
+      "type": "object",
+      "required": ["books_count", "testament", "features"],
+      "properties": {
+        "books_count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "description": "Total number of books"
+        },
+        "testament": {
+          "type": "object",
+          "required": ["old", "new"],
+          "properties": {
+            "old": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 50
+            },
+            "new": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 50
+            }
+          }
+        },
+        "features": {
+          "type": "object",
+          "properties": {
+            "audio": {
+              "type": "boolean",
+              "default": false
+            },
+            "cross_references": {
+              "type": "boolean",
+              "default": false
+            },
+            "footnotes": {
+              "type": "boolean",
+              "default": false
+            },
+            "study_notes": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        }
+      }
+    },
+    "technical": {
+      "type": "object",
+      "required": ["encoding", "compression", "checksum", "size_bytes"],
+      "properties": {
+        "encoding": {
+          "type": "string",
+          "enum": ["UTF-8"],
+          "description": "Text encoding"
+        },
+        "compression": {
+          "type": "string",
+          "enum": ["none", "gzip", "brotli"],
+          "description": "Compression method"
+        },
+        "checksum": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$",
+          "description": "SHA-256 checksum of repository content"
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1073741824,
+          "description": "Total repository size in bytes (max 1GB)"
+        }
+      }
+    },
+    "extensions": {
+      "type": "object",
+      "description": "Optional extensions for additional features",
+      "patternProperties": {
+        "^[a-z0-9-]+:[a-z0-9-_]+$": {
+          "type": "object",
+          "required": ["version"],
+          "properties": {
+            "version": {
+              "type": "string",
+              "pattern": "^[0-9]+\\.[0-9]+$"
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "language": {
+      "type": "object",
+      "required": ["code", "name", "direction"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "pattern": "^[a-z]{2,3}$",
+          "description": "ISO 639-1 or 639-3 language code"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Language name"
+        },
+        "direction": {
+          "type": "string",
+          "enum": ["ltr", "rtl"],
+          "description": "Text direction"
+        },
+        "script": {
+          "type": "string",
+          "pattern": "^[A-Z][a-z]{3}$",
+          "description": "ISO 15924 script code"
+        }
+      }
+    },
+    "translation": {
+      "type": "object",
+      "required": ["type", "year", "copyright", "license", "source"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["formal", "dynamic", "paraphrase", "interlinear"],
+          "description": "Translation methodology"
+        },
+        "year": {
+          "type": "integer",
+          "minimum": -2000,
+          "maximum": 2100,
+          "description": "Translation year"
+        },
+        "copyright": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500,
+          "description": "Copyright information"
+        },
+        "license": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "License identifier (preferably SPDX)"
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500,
+          "description": "Source text or manuscript basis"
+        },
+        "translators": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "description": "List of translators"
+        }
+      }
+    },
+    "publisher": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "description": "Publisher name"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Publisher website"
+        },
+        "contact": {
+          "type": "string",
+          "format": "email",
+          "description": "Contact email"
+        }
+      }
+    }
+  }
+}

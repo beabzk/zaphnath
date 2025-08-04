@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: Propose an idea
-    url: https://github.com/cawa-93/vite-electron-builder/discussions/categories/ideas
-    about: Discuss any ideas and feature requests
+    url: https://github.com/beabzk/zaphnath/discussions/categories/ideas
+    about: Discuss any ideas and feature requests for Zaphnath Bible Reader
   - name: Ask a question
-    url: https://github.com/cawa-93/vite-electron-builder/discussions/categories/q-a
-    about: Please ask any Q&A here
+    url: https://github.com/beabzk/zaphnath/discussions/categories/q-a
+    about: Please ask any questions about Zaphnath Bible Reader here

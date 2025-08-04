@@ -1,0 +1,258 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.zaphnath.org/zbrs/v1.0/book.json",
+  "title": "ZBRS Book Schema",
+  "description": "Schema for individual Bible book files in ZBRS format",
+  "type": "object",
+  "required": ["book", "chapters"],
+  "properties": {
+    "book": {
+      "type": "object",
+      "required": ["id", "name", "abbreviation", "order", "testament", "chapters_count", "verses_count"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "minLength": 2,
+          "maxLength": 20,
+          "description": "Unique book identifier"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Full book name"
+        },
+        "abbreviation": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 10,
+          "description": "Standard book abbreviation"
+        },
+        "order": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "description": "Book order in canon"
+        },
+        "testament": {
+          "type": "string",
+          "enum": ["old", "new"],
+          "description": "Testament classification"
+        },
+        "chapters_count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200,
+          "description": "Total number of chapters"
+        },
+        "verses_count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000,
+          "description": "Total number of verses"
+        },
+        "genre": {
+          "type": "string",
+          "enum": ["law", "history", "wisdom", "prophecy", "gospel", "epistle", "apocalyptic"],
+          "description": "Literary genre"
+        },
+        "author": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Traditional author"
+        }
+      }
+    },
+    "chapters": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 200,
+      "items": {
+        "$ref": "#/$defs/chapter"
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "outline": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["title", "start_chapter", "start_verse"],
+            "properties": {
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "start_chapter": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "start_verse": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "end_chapter": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "end_verse": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          }
+        },
+        "themes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "chapter": {
+      "type": "object",
+      "required": ["number", "verses"],
+      "properties": {
+        "number": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200,
+          "description": "Chapter number"
+        },
+        "verses": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 200,
+          "items": {
+            "$ref": "#/$defs/verse"
+          }
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Optional chapter title"
+        },
+        "audio": {
+          "type": "string",
+          "format": "uri",
+          "description": "Audio file for entire chapter"
+        }
+      }
+    },
+    "verse": {
+      "type": "object",
+      "required": ["number", "text"],
+      "properties": {
+        "number": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200,
+          "description": "Verse number"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 5000,
+          "description": "Verse text content"
+        },
+        "audio": {
+          "type": "string",
+          "format": "uri",
+          "description": "Audio reference using Media Fragment URI"
+        },
+        "footnotes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/footnote"
+          }
+        },
+        "cross_references": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/cross_reference"
+          }
+        },
+        "study_notes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/study_note"
+          }
+        }
+      }
+    },
+    "footnote": {
+      "type": "object",
+      "required": ["marker", "text"],
+      "properties": {
+        "marker": {
+          "type": "string",
+          "pattern": "^[a-z]$",
+          "description": "Footnote marker (a-z)"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000,
+          "description": "Footnote content"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["textual", "translation", "explanation", "cross_reference"],
+          "description": "Type of footnote"
+        }
+      }
+    },
+    "cross_reference": {
+      "type": "object",
+      "required": ["reference"],
+      "properties": {
+        "reference": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9 ]+\\s+[0-9]+:[0-9]+(-[0-9]+)?$",
+          "description": "Scripture reference (e.g., 'John 3:16' or 'Romans 8:28-30')"
+        },
+        "text": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Optional explanatory text"
+        }
+      }
+    },
+    "study_note": {
+      "type": "object",
+      "required": ["title", "content"],
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "description": "Study note title"
+        },
+        "content": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 5000,
+          "description": "Study note content"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["historical", "cultural", "theological", "linguistic", "archaeological"],
+          "description": "Type of study note"
+        },
+        "author": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Note author"
+        }
+      }
+    }
+  }
+}

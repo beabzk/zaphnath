@@ -1,6 +1,11 @@
 {
   "name": "@app/preload",
   "type": "module",
+  "author": {
+    "email": "beabzk@proton.me",
+    "name": "Beabfekad Zikie",
+    "url": "https://beabzk.github.io"
+  },
   "scripts": {
     "build": "vite build",
     "typecheck": "tsc --noEmit"
@@ -19,6 +24,6 @@
     "@app/electron-versions": "*",
     "mlly": "1.7.4",
     "typescript": "5.8.3",
-    "vite": "6.3.5"
+    "vite": "^7.0.4"
   }
 }

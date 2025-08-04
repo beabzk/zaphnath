@@ -1,0 +1,53 @@
+{
+  "book": {
+    "id": "john",
+    "name": "John",
+    "abbreviation": "Jn",
+    "order": 43,
+    "testament": "new",
+    "chapters_count": 1,
+    "verses_count": 5,
+    "genre": "gospel",
+    "author": "John the Apostle"
+  },
+  "chapters": [
+    {
+      "number": 1,
+      "title": "The Word Became Flesh",
+      "verses": [
+        {
+          "number": 1,
+          "text": "In the beginning was the Word, and the Word was with God, and the Word was God."
+        },
+        {
+          "number": 2,
+          "text": "The same was in the beginning with God."
+        },
+        {
+          "number": 3,
+          "text": "All things were made by him; and without him was not any thing made that was made."
+        },
+        {
+          "number": 4,
+          "text": "In him was life; and the life was the light of men."
+        },
+        {
+          "number": 5,
+          "text": "And the light shineth in the darkness; and the darkness comprehended it not."
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "outline": [
+      {
+        "title": "The Eternal Word",
+        "start_chapter": 1,
+        "start_verse": 1,
+        "end_chapter": 1,
+        "end_verse": 5
+      }
+    ],
+    "themes": ["Jesus Christ", "Creation", "Light", "Life", "Word of God"]
+  }
+}

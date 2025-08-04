@@ -1,9 +1,9 @@
 ---
 name: Bug report
-about: Create a report to help us improve
+about: Create a report to help us improve Zaphnath Bible Reader
 title: ''
 labels: bug
-assignees: cawa-93
+assignees: beabzk
 
 ---
 

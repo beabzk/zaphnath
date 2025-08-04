@@ -1,0 +1,338 @@
+import { create } from "zustand";
+import { devtools, persist } from "zustand/middleware";
+import {
+  RepositoryState,
+  Repository,
+  Book,
+  Chapter,
+  Verse,
+  ErrorState,
+  ImportProgress,
+  ValidationResult,
+} from "@/types/store";
+
+const initialState = {
+  repositories: [],
+  currentRepository: null,
+  books: [],
+  currentBook: null,
+  currentChapter: null,
+  verses: [],
+  isLoading: false,
+  error: null,
+  importProgress: null,
+  validationResult: null,
+};
+
+export const useRepositoryStore = create<RepositoryState>()(
+  devtools(
+    persist(
+      (set, get) => ({
+        ...initialState,
+
+        // Repository Actions
+        setRepositories: (repositories: Repository[]) => {
+          set({ repositories }, false, "setRepositories");
+        },
+
+        setCurrentRepository: (repository: Repository | null) => {
+          set(
+            {
+              currentRepository: repository,
+              books: [], // Clear books when switching repositories
+              currentBook: null,
+              currentChapter: null,
+              verses: [],
+            },
+            false,
+            "setCurrentRepository"
+          );
+
+          // Load books for the new repository
+          if (repository) {
+            get().loadBooks(repository.id);
+          }
+        },
+
+        addRepository: (repository: Repository) => {
+          set(
+            (state) => ({
+              repositories: [...state.repositories, repository],
+            }),
+            false,
+            "addRepository"
+          );
+        },
+
+        removeRepository: (repositoryId: string) => {
+          set(
+            (state) => {
+              const newRepositories = state.repositories.filter(
+                (r) => r.id !== repositoryId
+              );
+              const newCurrentRepository =
+                state.currentRepository?.id === repositoryId
+                  ? null
+                  : state.currentRepository;
+
+              return {
+                repositories: newRepositories,
+                currentRepository: newCurrentRepository,
+                books: newCurrentRepository ? state.books : [],
+                currentBook: newCurrentRepository ? state.currentBook : null,
+                currentChapter: newCurrentRepository
+                  ? state.currentChapter
+                  : null,
+                verses: newCurrentRepository ? state.verses : [],
+              };
+            },
+            false,
+            "removeRepository"
+          );
+        },
+
+        updateRepository: (
+          repositoryId: string,
+          updates: Partial<Repository>
+        ) => {
+          set(
+            (state) => ({
+              repositories: state.repositories.map((r) =>
+                r.id === repositoryId ? { ...r, ...updates } : r
+              ),
+              currentRepository:
+                state.currentRepository?.id === repositoryId
+                  ? { ...state.currentRepository, ...updates }
+                  : state.currentRepository,
+            }),
+            false,
+            "updateRepository"
+          );
+        },
+
+        // Book Actions
+        setBooks: (books: Book[]) => {
+          set({ books }, false, "setBooks");
+        },
+
+        setCurrentBook: (book: Book | null) => {
+          set(
+            {
+              currentBook: book,
+              currentChapter: null,
+              verses: [],
+            },
+            false,
+            "setCurrentBook"
+          );
+        },
+
+        // Chapter Actions
+        setCurrentChapter: (chapter: Chapter | null) => {
+          set({ currentChapter: chapter }, false, "setCurrentChapter");
+        },
+
+        setVerses: (verses: Verse[]) => {
+          set({ verses }, false, "setVerses");
+        },
+
+        // UI State Actions
+        setLoading: (isLoading: boolean) => {
+          set({ isLoading }, false, "setLoading");
+        },
+
+        setError: (error: ErrorState | null) => {
+          set({ error }, false, "setError");
+        },
+
+        setImportProgress: (progress: ImportProgress | null) => {
+          set({ importProgress: progress }, false, "setImportProgress");
+        },
+
+        setValidationResult: (result: ValidationResult | null) => {
+          set({ validationResult: result }, false, "setValidationResult");
+        },
+
+        // Async Actions
+        loadRepositories: async () => {
+          const { setLoading, setError, setRepositories } = get();
+
+          try {
+            setLoading(true);
+            setError(null);
+
+            // @ts-ignore - APIs will be available at runtime
+            const repositories = await window.repository?.list?.();
+            setRepositories(repositories || []);
+          } catch (error) {
+            setError({
+              hasError: true,
+              message:
+                error instanceof Error
+                  ? error.message
+                  : "Failed to load repositories",
+              timestamp: new Date().toISOString(),
+            });
+          } finally {
+            setLoading(false);
+          }
+        },
+
+        loadBooks: async (repositoryId: string) => {
+          const { setLoading, setError, setBooks } = get();
+
+          try {
+            setLoading(true);
+            setError(null);
+
+            // @ts-ignore - APIs will be available at runtime
+            const books = await window.repository?.getBooks?.(repositoryId);
+            setBooks(books || []);
+          } catch (error) {
+            setError({
+              hasError: true,
+              message:
+                error instanceof Error ? error.message : "Failed to load books",
+              timestamp: new Date().toISOString(),
+            });
+          } finally {
+            setLoading(false);
+          }
+        },
+
+        loadChapter: async (bookId: string, chapterNumber: number) => {
+          const { setLoading, setError, setCurrentChapter, setVerses } = get();
+
+          try {
+            setLoading(true);
+            setError(null);
+
+            // @ts-ignore - APIs will be available at runtime
+            const chapterData = await window.repository?.getChapter?.(
+              bookId,
+              chapterNumber
+            );
+
+            if (chapterData) {
+              setCurrentChapter(chapterData.chapter);
+              setVerses(chapterData.verses || []);
+            }
+          } catch (error) {
+            setError({
+              hasError: true,
+              message:
+                error instanceof Error
+                  ? error.message
+                  : "Failed to load chapter",
+              timestamp: new Date().toISOString(),
+            });
+          } finally {
+            setLoading(false);
+          }
+        },
+
+        importRepository: async (url: string, options?: any) => {
+          const { setLoading, setError, setImportProgress, loadRepositories } =
+            get();
+
+          try {
+            setLoading(true);
+            setError(null);
+            setImportProgress({ stage: "Starting import...", progress: 0 });
+
+            // @ts-ignore - APIs will be available at runtime
+            const result = await window.repository?.import?.(url, {
+              ...options,
+              progress_callback: (progress: ImportProgress) => {
+                setImportProgress(progress);
+              },
+            });
+
+            if (result?.success) {
+              setImportProgress({
+                stage: "Import completed successfully",
+                progress: 100,
+                message: `Imported ${result.books_imported} books`,
+              });
+
+              // Reload repositories
+              await loadRepositories();
+
+              // Clear progress after a delay
+              setTimeout(() => {
+                setImportProgress(null);
+              }, 3000);
+
+              return true;
+            } else {
+              setError({
+                hasError: true,
+                message: result?.errors?.join(", ") || "Import failed",
+                timestamp: new Date().toISOString(),
+              });
+              setImportProgress(null);
+              return false;
+            }
+          } catch (error) {
+            setError({
+              hasError: true,
+              message: error instanceof Error ? error.message : "Import failed",
+              timestamp: new Date().toISOString(),
+            });
+            setImportProgress(null);
+            return false;
+          } finally {
+            setLoading(false);
+          }
+        },
+
+        validateRepository: async (url: string) => {
+          const { setLoading, setError, setValidationResult } = get();
+
+          try {
+            setLoading(true);
+            setError(null);
+
+            // @ts-ignore - APIs will be available at runtime
+            const result = await window.repository?.validate?.(url);
+            setValidationResult(result);
+
+            return result;
+          } catch (error) {
+            const errorResult: ValidationResult = {
+              valid: false,
+              errors: [
+                {
+                  code: "VALIDATION_ERROR",
+                  message:
+                    error instanceof Error
+                      ? error.message
+                      : "Validation failed",
+                  severity: "error",
+                },
+              ],
+              warnings: [],
+            };
+
+            setValidationResult(errorResult);
+            return errorResult;
+          } finally {
+            setLoading(false);
+          }
+        },
+      }),
+      {
+        name: "zaphnath-repository-store",
+        version: 1,
+        partialize: (state) => ({
+          currentRepository: state.currentRepository,
+          repositories: state.repositories,
+          // Don't persist loading states, errors, or temporary data
+        }),
+      }
+    ),
+    {
+      name: "repository-store",
+    }
+  )
+);
