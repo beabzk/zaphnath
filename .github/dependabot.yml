@@ -5,8 +5,6 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
-    reviewers:
-      - "beabzk"
     assignees:
       - "beabzk"
 
@@ -16,8 +14,6 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
-    reviewers:
-      - "beabzk"
     assignees:
       - "beabzk"
     groups:
@@ -40,24 +36,18 @@ updates:
     directory: "/packages/main"
     schedule:
       interval: "weekly"
-    reviewers:
-      - "beabzk"
 
   # Maintain dependencies for preload package
   - package-ecosystem: "npm"
     directory: "/packages/preload"
     schedule:
       interval: "weekly"
-    reviewers:
-      - "beabzk"
 
   # Maintain dependencies for renderer package
   - package-ecosystem: "npm"
     directory: "/packages/renderer"
     schedule:
       interval: "weekly"
-    reviewers:
-      - "beabzk"
     groups:
       react:
         patterns:

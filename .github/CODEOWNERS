@@ -1,0 +1,16 @@
+# Global code owners
+* @beabzk
+
+# Package-specific ownership
+/packages/main/ @beabzk
+/packages/preload/ @beabzk
+/packages/renderer/ @beabzk
+
+# GitHub configuration
+/.github/ @beabzk
+
+# Dependencies and configuration files
+package.json @beabzk
+package-lock.json @beabzk
+/packages/*/package.json @beabzk
+/packages/*/package-lock.json @beabzk
