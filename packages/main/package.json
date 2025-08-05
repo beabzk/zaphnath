@@ -27,6 +27,6 @@
     "electron-devtools-installer": "^4.0.0",
     "electron-rebuild": "^3.2.9",
     "typescript": "^5.9.2",
-    "vite": "^7.0.4"
+    "vite": "^7.0.6"
   }
 }
