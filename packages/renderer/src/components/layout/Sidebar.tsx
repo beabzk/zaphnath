@@ -79,21 +79,26 @@ export function Sidebar() {
 
   return (
     <>
-      {/* Overlay for mobile */}
+      {/* Mobile overlay */}
       {isOpen && (
         <div
           className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm lg:hidden"
           onClick={close}
         />
       )}
-      
+
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed left-0 top-16 z-50 h-[calc(100vh-4rem)] transform border-r bg-background transition-transform duration-300 ease-in-out",
-          isOpen ? "translate-x-0" : "-translate-x-full"
+          "border-r bg-background transition-all duration-300 ease-in-out",
+          // Base: hidden on mobile, conditional on desktop
+          "hidden",
+          // Desktop: show when open, hide when closed
+          isOpen && "lg:block",
+          // Mobile: fixed positioning when open
+          isOpen && "block fixed left-0 top-16 z-50 h-[calc(100vh-4rem)] lg:relative lg:top-0 lg:h-auto lg:z-auto"
         )}
-        style={{ width: `${width}px` }}
+        style={{ width: isOpen ? `${width}px` : '0px' }}
       >
         <div className="flex h-full flex-col">
           {/* Close button for mobile */}
