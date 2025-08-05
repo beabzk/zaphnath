@@ -14,16 +14,45 @@ export default /** @type import('electron-builder').Configuration */
       buildResources: 'buildResources',
     },
     generateUpdatesFilesForAllChannels: true,
+    compression: 'maximum', // Better compression for Bible data
+    npmRebuild: true, // Required for better-sqlite3
+    buildDependenciesFromSource: true, // Ensure native modules are built correctly
+    nodeGypRebuild: false, // Let electron-rebuild handle this
     mac: {
       category: 'public.app-category.reference',
       target: ['dmg', 'zip'],
+      icon: 'buildResources/icon.icns',
+      darkModeSupport: true,
+      gatekeeperAssess: false,
+      hardenedRuntime: true,
+      entitlements: 'buildResources/entitlements.mac.plist',
+      entitlementsInherit: 'buildResources/entitlements.mac.plist',
     },
     win: {
       target: ['nsis', 'portable'],
+      icon: 'buildResources/icon.ico',
+      publisherName: 'Beabfekad Zikie',
+      verifyUpdateCodeSignature: false,
+    },
+    nsis: {
+      oneClick: false,
+      allowToChangeInstallationDirectory: true,
+      createDesktopShortcut: true,
+      createStartMenuShortcut: true,
+      shortcutName: 'Zaphnath Bible Reader',
+      include: 'buildResources/installer.nsh',
+      deleteAppDataOnUninstall: false, // Preserve user's Bible data and settings
     },
     linux: {
-      target: ['deb', 'AppImage'],
+      target: ['deb', 'AppImage', 'tar.gz'],
       category: 'Education',
+      icon: 'buildResources/icon.png',
+      desktop: {
+        Name: 'Zaphnath Bible Reader',
+        Comment: 'Modern Bible study application',
+        Keywords: 'bible;study;religion;scripture;christian;',
+        StartupWMClass: 'zaphnath',
+      },
     },
     /**
      * It is recommended to avoid using non-standard characters such as spaces in artifact names,
@@ -34,6 +63,21 @@ export default /** @type import('electron-builder').Configuration */
       'LICENSE*',
       pkg.main,
       '!node_modules/@app/**',
+      // Include ZBRS documentation and schemas
+      'docs/schemas/**',
+      'docs/standards/**',
+      // Exclude development files
+      '!**/*.{ts,tsx,map}',
+      '!**/src/**',
+      '!**/tests/**',
+      '!**/test/**',
+      '!**/*.test.*',
+      '!**/*.spec.*',
+      '!**/vite.config.*',
+      '!**/tsconfig.*',
+      '!**/eslint.*',
+      '!**/.env*',
+      '!**/README.md',
       ...await getListOfFilesFromEachWorkspace(),
     ],
   });
