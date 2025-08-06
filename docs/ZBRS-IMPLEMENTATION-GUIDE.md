@@ -2,75 +2,164 @@
 
 ## Overview
 
-This guide provides practical instructions for implementing the Zaphnath Bible Repository Standard (ZBRS) v1.0 in your applications and creating compliant Bible repositories.
+This guide provides practical instructions for implementing the Zaphnath Bible Repository Standard (ZBRS) v1.0 in your applications and creating compliant Bible repositories with hierarchical organization.
 
 ## For Repository Creators
 
 ### Quick Start
 
-1. **Choose Your Base Structure**
+1. **Choose Your Repository Structure**
    ```
    my-bible-repository/
-   ├── manifest.json
-   ├── books/
-   ├── audio/ (optional)
-   ├── assets/ (optional)
-   └── README.md
+   ├── manifest.json          # Repository coordination manifest
+   ├── README.md              # Repository description
+   ├── kjv/                   # King James Version translation
+   │   ├── manifest.json      # Translation-specific manifest
+   │   ├── README.md          # Translation description
+   │   ├── books/             # Bible books directory
+   │   └── audio/ (optional)  # Audio files
+   ├── web/                   # World English Bible translation
+   │   ├── manifest.json
+   │   ├── README.md
+   │   ├── books/
+   │   └── audio/ (optional)
+   └── [more translations]/   # Additional translations
    ```
 
-2. **Create Your Manifest**
-   - Copy from `examples/repositories/minimal-example/manifest.json`
-   - Update all fields with your translation details
+2. **Create Repository Manifest**
+   - Create root `manifest.json` with `type: "parent"`
+   - List all translations in the `translations` array
    - Ensure `zbrs_version` is "1.0"
 
-3. **Add Your Books**
+3. **Create Translation Manifests**
+   - Create `manifest.json` in each translation directory
+   - Include translation-specific metadata
+   - Reference the books in that translation
+
+4. **Add Your Books**
+   - Place books in each translation's `books/` directory
    - Use naming convention: `{order:02d}-{name}.json`
    - Follow the book schema structure
    - Validate each book file
 
-4. **Test and Deploy**
+5. **Test and Deploy**
    - Validate with ZBRS tools
    - Host on GitHub, GitLab, or web server
    - Add to repository index
 
 ### Detailed Steps
 
-#### 1. Repository Metadata
+#### 1. Repository Coordination Manifest
 
-Your `manifest.json` must include:
+Your repository root `manifest.json` must include:
 
 ```json
 {
   "zbrs_version": "1.0",
   "repository": {
-    "id": "unique-identifier",
-    "name": "Human Readable Name",
-    "description": "Detailed description",
+    "id": "my-bible-repository",
+    "name": "My Bible Repository Collection",
+    "description": "A collection of Bible translations in multiple languages",
+    "version": "1.0.0",
+    "type": "parent",
+    "created_at": "2025-01-01T00:00:00Z",
+    "updated_at": "2025-01-01T00:00:00Z"
+  },
+  "publisher": {
+    "name": "Your Organization",
+    "url": "https://example.com",
+    "contact": "contact@example.com"
+  },
+  "translations": [
+    {
+      "id": "kjv-1769",
+      "name": "King James Version (1769)",
+      "directory": "kjv",
+      "language": {
+        "code": "en",
+        "name": "English",
+        "direction": "ltr"
+      },
+      "status": "active"
+    },
+    {
+      "id": "web-2000",
+      "name": "World English Bible (2000)",
+      "directory": "web",
+      "language": {
+        "code": "en",
+        "name": "English",
+        "direction": "ltr"
+      },
+      "status": "active"
+    }
+  ],
+  "technical": {
+    "encoding": "UTF-8",
+    "compression": "none",
+    "checksum": "sha256:abc123...",
+    "size_bytes": 45678900
+  }
+}
+```
+
+#### 2. Translation Manifest
+
+Each translation directory must have its own `manifest.json`:
+
+```json
+{
+  "zbrs_version": "1.0",
+  "repository": {
+    "id": "kjv-1769",
+    "name": "King James Version (1769)",
+    "description": "The 1769 Oxford Standard Text of the King James Bible",
     "version": "1.0.0",
     "language": {
       "code": "en",
-      "name": "English", 
+      "name": "English",
       "direction": "ltr"
     },
     "translation": {
-      "type": "formal|dynamic|paraphrase|interlinear",
-      "year": 2023,
-      "copyright": "Copyright information",
+      "type": "formal",
+      "year": 1769,
+      "copyright": "Public Domain",
       "license": "CC0-1.0",
-      "source": "Source manuscripts"
+      "source": "Oxford Standard Text"
     },
     "publisher": {
       "name": "Your Organization",
       "url": "https://example.com",
       "contact": "contact@example.com"
+    },
+    "created_at": "2025-01-01T00:00:00Z",
+    "updated_at": "2025-01-01T00:00:00Z"
+  },
+  "content": {
+    "books_count": 66,
+    "testament": {
+      "old": 39,
+      "new": 27
+    },
+    "features": {
+      "audio": false,
+      "cross_references": false,
+      "footnotes": false,
+      "study_notes": false
     }
+  },
+  "technical": {
+    "encoding": "UTF-8",
+    "compression": "none",
+    "checksum": "sha256:def456...",
+    "size_bytes": 4567890
   }
 }
 ```
 
-#### 2. Book Files
+#### 3. Book Files
 
-Each book follows this structure:
+Each book within a translation's `books/` directory follows this structure:
 
 ```json
 {
@@ -97,7 +186,7 @@ Each book follows this structure:
 }
 ```
 
-#### 3. Validation
+#### 4. Validation
 
 Before publishing, validate your repository:
 
@@ -109,7 +198,7 @@ zaphnath validate /path/to/repository
 const result = await validator.validateRepository(repositoryPath);
 ```
 
-#### 4. Hosting Options
+#### 5. Hosting Options
 
 **GitHub/GitLab (Recommended)**
 - Free hosting with version control
@@ -135,6 +224,9 @@ const result = await validator.validateRepository(repositoryPath);
 4. **Include Metadata** - Add book outlines, themes, cross-references
 5. **Test Thoroughly** - Validate before publishing
 6. **Document Changes** - Maintain changelog for updates
+7. **Consistent Directory Naming** - Use clear, consistent names for translation directories
+8. **Complete Translation Sets** - Ensure each translation directory has all required files
+9. **Coordinate Manifests** - Keep repository and translation manifests synchronized
 
 ## For Application Developers
 
@@ -148,10 +240,10 @@ const result = await validator.validateRepository(repositoryPath);
    await repoService.initialize();
    ```
 
-2. **Discover Repositories**
+2. **Discover Repository**
    ```typescript
-   const repositories = await repoService.discoverRepositories();
-   console.log(`Found ${repositories.length} repositories`);
+   const manifest = await repoService.getRepositoryManifest('https://example.com/bible-repo/');
+   console.log(`Found repository with ${manifest.translations.length} translations`);
    ```
 
 3. **Import Repository**

@@ -78,6 +78,29 @@ declare namespace Zaphnath {
     getManifest: (url: string) => Promise<ZBRSManifest>;
     getSources: () => Promise<RepositorySource[]>;
     addSource: (source: RepositorySource) => Promise<boolean>;
+    scanDirectory: (directoryPath: string) => Promise<{
+      repositories: Array<{
+        path: string;
+        manifest: any;
+        validation: ValidationResult;
+      }>;
+      errors: string[];
+    }>;
+  }
+
+  interface FileSystemAPI {
+    showOpenDialog: (options?: {
+      title?: string;
+      defaultPath?: string;
+      buttonLabel?: string;
+      filters?: Array<{ name: string; extensions: string[] }>;
+      properties?: Array<
+        "openFile" | "openDirectory" | "multiSelections" | "showHiddenFiles"
+      >;
+    }) => Promise<{
+      canceled: boolean;
+      filePaths: string[];
+    }>;
   }
 
   // ZBRS Types

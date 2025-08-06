@@ -2,13 +2,21 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://schemas.zaphnath.org/zbrs/v1.0/book.json",
   "title": "ZBRS Book Schema",
-  "description": "Schema for individual Bible book files in ZBRS format",
+  "description": "Schema for individual Bible book files in ZBRS format (stored within translation directories)",
   "type": "object",
   "required": ["book", "chapters"],
   "properties": {
     "book": {
       "type": "object",
-      "required": ["id", "name", "abbreviation", "order", "testament", "chapters_count", "verses_count"],
+      "required": [
+        "id",
+        "name",
+        "abbreviation",
+        "order",
+        "testament",
+        "chapters_count",
+        "verses_count"
+      ],
       "properties": {
         "id": {
           "type": "string",
@@ -54,7 +62,15 @@
         },
         "genre": {
           "type": "string",
-          "enum": ["law", "history", "wisdom", "prophecy", "gospel", "epistle", "apocalyptic"],
+          "enum": [
+            "law",
+            "history",
+            "wisdom",
+            "prophecy",
+            "gospel",
+            "epistle",
+            "apocalyptic"
+          ],
           "description": "Literary genre"
         },
         "author": {
@@ -244,7 +260,13 @@
         },
         "type": {
           "type": "string",
-          "enum": ["historical", "cultural", "theological", "linguistic", "archaeological"],
+          "enum": [
+            "historical",
+            "cultural",
+            "theological",
+            "linguistic",
+            "archaeological"
+          ],
           "description": "Type of study note"
         },
         "author": {

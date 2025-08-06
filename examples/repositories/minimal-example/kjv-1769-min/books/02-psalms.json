@@ -3,7 +3,7 @@
     "id": "psalms",
     "name": "Psalms",
     "abbreviation": "Ps",
-    "order": 19,
+    "order": 2,
     "testament": "old",
     "chapters_count": 1,
     "verses_count": 6,

@@ -1,0 +1,42 @@
+{
+  "zbrs_version": "1.0",
+  "repository": {
+    "id": "kjv-1769-min",
+    "name": "King James Version (1769) - Minimal",
+    "description": "A minimal King James Version translation with just a few books for demonstration",
+    "version": "1.0.0",
+    "language": {
+      "code": "en",
+      "name": "English",
+      "direction": "ltr"
+    },
+    "translation": {
+      "type": "formal",
+      "year": 1769,
+      "copyright": "Public Domain",
+      "license": "CC0-1.0",
+      "source": "King James Version (1769 Oxford Standard Text)"
+    },
+    "created_at": "2025-01-01T00:00:00Z",
+    "updated_at": "2025-01-01T00:00:00Z"
+  },
+  "content": {
+    "books_count": 3,
+    "testament": {
+      "old": 2,
+      "new": 1
+    },
+    "features": {
+      "audio": false,
+      "cross_references": false,
+      "footnotes": false,
+      "study_notes": false
+    }
+  },
+  "technical": {
+    "encoding": "UTF-8",
+    "compression": "none",
+    "checksum": "sha256:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+    "size_bytes": 50000
+  }
+}

@@ -153,6 +153,80 @@ export const useRepositoryStore = create<RepositoryState>()(
           set({ validationResult: result }, false, "setValidationResult");
         },
 
+        // Hierarchical Repository Actions
+        loadParentRepositories: async () => {
+          const { setLoading, setError } = get();
+
+          try {
+            setLoading(true);
+            setError(null);
+
+            // @ts-ignore - APIs will be available at runtime
+            const parentRepositories =
+              // @ts-ignore
+              await window.repository?.getParentRepositories?.();
+
+            // Update repositories with parent repositories
+            set(
+              { repositories: parentRepositories || [] },
+              false,
+              "loadParentRepositories"
+            );
+          } catch (error) {
+            setError({
+              hasError: true,
+              message:
+                error instanceof Error
+                  ? error.message
+                  : "Failed to load parent repositories",
+              timestamp: new Date().toISOString(),
+            });
+          } finally {
+            setLoading(false);
+          }
+        },
+
+        loadTranslations: async (parentId: string) => {
+          const { setLoading, setError } = get();
+
+          try {
+            setLoading(true);
+            setError(null);
+
+            // @ts-ignore - APIs will be available at runtime
+            const translations = await window.repository?.getTranslations?.(
+              parentId
+            );
+
+            // Update the parent repository with its translations
+            const { repositories } = get();
+            const updatedRepositories = repositories.map((repo) =>
+              repo.id === parentId
+                ? { ...repo, translations: translations || [] }
+                : repo
+            );
+
+            set(
+              { repositories: updatedRepositories },
+              false,
+              "loadTranslations"
+            );
+            return translations || [];
+          } catch (error) {
+            setError({
+              hasError: true,
+              message:
+                error instanceof Error
+                  ? error.message
+                  : "Failed to load translations",
+              timestamp: new Date().toISOString(),
+            });
+            return [];
+          } finally {
+            setLoading(false);
+          }
+        },
+
         // Async Actions
         loadRepositories: async () => {
           const { setLoading, setError, setRepositories } = get();
@@ -241,12 +315,12 @@ export const useRepositoryStore = create<RepositoryState>()(
             setImportProgress({ stage: "Starting import...", progress: 0 });
 
             // @ts-ignore - APIs will be available at runtime
-            const result = await window.repository?.import?.(url, {
-              ...options,
-              progress_callback: (progress: ImportProgress) => {
-                setImportProgress(progress);
-              },
-            });
+            // Note: progress_callback cannot be passed through IPC, so we remove it
+            const cleanOptions = { ...options };
+            delete cleanOptions.progress_callback;
+
+            // @ts-ignore
+            const result = await window.repository?.import?.(url, cleanOptions);
 
             if (result?.success) {
               setImportProgress({

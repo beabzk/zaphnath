@@ -5,6 +5,8 @@ import { readFileSync } from "fs";
 import { join } from "path";
 import type {
   ZBRSManifest,
+  ZBRSParentManifest,
+  ZBRSTranslationManifest,
   ZBRSBook,
   ValidationResult,
   ValidationError,
@@ -12,6 +14,7 @@ import type {
   SecurityPolicy,
   IntegrityCheck,
 } from "./types.js";
+import { isParentManifest, isTranslationManifest } from "./types.js";
 
 export class ZBRSValidator {
   // private ajv: Ajv;
@@ -155,33 +158,86 @@ export class ZBRSValidator {
     const warnings: ValidationWarning[] = [];
 
     try {
-      // JSON Schema validation (disabled for now)
-      if (this.ajv) {
-        const validate = this.ajv.compile(this.manifestSchema);
-        const valid = validate(manifest);
-
-        if (!valid && validate.errors) {
-          for (const error of validate.errors) {
-            errors.push({
-              code: "SCHEMA_VALIDATION",
-              message: `${error.instancePath}: ${error.message}`,
-              path: error.instancePath,
-              severity: "error",
-              name: "ValidationError",
-            });
-          }
-        }
+      // Determine manifest type and route to appropriate validator
+      if (isParentManifest(manifest)) {
+        return this.validateParentManifest(manifest);
+      } else if (isTranslationManifest(manifest)) {
+        return this.validateTranslationManifest(manifest);
+      } else {
+        errors.push({
+          code: "UNKNOWN_MANIFEST_TYPE",
+          message:
+            "Manifest is neither a parent repository nor a translation manifest",
+          severity: "error",
+          name: "ValidationError",
+        });
       }
+    } catch (error) {
+      errors.push({
+        code: "VALIDATION_EXCEPTION",
+        message: `Validation failed: ${error}`,
+        severity: "error",
+        name: "ValidationError",
+      });
+    }
+
+    return {
+      valid: errors.length === 0,
+      errors,
+      warnings,
+    };
+  }
+
+  public validateParentManifest(
+    manifest: ZBRSParentManifest
+  ): ValidationResult {
+    const errors: ValidationError[] = [];
+    const warnings: ValidationWarning[] = [];
+
+    try {
+      // Validate parent-specific fields
+      this.validateParentManifestStructure(manifest, errors, warnings);
 
       // Business logic validation
+      this.validateParentManifestBusinessRules(manifest, errors, warnings);
+
+      // Security validation
+      this.validateManifestSecurity(manifest, errors, warnings);
+    } catch (error) {
+      errors.push({
+        code: "PARENT_VALIDATION_EXCEPTION",
+        message: `Parent manifest validation failed: ${error}`,
+        severity: "error",
+        name: "ValidationError",
+      });
+    }
+
+    return {
+      valid: errors.length === 0,
+      errors,
+      warnings,
+    };
+  }
+
+  public validateTranslationManifest(
+    manifest: ZBRSTranslationManifest
+  ): ValidationResult {
+    const errors: ValidationError[] = [];
+    const warnings: ValidationWarning[] = [];
+
+    try {
+      // Validate translation-specific fields
+      this.validateTranslationManifestStructure(manifest, errors, warnings);
+
+      // Business logic validation (existing method, updated for translation)
       this.validateManifestBusinessRules(manifest, errors, warnings);
 
       // Security validation
       this.validateManifestSecurity(manifest, errors, warnings);
     } catch (error) {
       errors.push({
-        code: "VALIDATION_EXCEPTION",
-        message: `Validation failed: ${error}`,
+        code: "TRANSLATION_VALIDATION_EXCEPTION",
+        message: `Translation manifest validation failed: ${error}`,
         severity: "error",
         name: "ValidationError",
       });
@@ -514,5 +570,157 @@ export class ZBRSValidator {
       errors,
       warnings,
     };
+  }
+
+  // New validation methods for hierarchical structure
+
+  private validateParentManifestStructure(
+    manifest: ZBRSParentManifest,
+    errors: ValidationError[],
+    warnings: ValidationWarning[]
+  ): void {
+    // Validate repository type
+    if (manifest.repository.type !== "parent") {
+      errors.push({
+        code: "INVALID_PARENT_TYPE",
+        message: "Parent repository must have type 'parent'",
+        severity: "error",
+        name: "ValidationError",
+      });
+    }
+
+    // Validate translations array
+    if (!Array.isArray(manifest.translations)) {
+      errors.push({
+        code: "MISSING_TRANSLATIONS_ARRAY",
+        message: "Parent repository must have a translations array",
+        severity: "error",
+        name: "ValidationError",
+      });
+    } else if (manifest.translations.length === 0) {
+      warnings.push({
+        code: "EMPTY_TRANSLATIONS_ARRAY",
+        message: "Parent repository has no translations",
+      });
+    }
+
+    // Validate publisher information
+    if (!manifest.publisher) {
+      errors.push({
+        code: "MISSING_PUBLISHER",
+        message: "Parent repository must have publisher information",
+        severity: "error",
+        name: "ValidationError",
+      });
+    }
+  }
+
+  private validateTranslationManifestStructure(
+    manifest: ZBRSTranslationManifest,
+    errors: ValidationError[],
+    warnings: ValidationWarning[]
+  ): void {
+    // Validate content information
+    if (!manifest.content) {
+      errors.push({
+        code: "MISSING_CONTENT",
+        message: "Translation manifest must have content information",
+        severity: "error",
+        name: "ValidationError",
+      });
+    }
+
+    // Validate language information
+    if (!manifest.repository.language) {
+      errors.push({
+        code: "MISSING_LANGUAGE",
+        message: "Translation manifest must have language information",
+        severity: "error",
+        name: "ValidationError",
+      });
+    }
+
+    // Validate translation information
+    if (!manifest.repository.translation) {
+      errors.push({
+        code: "MISSING_TRANSLATION_INFO",
+        message: "Translation manifest must have translation information",
+        severity: "error",
+        name: "ValidationError",
+      });
+    }
+  }
+
+  private validateParentManifestBusinessRules(
+    manifest: ZBRSParentManifest,
+    errors: ValidationError[],
+    warnings: ValidationWarning[]
+  ): void {
+    // Check for duplicate translation IDs
+    const translationIds = new Set<string>();
+    const duplicateIds: string[] = [];
+
+    for (const translation of manifest.translations) {
+      if (translationIds.has(translation.id)) {
+        duplicateIds.push(translation.id);
+      } else {
+        translationIds.add(translation.id);
+      }
+    }
+
+    if (duplicateIds.length > 0) {
+      errors.push({
+        code: "DUPLICATE_TRANSLATION_IDS",
+        message: `Duplicate translation IDs found: ${duplicateIds.join(", ")}`,
+        severity: "error",
+        name: "ValidationError",
+      });
+    }
+
+    // Check for duplicate directory names
+    const directoryNames = new Set<string>();
+    const duplicateDirectories: string[] = [];
+
+    for (const translation of manifest.translations) {
+      if (directoryNames.has(translation.directory)) {
+        duplicateDirectories.push(translation.directory);
+      } else {
+        directoryNames.add(translation.directory);
+      }
+    }
+
+    if (duplicateDirectories.length > 0) {
+      errors.push({
+        code: "DUPLICATE_TRANSLATION_DIRECTORIES",
+        message: `Duplicate translation directories found: ${duplicateDirectories.join(
+          ", "
+        )}`,
+        severity: "error",
+        name: "ValidationError",
+      });
+    }
+
+    // Validate individual translation references
+    for (const translation of manifest.translations) {
+      if (!translation.id || !translation.name || !translation.directory) {
+        errors.push({
+          code: "INCOMPLETE_TRANSLATION_REFERENCE",
+          message: `Translation reference missing required fields: ${JSON.stringify(
+            translation
+          )}`,
+          severity: "error",
+          name: "ValidationError",
+        });
+      }
+
+      if (!translation.language || !translation.language.code) {
+        errors.push({
+          code: "MISSING_TRANSLATION_LANGUAGE",
+          message: `Translation ${translation.id} missing language information`,
+          severity: "error",
+          name: "ValidationError",
+        });
+      }
+    }
   }
 }

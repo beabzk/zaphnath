@@ -1,4 +1,4 @@
-import { ipcMain } from "electron";
+import { ipcMain, dialog, BrowserWindow } from "electron";
 import { AppModule } from "../AppModule.js";
 import { DatabaseService } from "../services/database/index.js";
 import { RepositoryService } from "../services/repository/index.js";
@@ -7,8 +7,10 @@ import type { ModuleContext } from "../ModuleContext.js";
 export class IpcHandlers implements AppModule {
   private databaseService: DatabaseService;
   private repositoryService: RepositoryService;
+  private context: ModuleContext;
 
   constructor(context: ModuleContext) {
+    this.context = context;
     this.databaseService = DatabaseService.getInstance();
     this.repositoryService = RepositoryService.getInstance();
   }
@@ -21,6 +23,7 @@ export class IpcHandlers implements AppModule {
     // Register IPC handlers
     this.registerDatabaseHandlers();
     this.registerRepositoryHandlers();
+    this.registerFileSystemHandlers();
 
     console.log("IPC handlers registered");
 
@@ -39,6 +42,7 @@ export class IpcHandlers implements AppModule {
     ipcMain.removeAllListeners("repository:import");
     ipcMain.removeAllListeners("repository:validate");
     ipcMain.removeAllListeners("repository:list");
+    ipcMain.removeAllListeners("filesystem:showOpenDialog");
 
     // Shutdown database service
     await this.databaseService.shutdown();
@@ -242,6 +246,45 @@ export class IpcHandlers implements AppModule {
         return true;
       } catch (error) {
         console.error("Add repository source error:", error);
+        throw error;
+      }
+    });
+
+    // Scan directory for repositories
+    ipcMain.handle(
+      "repository:scanDirectory",
+      async (event, directoryPath: string) => {
+        try {
+          // TODO: Add origin validation for security
+          return await this.repositoryService.scanDirectoryForRepositories(
+            directoryPath
+          );
+        } catch (error) {
+          console.error("Scan directory for repositories error:", error);
+          throw error;
+        }
+      }
+    );
+  }
+
+  private registerFileSystemHandlers(): void {
+    // Show open dialog for directory selection
+    ipcMain.handle("filesystem:showOpenDialog", async (event, options: any) => {
+      try {
+        // TODO: Add origin validation for security
+        const focusedWindow = BrowserWindow.getFocusedWindow();
+        const dialogOptions = {
+          properties: ["openDirectory"] as const,
+          title: "Select Repository Directory",
+          ...options,
+        };
+
+        const result = focusedWindow
+          ? await dialog.showOpenDialog(focusedWindow, dialogOptions)
+          : await dialog.showOpenDialog(dialogOptions);
+        return result;
+      } catch (error) {
+        console.error("Show open dialog error:", error);
         throw error;
       }
     });

@@ -1,6 +1,6 @@
-import { RepositoryDiscoveryService } from './discovery.js';
-import { RepositoryImporter } from './importer.js';
-import { ZBRSValidator } from './validator.js';
+import { RepositoryDiscoveryService } from "./discovery.js";
+import { RepositoryImporter } from "./importer.js";
+import { ZBRSValidator } from "./validator.js";
 import type {
   ImportOptions,
   ImportResult,
@@ -9,8 +9,8 @@ import type {
   RepositoryIndexEntry,
   RepositorySource,
   SecurityPolicy,
-  ZBRSManifest
-} from './types.js';
+  ZBRSManifest,
+} from "./types.js";
 
 export class RepositoryService {
   private static instance: RepositoryService;
@@ -26,7 +26,7 @@ export class RepositoryService {
       max_file_size: 100 * 1024 * 1024, // 100MB per file
       require_checksums: true,
       allowed_domains: [], // Empty = allow all
-      blocked_domains: ['malicious-site.com'] // Example blocked domains
+      blocked_domains: ["malicious-site.com"], // Example blocked domains
     };
 
     this.discoveryService = new RepositoryDiscoveryService(securityPolicy);
@@ -47,15 +47,15 @@ export class RepositoryService {
     }
 
     try {
-      console.log('Initializing repository service...');
-      
+      console.log("Initializing repository service...");
+
       // Initialize default repository sources
       this.setupDefaultSources();
-      
+
       this.isInitialized = true;
-      console.log('Repository service initialized successfully');
+      console.log("Repository service initialized successfully");
     } catch (error) {
-      console.error('Failed to initialize repository service:', error);
+      console.error("Failed to initialize repository service:", error);
       throw error;
     }
   }
@@ -63,19 +63,19 @@ export class RepositoryService {
   private setupDefaultSources(): void {
     // Add official Zaphnath repository
     this.discoveryService.addRepositorySource({
-      type: 'official',
-      url: 'https://repositories.zaphnath.org/index.json',
-      name: 'Official Zaphnath Repositories',
-      enabled: true
+      type: "official",
+      url: "https://repositories.zaphnath.org/index.json",
+      name: "Official Zaphnath Repositories",
+      enabled: true,
     });
 
     // Add development/local repository for testing
-    if (process.env.NODE_ENV === 'development') {
+    if (process.env.NODE_ENV === "development") {
       this.discoveryService.addRepositorySource({
-        type: 'local',
-        url: 'http://localhost:3000/repositories/index.json',
-        name: 'Local Development Repositories',
-        enabled: false // Disabled by default
+        type: "local",
+        url: "http://localhost:3000/repositories/index.json",
+        name: "Local Development Repositories",
+        enabled: false, // Disabled by default
       });
     }
   }
@@ -87,7 +87,9 @@ export class RepositoryService {
     return this.discoveryService.discoverRepositories();
   }
 
-  public async getRepositoryManifest(repositoryUrl: string): Promise<ZBRSManifest> {
+  public async getRepositoryManifest(
+    repositoryUrl: string
+  ): Promise<ZBRSManifest> {
     this.ensureInitialized();
     return this.discoveryService.fetchRepositoryManifest(repositoryUrl);
   }
@@ -95,6 +97,18 @@ export class RepositoryService {
   public async validateRepositoryUrl(url: string): Promise<ValidationResult> {
     this.ensureInitialized();
     return this.discoveryService.validateRepository(url);
+  }
+
+  public async scanDirectoryForRepositories(directoryPath: string): Promise<{
+    repositories: Array<{
+      path: string;
+      manifest: any;
+      validation: ValidationResult;
+    }>;
+    errors: string[];
+  }> {
+    this.ensureInitialized();
+    return this.discoveryService.scanDirectoryForRepositories(directoryPath);
   }
 
   // Repository Import Methods
@@ -115,7 +129,7 @@ export class RepositoryService {
       download_audio: false,
       overwrite_existing: false,
       progress_callback: progressCallback,
-      ...options
+      ...options,
     };
 
     return this.importRepository(importOptions);
@@ -150,7 +164,10 @@ export class RepositoryService {
     return this.validator.validateManifest(manifest);
   }
 
-  public async validateBook(book: any, expectedOrder?: number): Promise<ValidationResult> {
+  public async validateBook(
+    book: any,
+    expectedOrder?: number
+  ): Promise<ValidationResult> {
     this.ensureInitialized();
     return this.validator.validateBook(book, expectedOrder);
   }
@@ -168,14 +185,16 @@ export class RepositoryService {
 
   private ensureInitialized(): void {
     if (!this.isInitialized) {
-      throw new Error('Repository service not initialized. Call initialize() first.');
+      throw new Error(
+        "Repository service not initialized. Call initialize() first."
+      );
     }
   }
 
   // Static helper methods for creating repositories
 
   public static createRepositorySource(
-    type: 'official' | 'third-party' | 'local',
+    type: "official" | "third-party" | "local",
     url: string,
     name: string,
     enabled: boolean = true
@@ -185,7 +204,7 @@ export class RepositoryService {
       url,
       name,
       enabled,
-      last_checked: new Date().toISOString()
+      last_checked: new Date().toISOString(),
     };
   }
 
@@ -203,16 +222,16 @@ export class RepositoryService {
       validate_checksums: options?.validateChecksums ?? true,
       download_audio: options?.downloadAudio ?? false,
       overwrite_existing: options?.overwriteExisting ?? false,
-      progress_callback: options?.progressCallback
+      progress_callback: options?.progressCallback,
     };
   }
 }
 
 // Export individual components for advanced usage
-export { RepositoryDiscoveryService } from './discovery.js';
-export { RepositoryImporter } from './importer.js';
-export { ZBRSValidator } from './validator.js';
-export * from './types.js';
+export { RepositoryDiscoveryService } from "./discovery.js";
+export { RepositoryImporter } from "./importer.js";
+export { ZBRSValidator } from "./validator.js";
+export * from "./types.js";
 
 // Export the main service as default
 export default RepositoryService;

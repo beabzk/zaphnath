@@ -11,7 +11,11 @@ import {
   Trash2,
   Download,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  ChevronDown,
+  ChevronRight,
+  FolderOpen,
+  Languages
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -25,10 +29,23 @@ interface Repository {
   id: string
   name: string
   description: string
-  language: string
+  language?: string // Optional for parent repositories
   version: string
   created_at: string
   updated_at: string
+  type?: 'parent' | 'translation'
+  parent_id?: string
+  book_count?: number
+  verse_count?: number
+  translations?: TranslationInfo[]
+}
+
+interface TranslationInfo {
+  id: string
+  name: string
+  directory: string
+  language: string
+  status: string
   book_count?: number
   verse_count?: number
 }
@@ -43,6 +60,7 @@ export function RepositoryList({ onImportClick, onRepositorySelect }: Repository
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedRepository, setSelectedRepository] = useState<string | null>(null)
+  const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     loadRepositories()
@@ -71,6 +89,18 @@ export function RepositoryList({ onImportClick, onRepositorySelect }: Repository
   const handleRepositorySelect = (repository: Repository) => {
     setSelectedRepository(repository.id)
     onRepositorySelect?.(repository)
+  }
+
+  const toggleParentExpansion = (parentId: string) => {
+    setExpandedParents(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(parentId)) {
+        newSet.delete(parentId)
+      } else {
+        newSet.add(parentId)
+      }
+      return newSet
+    })
   }
 
   const handleDeleteRepository = async (repositoryId: string) => {
@@ -179,69 +209,140 @@ export function RepositoryList({ onImportClick, onRepositorySelect }: Repository
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        
         {repositories.map((repo) => (
-          <div
-            key={repo.id}
-            className={`p-4 rounded-lg border cursor-pointer transition-all hover:bg-accent/50 ${
-              selectedRepository === repo.id ? 'border-primary bg-accent/20' : 'border-border'
-            }`}
-            onClick={() => handleRepositorySelect(repo)}
-          >
-            <div className="flex items-start justify-between">
-              <div className="flex-1 space-y-2">
-                <div className="flex items-center gap-2">
-                  <h3 className="font-medium">{repo.name}</h3>
-                  {selectedRepository === repo.id && (
-                    <Badge variant="default" className="text-xs">
-                      <CheckCircle className="h-3 w-3 mr-1" />
-                      Active
-                    </Badge>
-                  )}
-                </div>
-                
-                <p className="text-sm text-muted-foreground">{repo.description}</p>
-                
-                <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                  <div className="flex items-center gap-1">
-                    <Globe className="h-3 w-3" />
-                    <span>{getLanguageDisplay(repo.language)}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Calendar className="h-3 w-3" />
-                    <span>v{repo.version}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <BookOpen className="h-3 w-3" />
-                    <span>{repo.book_count || 'Unknown'} books</span>
-                  </div>
-                </div>
-              </div>
+          <div key={repo.id} className="space-y-2">
+            {/* Parent Repository or Standalone Translation */}
+            <div
+              className={`p-4 rounded-lg border cursor-pointer transition-all hover:bg-accent/50 ${
+                selectedRepository === repo.id ? 'border-primary bg-accent/20' : 'border-border'
+              }`}
+              onClick={() => handleRepositorySelect(repo)}
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex-1 space-y-2">
+                  <div className="flex items-center gap-2">
+                    {repo.type === 'parent' && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          toggleParentExpansion(repo.id)
+                        }}
+                        className="p-1 hover:bg-accent rounded"
+                      >
+                        {expandedParents.has(repo.id) ? (
+                          <ChevronDown className="h-4 w-4" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4" />
+                        )}
+                      </button>
+                    )}
 
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                    <MoreVertical className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem>
-                    <Info className="h-4 w-4 mr-2" />
-                    View Details
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem 
-                    className="text-destructive"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleDeleteRepository(repo.id)
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                    {repo.type === 'parent' ? (
+                      <FolderOpen className="h-4 w-4 text-blue-600" />
+                    ) : (
+                      <BookOpen className="h-4 w-4 text-green-600" />
+                    )}
+
+                    <h3 className="font-medium">{repo.name}</h3>
+
+                    {repo.type === 'parent' && (
+                      <Badge variant="secondary" className="text-xs">
+                        <Languages className="h-3 w-3 mr-1" />
+                        {repo.translations?.length || 0} translations
+                      </Badge>
+                    )}
+
+                    {selectedRepository === repo.id && (
+                      <Badge variant="default" className="text-xs">
+                        <CheckCircle className="h-3 w-3 mr-1" />
+                        Active
+                      </Badge>
+                    )}
+                  </div>
+
+                  <p className="text-sm text-muted-foreground">{repo.description}</p>
+
+                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                    {repo.language && (
+                      <div className="flex items-center gap-1">
+                        <Globe className="h-3 w-3" />
+                        <span>{getLanguageDisplay(repo.language)}</span>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />
+                      <span>v{repo.version}</span>
+                    </div>
+                    {repo.type !== 'parent' && (
+                      <div className="flex items-center gap-1">
+                        <BookOpen className="h-3 w-3" />
+                        <span>{repo.book_count || 'Unknown'} books</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem>
+                      <Info className="h-4 w-4 mr-2" />
+                      View Details
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      className="text-destructive"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleDeleteRepository(repo.id)
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
+
+            {/* Expanded Translations for Parent Repositories */}
+            {repo.type === 'parent' && expandedParents.has(repo.id) && repo.translations && (
+              <div className="ml-8 space-y-2">
+                {repo.translations.map((translation) => (
+                  <div
+                    key={translation.id}
+                    className="p-3 rounded-lg border border-dashed border-muted-foreground/30 bg-muted/20"
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <BookOpen className="h-3 w-3 text-green-600" />
+                      <span className="font-medium text-sm">{translation.name}</span>
+                      <Badge variant="outline" className="text-xs">
+                        {translation.language}
+                      </Badge>
+                      {translation.status !== 'active' && (
+                        <Badge variant="secondary" className="text-xs">
+                          {translation.status}
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <BookOpen className="h-3 w-3" />
+                        <span>{translation.book_count || 'Unknown'} books</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span>Directory: {translation.directory}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         ))}
       </CardContent>

@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { RepositoryDiscovery } from './RepositoryDiscovery'
+import { filesystem, repository } from '@app/preload'
 import {
   Download,
   FolderOpen,
@@ -23,14 +24,33 @@ interface ImportProgress {
 interface ValidationResult {
   valid: boolean
   errors: Array<{ code: string; message: string; severity: string }>
-  warnings: Array<{ code: string; message: string; severity: string }>
+  warnings: Array<{ code: string; message: string }>
 }
 
 interface ImportResult {
   success: boolean
   books_imported: number
+  translations_imported?: number
   errors?: string[]
   repository_id?: string
+}
+
+interface TranslationInfo {
+  id: string
+  name: string
+  directory: string
+  language: { code: string; name: string }
+  status: string
+}
+
+interface RepositoryManifest {
+  repository: {
+    id: string
+    name: string
+    description: string
+    type?: string
+  }
+  translations?: TranslationInfo[]
 }
 
 interface RepositoryImportDialogProps {
@@ -47,7 +67,14 @@ export function RepositoryImportDialog({ isOpen, onClose, onImportComplete }: Re
   const [validation, setValidation] = useState<ValidationResult | null>(null)
   const [importProgress, setImportProgress] = useState<ImportProgress | null>(null)
   const [importResult, setImportResult] = useState<ImportResult | null>(null)
+
+  // New state for hierarchical repositories
+  const [repositoryManifest, setRepositoryManifest] = useState<RepositoryManifest | null>(null)
+  const [selectedTranslations, setSelectedTranslations] = useState<string[]>([])
+  const [importMode, setImportMode] = useState<'full' | 'selective'>('full')
   const [manifest, setManifest] = useState<any>(null)
+  const [multipleRepositories, setMultipleRepositories] = useState<Array<{ path: string; manifest: any; validation: ValidationResult }> | null>(null)
+  const [selectedRepository, setSelectedRepository] = useState<string | null>(null)
 
   const handleValidate = async () => {
     if (!importUrl.trim()) return
@@ -56,21 +83,62 @@ export function RepositoryImportDialog({ isOpen, onClose, onImportComplete }: Re
       setIsValidating(true)
       setValidation(null)
       setManifest(null)
+      setMultipleRepositories(null)
+      setSelectedRepository(null)
 
-      // @ts-ignore - APIs will be available at runtime
-      const validationResult = await window.repository?.validate?.(importUrl.trim())
+      // Check if this is a local directory path
+      const isLocalPath = importType === 'file' && !importUrl.startsWith('http')
+
+      if (isLocalPath) {
+        // Try scanning for multiple repositories first
+        const scanResult = await repository.scanDirectory(importUrl.trim())
+
+        if (scanResult.repositories.length > 1) {
+          // Multiple repositories found - show selection UI
+          setMultipleRepositories(scanResult.repositories)
+          setValidation({
+            valid: true,
+            errors: [],
+            warnings: scanResult.errors.map(error => ({
+              code: 'SCAN_WARNING',
+              message: error,
+              severity: 'warning' as const
+            }))
+          })
+          return
+        } else if (scanResult.repositories.length === 1) {
+          // Single repository found - use it directly
+          const repo = scanResult.repositories[0]
+          setValidation(repo.validation)
+          if (repo.validation.valid) {
+            setManifest(repo.manifest)
+            // Update the import URL to the specific repository path
+            setImportUrl(repo.path)
+          }
+          return
+        }
+        // If no repositories found, fall through to regular validation
+      }
+
+      // Regular single repository validation
+      const validationResult = await repository.validate(importUrl.trim())
       setValidation(validationResult)
 
       if (validationResult.valid) {
-        // @ts-ignore
-        const manifestData = await window.repository?.getManifest?.(importUrl.trim())
+        const manifestData = await repository.getManifest(importUrl.trim())
         setManifest(manifestData)
+        setRepositoryManifest(manifestData)
+
+        // If this is a parent repository, initialize translation selection
+        if ((manifestData as any).repository?.type === 'parent' && (manifestData as any).translations) {
+          setSelectedTranslations((manifestData as any).translations.map((t: TranslationInfo) => t.id))
+        }
       }
     } catch (error) {
       setValidation({
         valid: false,
-        errors: [{ 
-          code: 'VALIDATION_ERROR', 
+        errors: [{
+          code: 'VALIDATION_ERROR',
           message: error instanceof Error ? error.message : 'Validation failed',
           severity: 'error'
         }],
@@ -78,6 +146,18 @@ export function RepositoryImportDialog({ isOpen, onClose, onImportComplete }: Re
       })
     } finally {
       setIsValidating(false)
+    }
+  }
+
+  const handleRepositorySelection = (repositoryPath: string) => {
+    if (!multipleRepositories) return
+
+    const selectedRepo = multipleRepositories.find(repo => repo.path === repositoryPath)
+    if (selectedRepo) {
+      setSelectedRepository(repositoryPath)
+      setImportUrl(repositoryPath)
+      setManifest(selectedRepo.manifest)
+      setValidation(selectedRepo.validation)
     }
   }
 
@@ -89,14 +169,16 @@ export function RepositoryImportDialog({ isOpen, onClose, onImportComplete }: Re
       setImportProgress({ stage: 'Starting import...', progress: 0 })
       setImportResult(null)
 
-      // @ts-ignore - APIs will be available at runtime
-      const result = await window.repository?.import?.(importUrl.trim(), {
+      const importOptions = {
         validate_checksums: true,
         overwrite_existing: false,
-        progress_callback: (progress: ImportProgress) => {
-          setImportProgress(progress)
-        }
-      })
+        import_type: importMode,
+        selected_translations: importMode === 'selective' ? selectedTranslations : undefined,
+        // Note: progress_callback cannot be passed through IPC, so we remove it
+        // Progress updates will be handled differently in the future
+      }
+
+      const result = await repository.import(importUrl.trim(), importOptions)
 
       setImportResult(result)
       
@@ -119,8 +201,7 @@ export function RepositoryImportDialog({ isOpen, onClose, onImportComplete }: Re
 
   const handleFileSelect = async () => {
     try {
-      // @ts-ignore - Electron APIs will be available
-      const result = await window.electronAPI?.showOpenDialog?.({
+      const result = await filesystem.showOpenDialog({
         properties: ['openDirectory'],
         title: 'Select Repository Directory'
       })
@@ -147,6 +228,8 @@ export function RepositoryImportDialog({ isOpen, onClose, onImportComplete }: Re
     setManifest(null)
     setImportProgress(null)
     setImportResult(null)
+    setMultipleRepositories(null)
+    setSelectedRepository(null)
     setIsValidating(false)
     setIsImporting(false)
     onClose()
@@ -161,22 +244,24 @@ export function RepositoryImportDialog({ isOpen, onClose, onImportComplete }: Re
 
   return (
     <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm">
-      <div className="fixed left-[50%] top-[50%] z-50 w-full max-w-2xl translate-x-[-50%] translate-y-[-50%] p-6">
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Import Repository</CardTitle>
-                <CardDescription>
-                  Add a new Bible repository using ZBRS standard
-                </CardDescription>
+      <div className="fixed left-[50%] top-[50%] z-50 w-full max-w-2xl translate-x-[-50%] translate-y-[-50%] p-6 max-h-screen">
+        <div className="h-full max-h-[90vh] flex flex-col">
+          <Card className="flex-1 flex flex-col overflow-hidden">
+            <CardHeader className="flex-shrink-0">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Import Repository</CardTitle>
+                  <CardDescription>
+                    Add a new Bible repository using ZBRS standard
+                  </CardDescription>
+                </div>
+                <Button variant="ghost" size="icon" onClick={handleClose}>
+                  <X className="h-4 w-4" />
+                </Button>
               </div>
-              <Button variant="ghost" size="icon" onClick={handleClose}>
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-6">
+            </CardHeader>
+            <div className="flex-1 flex flex-col overflow-hidden">
+              <CardContent className="space-y-6 flex-1 overflow-y-auto p-6">
             {/* Import Source Selection */}
             <div className="space-y-4">
               <div className="flex gap-2">
@@ -200,8 +285,6 @@ export function RepositoryImportDialog({ isOpen, onClose, onImportComplete }: Re
                   variant={importType === 'file' ? 'default' : 'outline'}
                   onClick={() => setImportType('file')}
                   className="flex-1"
-                  disabled
-                  title="Local directory import coming in future sprint"
                 >
                   <FolderOpen className="h-4 w-4 mr-2" />
                   Local Directory
@@ -301,6 +384,141 @@ export function RepositoryImportDialog({ isOpen, onClose, onImportComplete }: Re
               </div>
             )}
 
+            {/* Translation Selection for Parent Repositories */}
+            {validation?.valid && repositoryManifest?.repository?.type === 'parent' && (repositoryManifest as any).translations && (
+              <div className="space-y-4">
+                <Separator />
+                <div className="space-y-3">
+                  <h4 className="font-medium">Translation Selection</h4>
+                  <p className="text-sm text-muted-foreground">
+                    This is a parent repository containing multiple translations. Choose which translations to import:
+                  </p>
+
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        id="import-all"
+                        name="import-mode"
+                        checked={importMode === 'full'}
+                        onChange={() => {
+                          setImportMode('full')
+                          setSelectedTranslations((repositoryManifest as any).translations.map((t: TranslationInfo) => t.id))
+                        }}
+                        className="h-4 w-4"
+                      />
+                      <label htmlFor="import-all" className="text-sm font-medium">
+                        Import all translations ({(repositoryManifest as any).translations.length})
+                      </label>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        id="import-selective"
+                        name="import-mode"
+                        checked={importMode === 'selective'}
+                        onChange={() => setImportMode('selective')}
+                        className="h-4 w-4"
+                      />
+                      <label htmlFor="import-selective" className="text-sm font-medium">
+                        Select specific translations
+                      </label>
+                    </div>
+                  </div>
+
+                  {importMode === 'selective' && (
+                    <div className="space-y-2 pl-6">
+                      {(repositoryManifest as any).translations.map((translation: TranslationInfo) => (
+                        <div key={translation.id} className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            id={`translation-${translation.id}`}
+                            checked={selectedTranslations.includes(translation.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedTranslations([...selectedTranslations, translation.id])
+                              } else {
+                                setSelectedTranslations(selectedTranslations.filter(id => id !== translation.id))
+                              }
+                            }}
+                            className="h-4 w-4"
+                          />
+                          <label htmlFor={`translation-${translation.id}`} className="text-sm">
+                            <span className="font-medium">{translation.name}</span>
+                            <span className="text-muted-foreground ml-2">({translation.language.name})</span>
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {importMode === 'selective' && selectedTranslations.length === 0 && (
+                    <div className="text-sm text-red-600 bg-red-50 dark:bg-red-950/20 p-2 rounded">
+                      Please select at least one translation to import.
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Multiple Repositories Selection */}
+            {multipleRepositories && multipleRepositories.length > 1 && (
+              <div className="space-y-4">
+                <Separator />
+                <div className="space-y-3">
+                  <h4 className="font-medium">Multiple Repositories Found</h4>
+                  <p className="text-sm text-muted-foreground">
+                    The selected directory contains multiple Bible repositories. Please choose which one to import:
+                  </p>
+                  <div className="space-y-2">
+                    {multipleRepositories.map((repo, index) => (
+                      <div
+                        key={index}
+                        className={`border rounded-lg p-3 cursor-pointer transition-colors ${
+                          selectedRepository === repo.path
+                            ? 'border-primary bg-primary/5'
+                            : 'border-border hover:border-primary/50'
+                        }`}
+                        onClick={() => handleRepositorySelection(repo.path)}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              {repo.validation.valid ? (
+                                <CheckCircle className="h-4 w-4 text-green-600" />
+                              ) : (
+                                <AlertCircle className="h-4 w-4 text-red-600" />
+                              )}
+                              <span className="font-medium">{repo.manifest?.repository?.name || 'Unknown Repository'}</span>
+                            </div>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              {repo.manifest?.repository?.description || 'No description available'}
+                            </p>
+                            <div className="flex gap-4 text-xs text-muted-foreground mt-2">
+                              <span>Language: {repo.manifest?.repository?.language?.name || 'Unknown'}</span>
+                              <span>Version: v{repo.manifest?.repository?.version || 'Unknown'}</span>
+                              <span>Books: {repo.manifest?.content?.books_count || 'Unknown'}</span>
+                            </div>
+                            {!repo.validation.valid && repo.validation.errors.length > 0 && (
+                              <div className="mt-2">
+                                <span className="text-xs text-red-600">
+                                  Errors: {repo.validation.errors.map(e => e.message).join(', ')}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                          {selectedRepository === repo.path && (
+                            <CheckCircle className="h-5 w-5 text-primary" />
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Repository Preview */}
             {manifest && validation?.valid && (
               <div className="space-y-4">
@@ -385,14 +603,22 @@ export function RepositoryImportDialog({ isOpen, onClose, onImportComplete }: Re
                 </div>
               </div>
             )}
+              </CardContent>
+            </div>
 
-            {/* Action Buttons */}
-            <div className="flex justify-end gap-2 pt-4 border-t">
+            {/* Action Buttons - Fixed at bottom */}
+            <div className="flex justify-end gap-2 p-6 pt-4 border-t flex-shrink-0">
               <Button variant="outline" onClick={handleClose} disabled={isImporting}>
                 {importResult?.success ? 'Close' : 'Cancel'}
               </Button>
-              {validation?.valid && !importResult?.success && (
-                <Button onClick={handleImport} disabled={isImporting}>
+              {validation?.valid && !importResult?.success && (!multipleRepositories || selectedRepository) && (
+                <Button
+                  onClick={handleImport}
+                  disabled={
+                    isImporting ||
+                    (importMode === 'selective' && selectedTranslations.length === 0)
+                  }
+                >
                   {isImporting ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -401,14 +627,17 @@ export function RepositoryImportDialog({ isOpen, onClose, onImportComplete }: Re
                   ) : (
                     <>
                       <Download className="h-4 w-4 mr-2" />
-                      Import Repository
+                      {repositoryManifest?.repository?.type === 'parent'
+                        ? `Import ${importMode === 'selective' ? selectedTranslations.length : (repositoryManifest as any).translations?.length || 0} Translation${(importMode === 'selective' ? selectedTranslations.length : (repositoryManifest as any).translations?.length || 0) !== 1 ? 's' : ''}`
+                        : 'Import Repository'
+                      }
                     </>
                   )}
                 </Button>
               )}
             </div>
-          </CardContent>
-        </Card>
+          </Card>
+        </div>
       </div>
     </div>
   )

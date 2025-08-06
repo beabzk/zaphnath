@@ -1,13 +1,20 @@
 import { net } from "electron";
 import { createHash } from "crypto";
+import { readFile, access, readdir, stat } from "fs/promises";
+import { join, resolve } from "path";
+import { fileURLToPath } from "url";
 import type {
   RepositoryIndex,
   RepositoryIndexEntry,
   RepositorySource,
   ZBRSManifest,
+  ZBRSParentManifest,
+  ZBRSTranslationManifest,
+  TranslationReference,
   ValidationResult,
   SecurityPolicy,
 } from "./types.js";
+import { isParentManifest, isTranslationManifest } from "./types.js";
 import { NetworkError } from "./types.js";
 import { ZBRSValidator } from "./validator.js";
 
@@ -173,6 +180,368 @@ export class RepositoryDiscoveryService {
     }
   }
 
+  // New methods for hierarchical repository support
+
+  public async fetchTranslationManifest(
+    repositoryUrl: string,
+    translationDirectory: string
+  ): Promise<ZBRSTranslationManifest> {
+    try {
+      // Construct the translation manifest URL
+      const baseUrl = repositoryUrl.endsWith("/")
+        ? repositoryUrl
+        : `${repositoryUrl}/`;
+      const manifestUrl = `${baseUrl}${translationDirectory}/manifest.json`;
+
+      // For local file paths, use direct file reading
+      if (repositoryUrl.startsWith("file://")) {
+        const { fileURLToPath } = await import("url");
+        const { readFile } = await import("fs/promises");
+        const { join } = await import("path");
+
+        const localPath = fileURLToPath(repositoryUrl);
+        const manifestPath = join(
+          localPath,
+          translationDirectory,
+          "manifest.json"
+        );
+
+        const manifestContent = await readFile(manifestPath, "utf-8");
+        const manifest = JSON.parse(manifestContent) as ZBRSManifest;
+
+        if (!isTranslationManifest(manifest)) {
+          throw new Error("Invalid translation manifest structure");
+        }
+
+        return manifest;
+      } else {
+        // For HTTP URLs, use the existing fetch logic
+        const manifest = await this.fetchRepositoryManifest(
+          manifestUrl.replace("/manifest.json", "")
+        );
+
+        if (!isTranslationManifest(manifest)) {
+          throw new Error("Invalid translation manifest structure");
+        }
+
+        return manifest;
+      }
+    } catch (error) {
+      throw new NetworkError(
+        `Failed to fetch translation manifest: ${error}`,
+        `${repositoryUrl}/${translationDirectory}/manifest.json`
+      );
+    }
+  }
+
+  public async discoverTranslations(
+    repositoryUrl: string
+  ): Promise<TranslationReference[]> {
+    try {
+      const manifest = await this.fetchRepositoryManifest(repositoryUrl);
+
+      if (!isParentManifest(manifest)) {
+        // If it's a translation manifest, return it as a single translation
+        if (isTranslationManifest(manifest)) {
+          return [
+            {
+              id: manifest.repository.id,
+              name: manifest.repository.name,
+              directory: ".", // Current directory
+              language: manifest.repository.language,
+              status: "active" as const,
+            },
+          ];
+        }
+        throw new Error(
+          "Repository is neither a parent nor a translation manifest"
+        );
+      }
+
+      return manifest.translations;
+    } catch (error) {
+      throw new NetworkError(
+        `Failed to discover translations: ${error}`,
+        repositoryUrl
+      );
+    }
+  }
+
+  public async validateTranslation(
+    repositoryUrl: string,
+    translationDirectory: string
+  ): Promise<ValidationResult> {
+    try {
+      const manifest = await this.fetchTranslationManifest(
+        repositoryUrl,
+        translationDirectory
+      );
+      return this.validator.validateManifest(manifest);
+    } catch (error) {
+      return {
+        valid: false,
+        errors: [
+          {
+            code: "TRANSLATION_FETCH_ERROR",
+            message: `Failed to validate translation: ${error}`,
+            severity: "error",
+            name: "ValidationError",
+          },
+        ],
+        warnings: [],
+      };
+    }
+  }
+
+  /**
+   * Scans a directory for multiple repositories and returns their information
+   * This handles the case where users select a parent directory containing multiple translation directories
+   */
+  public async scanDirectoryForRepositories(directoryPath: string): Promise<{
+    repositories: Array<{
+      path: string;
+      manifest: ZBRSManifest;
+      validation: ValidationResult;
+    }>;
+    errors: string[];
+  }> {
+    const repositories: Array<{
+      path: string;
+      manifest: ZBRSManifest;
+      validation: ValidationResult;
+    }> = [];
+    const errors: string[] = [];
+
+    try {
+      // Convert to file:// URL if it's a local path
+      const directoryUrl = directoryPath.startsWith("file://")
+        ? directoryPath
+        : `file://${directoryPath.replace(/\\/g, "/")}`;
+
+      const localPath = fileURLToPath(directoryUrl);
+
+      // Check if directory exists
+      const dirStat = await stat(localPath);
+      if (!dirStat.isDirectory()) {
+        errors.push(`Path is not a directory: ${localPath}`);
+        return { repositories, errors };
+      }
+
+      // Read directory contents
+      const entries = await readdir(localPath, { withFileTypes: true });
+
+      // Check each subdirectory for a manifest.json file
+      for (const entry of entries) {
+        if (entry.isDirectory()) {
+          const subDirPath = join(localPath, entry.name);
+          const manifestPath = join(subDirPath, "manifest.json");
+
+          try {
+            // Check if manifest.json exists
+            await access(manifestPath);
+
+            // Try to read and validate the manifest
+            const manifestContent = await readFile(manifestPath, "utf-8");
+            const manifest = JSON.parse(manifestContent) as ZBRSManifest;
+
+            // Validate the manifest
+            const validation = this.validator.validateManifest(manifest);
+
+            // Convert back to file:// URL for consistency
+            const repositoryUrl = `file://${subDirPath.replace(/\\/g, "/")}`;
+
+            repositories.push({
+              path: repositoryUrl,
+              manifest,
+              validation,
+            });
+          } catch (error) {
+            // Skip directories without valid manifests, but don't treat as errors
+            // This allows parent directories to contain non-repository folders
+            console.log(`Skipping directory ${entry.name}: ${error}`);
+          }
+        }
+      }
+
+      // If no repositories found, check if the directory itself is a repository
+      if (repositories.length === 0) {
+        const manifestPath = join(localPath, "manifest.json");
+        try {
+          await access(manifestPath);
+          const manifestContent = await readFile(manifestPath, "utf-8");
+          const manifest = JSON.parse(manifestContent) as ZBRSManifest;
+          const validation = this.validator.validateManifest(manifest);
+
+          repositories.push({
+            path: directoryUrl,
+            manifest,
+            validation,
+          });
+        } catch (error) {
+          errors.push(
+            `No repositories found in directory and directory itself is not a valid repository: ${error}`
+          );
+        }
+      }
+    } catch (error) {
+      errors.push(`Failed to scan directory: ${error}`);
+    }
+
+    return { repositories, errors };
+  }
+
+  /**
+   * Scans a directory specifically for hierarchical repositories
+   * Returns both parent repositories and their translations
+   */
+  public async scanHierarchicalRepository(directoryPath: string): Promise<{
+    parentRepository?: {
+      path: string;
+      manifest: ZBRSParentManifest;
+      validation: ValidationResult;
+    };
+    translations: Array<{
+      path: string;
+      directory: string;
+      manifest: ZBRSTranslationManifest;
+      validation: ValidationResult;
+    }>;
+    errors: string[];
+  }> {
+    const translations: Array<{
+      path: string;
+      directory: string;
+      manifest: ZBRSTranslationManifest;
+      validation: ValidationResult;
+    }> = [];
+    const errors: string[] = [];
+    let parentRepository:
+      | {
+          path: string;
+          manifest: ZBRSParentManifest;
+          validation: ValidationResult;
+        }
+      | undefined;
+
+    try {
+      const directoryUrl = directoryPath.startsWith("file://")
+        ? directoryPath
+        : `file://${directoryPath.replace(/\\/g, "/")}`;
+
+      const localPath = fileURLToPath(directoryUrl);
+
+      // Check if directory exists
+      const dirStat = await stat(localPath);
+      if (!dirStat.isDirectory()) {
+        errors.push(`Path is not a directory: ${localPath}`);
+        return { parentRepository, translations, errors };
+      }
+
+      // First, check if this directory has a parent manifest
+      const parentManifestPath = join(localPath, "manifest.json");
+      try {
+        await access(parentManifestPath);
+        const manifestContent = await readFile(parentManifestPath, "utf-8");
+        const manifest = JSON.parse(manifestContent) as ZBRSManifest;
+
+        if (isParentManifest(manifest)) {
+          const validation = this.validator.validateManifest(manifest);
+          parentRepository = {
+            path: directoryUrl,
+            manifest,
+            validation,
+          };
+
+          // Now scan for translations based on the parent manifest
+          for (const translationRef of manifest.translations) {
+            const translationPath = join(localPath, translationRef.directory);
+            const translationManifestPath = join(
+              translationPath,
+              "manifest.json"
+            );
+
+            try {
+              await access(translationManifestPath);
+              const translationContent = await readFile(
+                translationManifestPath,
+                "utf-8"
+              );
+              const translationManifest = JSON.parse(
+                translationContent
+              ) as ZBRSManifest;
+
+              if (isTranslationManifest(translationManifest)) {
+                const translationValidation =
+                  this.validator.validateManifest(translationManifest);
+                const translationUrl = `file://${translationPath.replace(
+                  /\\/g,
+                  "/"
+                )}`;
+
+                translations.push({
+                  path: translationUrl,
+                  directory: translationRef.directory,
+                  manifest: translationManifest,
+                  validation: translationValidation,
+                });
+              } else {
+                errors.push(
+                  `Invalid translation manifest in ${translationRef.directory}`
+                );
+              }
+            } catch (error) {
+              errors.push(
+                `Failed to load translation ${translationRef.directory}: ${error}`
+              );
+            }
+          }
+        }
+      } catch (error) {
+        // No parent manifest, treat as individual translation or scan for translations
+        console.log(`No parent manifest found: ${error}`);
+      }
+
+      // If no parent repository found, scan for individual translation directories
+      if (!parentRepository) {
+        const entries = await readdir(localPath, { withFileTypes: true });
+
+        for (const entry of entries) {
+          if (entry.isDirectory()) {
+            const subDirPath = join(localPath, entry.name);
+            const manifestPath = join(subDirPath, "manifest.json");
+
+            try {
+              await access(manifestPath);
+              const manifestContent = await readFile(manifestPath, "utf-8");
+              const manifest = JSON.parse(manifestContent) as ZBRSManifest;
+
+              if (isTranslationManifest(manifest)) {
+                const validation = this.validator.validateManifest(manifest);
+                const translationUrl = `file://${subDirPath.replace(
+                  /\\/g,
+                  "/"
+                )}`;
+
+                translations.push({
+                  path: translationUrl,
+                  directory: entry.name,
+                  manifest,
+                  validation,
+                });
+              }
+            } catch (error) {
+              console.log(`Skipping directory ${entry.name}: ${error}`);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      errors.push(`Failed to scan hierarchical repository: ${error}`);
+    }
+
+    return { parentRepository, translations, errors };
+  }
+
   public addRepositorySource(source: RepositorySource): void {
     // Check if source already exists
     const existingIndex = this.repositorySources.findIndex(
@@ -212,6 +581,12 @@ export class RepositoryDiscoveryService {
   }
 
   private async fetchJson(url: string): Promise<any> {
+    // Handle local file:// URLs
+    if (url.startsWith("file://")) {
+      return this.fetchLocalJson(url);
+    }
+
+    // Handle HTTP/HTTPS URLs
     return new Promise((resolve, reject) => {
       const request = net.request({
         method: "GET",
@@ -268,10 +643,32 @@ export class RepositoryDiscoveryService {
     });
   }
 
+  private async fetchLocalJson(fileUrl: string): Promise<any> {
+    try {
+      // Convert file:// URL to local path (cross-platform)
+      const filePath = fileURLToPath(fileUrl);
+
+      // Check if file exists
+      await access(filePath);
+
+      // Read and parse JSON file
+      const fileContent = await readFile(filePath, "utf-8");
+      return JSON.parse(fileContent);
+    } catch (error) {
+      throw new Error(`Failed to read local file: ${error}`);
+    }
+  }
+
   public async downloadFile(
     url: string,
     maxSize: number = 100 * 1024 * 1024
   ): Promise<Buffer> {
+    // Handle local file:// URLs
+    if (url.startsWith("file://")) {
+      return this.downloadLocalFile(url, maxSize);
+    }
+
+    // Handle HTTP/HTTPS URLs
     return new Promise((resolve, reject) => {
       const request = net.request({
         method: "GET",
@@ -333,6 +730,33 @@ export class RepositoryDiscoveryService {
 
       request.end();
     });
+  }
+
+  private async downloadLocalFile(
+    fileUrl: string,
+    maxSize: number
+  ): Promise<Buffer> {
+    try {
+      // Convert file:// URL to local path
+      const filePath = fileURLToPath(fileUrl);
+
+      // Check if file exists
+      await access(filePath);
+
+      // Read file as buffer
+      const fileBuffer = await readFile(filePath);
+
+      // Check file size
+      if (fileBuffer.length > maxSize) {
+        throw new Error(
+          `File too large: ${fileBuffer.length} bytes (max: ${maxSize})`
+        );
+      }
+
+      return fileBuffer;
+    } catch (error) {
+      throw new Error(`Failed to read local file: ${error}`);
+    }
   }
 
   public calculateChecksum(data: Buffer): string {

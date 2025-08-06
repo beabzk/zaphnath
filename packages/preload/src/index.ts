@@ -30,6 +30,14 @@ const repository: Zaphnath.RepositoryAPI = {
   getSources: () => ipcRenderer.invoke("repository:getSources"),
   addSource: (source: any) =>
     ipcRenderer.invoke("repository:addSource", source),
+  scanDirectory: (directoryPath: string) =>
+    ipcRenderer.invoke("repository:scanDirectory", directoryPath),
 };
 
-export { sha256sum, versions, send, database, repository };
+// File System API
+const filesystem: Zaphnath.FileSystemAPI = {
+  showOpenDialog: (options?: any) =>
+    ipcRenderer.invoke("filesystem:showOpenDialog", options),
+};
+
+export { sha256sum, versions, send, database, repository, filesystem };

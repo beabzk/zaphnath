@@ -2,9 +2,45 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://schemas.zaphnath.org/zbrs/v1.0/manifest.json",
   "title": "ZBRS Manifest Schema",
-  "description": "Schema for Zaphnath Bible Repository Standard manifest files",
+  "description": "Schema for Zaphnath Bible Repository Standard manifest files (supports both repository coordination and translation manifests)",
   "type": "object",
-  "required": ["zbrs_version", "repository", "content", "technical"],
+  "required": ["zbrs_version", "repository"],
+  "anyOf": [
+    {
+      "description": "Parent repository manifest",
+      "required": [
+        "zbrs_version",
+        "repository",
+        "publisher",
+        "translations",
+        "technical"
+      ],
+      "properties": {
+        "repository": {
+          "properties": {
+            "type": {
+              "const": "parent"
+            }
+          }
+        }
+      }
+    },
+    {
+      "description": "Translation manifest",
+      "required": ["zbrs_version", "repository", "content", "technical"],
+      "properties": {
+        "repository": {
+          "not": {
+            "properties": {
+              "type": {
+                "const": "parent"
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
   "properties": {
     "zbrs_version": {
       "type": "string",
@@ -13,7 +49,7 @@
     },
     "repository": {
       "type": "object",
-      "required": ["id", "name", "description", "version", "language", "translation", "publisher"],
+      "required": ["id", "name", "description", "version"],
       "properties": {
         "id": {
           "type": "string",
@@ -39,14 +75,16 @@
           "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
           "description": "Repository version (semantic versioning)"
         },
+        "type": {
+          "type": "string",
+          "enum": ["parent"],
+          "description": "Repository type - must be 'parent' for repository coordination manifests"
+        },
         "language": {
           "$ref": "#/$defs/language"
         },
         "translation": {
           "$ref": "#/$defs/translation"
-        },
-        "publisher": {
-          "$ref": "#/$defs/publisher"
         },
         "created_at": {
           "type": "string",
@@ -58,6 +96,16 @@
           "format": "date-time",
           "description": "Last update timestamp"
         }
+      }
+    },
+    "publisher": {
+      "$ref": "#/$defs/publisher"
+    },
+    "translations": {
+      "type": "array",
+      "description": "Array of translations available in this repository (for parent repositories)",
+      "items": {
+        "$ref": "#/$defs/translation_reference"
       }
     },
     "content": {
@@ -244,6 +292,36 @@
           "type": "string",
           "format": "email",
           "description": "Contact email"
+        }
+      }
+    },
+    "translation_reference": {
+      "type": "object",
+      "required": ["id", "name", "directory", "language", "status"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "description": "Unique translation identifier"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "description": "Human-readable translation name"
+        },
+        "directory": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "description": "Directory name for this translation"
+        },
+        "language": {
+          "$ref": "#/$defs/language"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "inactive", "deprecated"],
+          "description": "Translation status"
         }
       }
     }

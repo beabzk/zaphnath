@@ -14,29 +14,134 @@ The Zaphnath Bible Repository Standard (ZBRS) defines a standardized format for 
 
 ## Repository Structure
 
+ZBRS v1.0 defines a hierarchical repository structure where a single repository contains multiple Bible translation subdirectories. This organization allows for better management of multiple translations and languages within a unified repository.
+
+### Repository Structure
+
 ```
 repository-root/
-├── manifest.json           # Repository metadata and configuration
-├── books/                  # Bible books directory
-│   ├── 01-genesis.json     # Individual book files
+├── manifest.json           # Parent repository metadata and coordination
+├── README.md              # Parent repository description
+├── kjv/                   # King James Version translation
+│   ├── manifest.json      # Translation-specific metadata
+│   ├── README.md          # Translation description
+│   ├── books/             # Bible books directory
+│   │   ├── 01-genesis.json
+│   │   ├── 02-exodus.json
+│   │   └── ...
+│   └── audio/             # Optional audio files
+│       ├── 01-genesis/
+│       │   ├── chapter-01.mp3
+│       │   └── ...
+│       └── ...
+├── web/                   # World English Bible translation
+│   ├── manifest.json
+│   ├── README.md
+│   ├── books/
+│   └── audio/
+├── amharic-1962/          # Amharic Bible (1962) translation
+│   ├── manifest.json
+│   ├── README.md
+│   ├── books/
+│   └── audio/
+├── nasv-2001/             # New American Standard Version (2001)
+│   ├── manifest.json
+│   ├── README.md
+│   ├── books/
+│   └── audio/
+└── [more translations...]  # Additional translation directories can be added
+```
+
+### Translation Directory Structure
+
+Each translation subdirectory follows this standardized structure:
+
+```
+translation-directory/
+├── manifest.json           # Translation metadata and configuration
+├── README.md              # Translation description and usage
+├── books/                 # Bible books directory
+│   ├── 01-genesis.json    # Individual book files
 │   ├── 02-exodus.json
 │   └── ...
-├── audio/                  # Optional audio files
-│   ├── 01-genesis/
-│   │   ├── chapter-01.mp3
-│   │   └── ...
-│   └── ...
-├── assets/                 # Optional additional resources
-│   ├── images/
-│   └── fonts/
-└── README.md              # Human-readable repository description
+└── audio/                 # Optional audio files
+    ├── 01-genesis/
+    │   ├── chapter-01.mp3
+    │   └── ...
+    └── ...
 ```
 
 ## File Specifications
 
-### 1. Repository Manifest (`manifest.json`)
+### 1. Parent Repository Manifest (`manifest.json`)
 
-The manifest file contains metadata about the Bible repository:
+The parent repository manifest coordinates multiple Bible translations and provides overall repository metadata:
+
+```json
+{
+  "zbrs_version": "1.0",
+  "repository": {
+    "id": "beabzk-zbrs-repo",
+    "name": "Beabzk Bible Repository Collection",
+    "description": "A comprehensive collection of Bible translations in multiple languages",
+    "version": "1.0.0",
+    "type": "parent",
+    "created_at": "2025-01-01T00:00:00Z",
+    "updated_at": "2025-01-01T00:00:00Z"
+  },
+  "publisher": {
+    "name": "Beabfekad Zikie",
+    "url": "https://github.com/beabzk/zbrs-repo",
+    "contact": "beabzk@proton.me"
+  },
+  "translations": [
+    {
+      "id": "kjv-1769",
+      "name": "King James Version (1769)",
+      "directory": "kjv",
+      "language": {
+        "code": "en",
+        "name": "English",
+        "direction": "ltr"
+      },
+      "status": "active"
+    },
+    {
+      "id": "web-2000",
+      "name": "World English Bible (2000)",
+      "directory": "web",
+      "language": {
+        "code": "en",
+        "name": "English",
+        "direction": "ltr"
+      },
+      "status": "active"
+    },
+    {
+      "id": "amharic-1962",
+      "name": "Amharic Bible (1962)",
+      "directory": "amharic-1962",
+      "language": {
+        "code": "am",
+        "name": "Amharic",
+        "direction": "ltr",
+        "script": "Ethi"
+      },
+      "status": "active"
+    }
+  ],
+  "technical": {
+    "encoding": "UTF-8",
+    "compression": "none",
+    "checksum": "sha256:abc123...",
+    "size_bytes": 45678900
+  }
+}
+```
+
+### 2. Translation Manifest (`translation-directory/manifest.json`)
+
+Each translation directory contains its own manifest with translation-specific metadata:
 
 ```json
 {
@@ -88,9 +193,9 @@ The manifest file contains metadata about the Bible repository:
 }
 ```
 
-### 2. Book Files (`books/*.json`)
+### 3. Book Files (`translation-directory/books/*.json`)
 
-Each Bible book is stored as a separate JSON file with standardized naming:
+Each Bible book within a translation directory is stored as a separate JSON file with standardized naming:
 
 **Naming Convention**: `{order:02d}-{name}.json`
 - `01-genesis.json`, `02-exodus.json`, etc.
@@ -156,10 +261,17 @@ Audio files are referenced using Media Fragment URIs:
 ## Validation Rules
 
 ### Required Fields
-- `manifest.json` must be present and valid
-- All books referenced in manifest must exist
+- Repository root `manifest.json` must be present and valid with `type: "parent"`
+- Each translation directory must have its own `manifest.json` and `README.md`
+- All translation directories referenced in the repository manifest must exist
+- All books referenced in translation manifests must exist
 - Book order must be sequential (1-66 for Protestant canon)
 - All verses must have non-empty text
+
+### Directory Structure Requirements
+- Translation directories must follow the naming convention specified in the repository manifest
+- Each translation directory must contain a `books/` subdirectory
+- Book files must be located within the translation's `books/` directory
 
 ### Optional Features
 - Audio files and references
@@ -184,11 +296,12 @@ The Zaphnath project maintains an official index at:
   "version": "1.0",
   "repositories": [
     {
-      "id": "kjv-1769",
-      "name": "King James Version (1769)",
-      "url": "https://repositories.zaphnath.org/kjv-1769/",
-      "language": "en",
-      "license": "CC0-1.0",
+      "id": "beabzk-zbrs-repo",
+      "name": "Beabzk Bible Repository Collection",
+      "url": "https://repositories.zaphnath.org/beabzk-zbrs-repo/",
+      "type": "parent",
+      "translations": ["kjv-1769", "web-2000", "amharic-1962"],
+      "languages": ["en", "am"],
       "verified": true,
       "last_updated": "2025-01-01T00:00:00Z"
     }
@@ -196,8 +309,15 @@ The Zaphnath project maintains an official index at:
 }
 ```
 
+### Repository Discovery Process
+When discovering a repository, applications should:
+1. Fetch the repository root `manifest.json`
+2. Validate that it has `type: "parent"`
+3. Parse the `translations` array to discover available translations
+4. For each translation, validate the corresponding translation directory and manifest
+
 ### Third-Party Repositories
-Users can add custom repository URLs that follow the same standard.
+Users can add custom repository URLs that follow the same hierarchical standard.
 
 ## Security Considerations
 
@@ -234,6 +354,9 @@ The standard allows for extensions while maintaining compatibility:
 - Static hosting is sufficient (no server-side processing required)
 - CDN distribution recommended for performance
 - Compression (gzip) recommended for network efficiency
+- Applications should first fetch the repository root manifest to discover available translations
+- Translation directories can be imported individually or as a complete collection
+- Directory naming should follow the convention specified in the repository manifest
 
 ---
 
