@@ -4,7 +4,6 @@ import { DatabaseService } from "../database/index.js";
 import { RepositoryDiscoveryService } from "./discovery.js";
 import { ZBRSValidator } from "./validator.js";
 import type {
-  ZBRSManifest,
   ZBRSParentManifest,
   ZBRSTranslationManifest,
   TranslationReference,
@@ -200,7 +199,7 @@ export class RepositoryImporter {
   }
 
   private async validateRepository(
-    manifest: ZBRSManifest,
+    manifest: ZBRSTranslationManifest,
     options: ImportOptions
   ): Promise<ValidationResult> {
     // Validate manifest
@@ -245,7 +244,7 @@ export class RepositoryImporter {
   }
 
   private async importBooks(
-    manifest: ZBRSManifest,
+    manifest: ZBRSTranslationManifest,
     options: ImportOptions
   ): Promise<number> {
     let importedCount = 0;
@@ -262,8 +261,8 @@ export class RepositoryImporter {
       i < Math.min(bookFiles.length, manifest.content.books_count);
       i++
     ) {
+      const bookOrder = i + 1;
       try {
-        const bookOrder = i + 1;
         this.reportProgress(options, {
           stage: "downloading",
           progress: 20 + (bookOrder / manifest.content.books_count) * 60,
@@ -450,7 +449,9 @@ export class RepositoryImporter {
     }
   }
 
-  private async createRepositoryRecord(manifest: ZBRSManifest): Promise<void> {
+  private async createRepositoryRecord(
+    manifest: ZBRSTranslationManifest
+  ): Promise<void> {
     const queries = this.databaseService.getQueries();
 
     // Delete existing repository if it exists
