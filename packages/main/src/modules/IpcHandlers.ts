@@ -39,9 +39,12 @@ export class IpcHandlers implements AppModule {
     ipcMain.removeAllListeners("database:execute");
     ipcMain.removeAllListeners("database:getBooks");
     ipcMain.removeAllListeners("database:getVerses");
+    ipcMain.removeAllListeners("database:getChapter");
     ipcMain.removeAllListeners("repository:import");
     ipcMain.removeAllListeners("repository:validate");
     ipcMain.removeAllListeners("repository:list");
+    ipcMain.removeAllListeners("repository:getParentRepositories");
+    ipcMain.removeAllListeners("repository:getTranslations");
     ipcMain.removeAllListeners("filesystem:showOpenDialog");
 
     // Shutdown database service
@@ -159,6 +162,27 @@ export class IpcHandlers implements AppModule {
         throw error;
       }
     });
+
+    // Get chapter data (verses for a specific book and chapter)
+    ipcMain.handle(
+      "database:getChapter",
+      async (event, bookId: string, chapterNumber: number) => {
+        try {
+          // TODO: Add origin validation for security
+          const verses = this.databaseService.getVerses(
+            parseInt(bookId),
+            chapterNumber
+          );
+          return {
+            chapter: { number: chapterNumber, book_id: parseInt(bookId) },
+            verses: verses,
+          };
+        } catch (error) {
+          console.error("Get chapter error:", error);
+          throw error;
+        }
+      }
+    );
   }
 
   private registerRepositoryHandlers(): void {
@@ -261,6 +285,33 @@ export class IpcHandlers implements AppModule {
           );
         } catch (error) {
           console.error("Scan directory for repositories error:", error);
+          throw error;
+        }
+      }
+    );
+
+    // Get parent repositories
+    ipcMain.handle("repository:getParentRepositories", async (event) => {
+      try {
+        // TODO: Add origin validation for security
+        return this.databaseService.getQueries().getParentRepositories();
+      } catch (error) {
+        console.error("Get parent repositories error:", error);
+        throw error;
+      }
+    });
+
+    // Get translations for a parent repository
+    ipcMain.handle(
+      "repository:getTranslations",
+      async (event, parentId: string) => {
+        try {
+          // TODO: Add origin validation for security
+          return this.databaseService
+            .getQueries()
+            .getRepositoryTranslations(parentId);
+        } catch (error) {
+          console.error("Get translations error:", error);
           throw error;
         }
       }

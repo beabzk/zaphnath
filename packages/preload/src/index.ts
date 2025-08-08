@@ -32,6 +32,14 @@ const repository: Zaphnath.RepositoryAPI = {
     ipcRenderer.invoke("repository:addSource", source),
   scanDirectory: (directoryPath: string) =>
     ipcRenderer.invoke("repository:scanDirectory", directoryPath),
+  getBooks: (repositoryId: string) =>
+    ipcRenderer.invoke("database:getBooks", repositoryId),
+  getChapter: (bookId: string, chapterNumber: number) =>
+    ipcRenderer.invoke("database:getChapter", bookId, chapterNumber),
+  getParentRepositories: () =>
+    ipcRenderer.invoke("repository:getParentRepositories"),
+  getTranslations: (parentId: string) =>
+    ipcRenderer.invoke("repository:getTranslations", parentId),
 };
 
 // File System API

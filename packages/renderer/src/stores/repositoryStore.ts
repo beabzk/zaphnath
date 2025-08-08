@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { devtools, persist } from "zustand/middleware";
+import { repository } from "@app/preload";
 import {
   RepositoryState,
   Repository,
@@ -161,10 +162,7 @@ export const useRepositoryStore = create<RepositoryState>()(
             setLoading(true);
             setError(null);
 
-            // @ts-ignore - APIs will be available at runtime
-            const parentRepositories =
-              // @ts-ignore
-              await window.repository?.getParentRepositories?.();
+            const parentRepositories = await repository.getParentRepositories();
 
             // Update repositories with parent repositories
             set(
@@ -194,9 +192,7 @@ export const useRepositoryStore = create<RepositoryState>()(
             setError(null);
 
             // @ts-ignore - APIs will be available at runtime
-            const translations = await window.repository?.getTranslations?.(
-              parentId
-            );
+            const translations = await repository.getTranslations(parentId);
 
             // Update the parent repository with its translations
             const { repositories } = get();
@@ -236,7 +232,7 @@ export const useRepositoryStore = create<RepositoryState>()(
             setError(null);
 
             // @ts-ignore - APIs will be available at runtime
-            const repositories = await window.repository?.list?.();
+            const repositories = await repository.list();
             setRepositories(repositories || []);
           } catch (error) {
             setError({
@@ -260,8 +256,18 @@ export const useRepositoryStore = create<RepositoryState>()(
             setError(null);
 
             // @ts-ignore - APIs will be available at runtime
-            const books = await window.repository?.getBooks?.(repositoryId);
-            setBooks(books || []);
+            const books = await repository.getBooks(repositoryId);
+            const mappedBooks = (books || []).map((b: any) => ({
+              id: String(b.id),
+              repository_id: b.repository_id,
+              name: b.name,
+              abbreviation: b.abbreviation,
+              testament:
+                b.testament === "OT" ? ("old" as const) : ("new" as const),
+              order: b.order,
+              chapter_count: b.chapter_count,
+            }));
+            setBooks(mappedBooks);
           } catch (error) {
             setError({
               hasError: true,
@@ -282,14 +288,27 @@ export const useRepositoryStore = create<RepositoryState>()(
             setError(null);
 
             // @ts-ignore - APIs will be available at runtime
-            const chapterData = await window.repository?.getChapter?.(
+            const chapterData = await repository.getChapter(
               bookId,
               chapterNumber
             );
 
             if (chapterData) {
-              setCurrentChapter(chapterData.chapter);
-              setVerses(chapterData.verses || []);
+              const verses = chapterData.verses || [];
+              const mappedChapter = {
+                id: `${bookId}-${chapterNumber}`,
+                book_id: String(bookId),
+                number: chapterNumber,
+                verse_count: verses.length,
+              };
+              const mappedVerses = verses.map((v: any) => ({
+                id: String(v.id),
+                chapter_id: `${v.book_id}-${v.chapter}`,
+                number: v.verse,
+                text: v.text,
+              }));
+              setCurrentChapter(mappedChapter);
+              setVerses(mappedVerses);
             }
           } catch (error) {
             setError({
@@ -320,7 +339,7 @@ export const useRepositoryStore = create<RepositoryState>()(
             delete cleanOptions.progress_callback;
 
             // @ts-ignore
-            const result = await window.repository?.import?.(url, cleanOptions);
+            const result = await repository.import(url, cleanOptions);
 
             if (result?.success) {
               setImportProgress({
@@ -368,10 +387,23 @@ export const useRepositoryStore = create<RepositoryState>()(
             setError(null);
 
             // @ts-ignore - APIs will be available at runtime
-            const result = await window.repository?.validate?.(url);
-            setValidationResult(result);
+            const result = await repository.validate(url);
+            const mappedResult: ValidationResult = {
+              valid: result.valid,
+              errors: (result.errors || []).map((e: any) => ({
+                code: e.code,
+                message: e.message,
+                severity: e.severity ?? "error",
+              })),
+              warnings: (result.warnings || []).map((w: any) => ({
+                code: w.code,
+                message: w.message,
+                severity: "warning",
+              })),
+            };
+            setValidationResult(mappedResult);
 
-            return result;
+            return mappedResult;
           } catch (error) {
             const errorResult: ValidationResult = {
               valid: false,

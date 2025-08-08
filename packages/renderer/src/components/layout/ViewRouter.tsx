@@ -5,24 +5,11 @@ import { RepositoryManagement } from '@/components/repository/RepositoryManageme
 import { SettingsInterface } from '@/components/settings/SettingsInterface'
 import { ErrorReportingPanel } from '@/components/debug/ErrorReportingPanel'
 import { ArrowLeft } from 'lucide-react'
+import { Reader } from '@/components/reader/Reader'
 
-// Placeholder components for different views
+// Reader view
 function ReaderView() {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Bible Reader</CardTitle>
-        <CardDescription>
-          Read and study the Bible with advanced features
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <p className="text-muted-foreground">
-          Select a repository from the sidebar to start reading.
-        </p>
-      </CardContent>
-    </Card>
-  )
+  return <Reader />
 }
 
 function RepositoriesView() {

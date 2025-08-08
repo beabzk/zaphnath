@@ -46,8 +46,7 @@ export function RepositoryDiscovery({ onRepositorySelect }: RepositoryDiscoveryP
       setLoading(true)
       setError(null)
       
-      // @ts-ignore - APIs will be available at runtime
-      const repos = await window.repository?.discover?.()
+      const repos = await repository.discover()
       setRepositories(repos || [])
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to discover repositories')

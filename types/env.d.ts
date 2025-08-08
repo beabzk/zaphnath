@@ -54,6 +54,10 @@ declare namespace Zaphnath {
     version: string;
     created_at: string;
     updated_at: string;
+    type?: "parent" | "translation";
+    parent_id?: string;
+    book_count?: number;
+    verse_count?: number;
   }
 
   // IPC Communication interfaces
@@ -86,6 +90,16 @@ declare namespace Zaphnath {
       }>;
       errors: string[];
     }>;
+    getBooks: (repositoryId: string) => Promise<BibleBook[]>;
+    getChapter: (
+      bookId: string,
+      chapterNumber: number
+    ) => Promise<{
+      chapter: any;
+      verses: BibleVerse[];
+    }>;
+    getParentRepositories: () => Promise<BibleRepository[]>;
+    getTranslations: (parentId: string) => Promise<any[]>;
   }
 
   interface FileSystemAPI {

@@ -17,6 +17,7 @@ import {
   FolderOpen,
   Languages
 } from 'lucide-react'
+import { repository } from '@app/preload'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -71,10 +72,9 @@ export function RepositoryList({ onImportClick, onRepositorySelect }: Repository
       setLoading(true)
       setError(null)
       
-      // @ts-ignore - APIs will be available at runtime
-      const repos = await window.repository?.list?.()
+      const repos = await repository.list()
       setRepositories(repos || [])
-      
+
       // Set first repository as selected if none selected
       if (repos && repos.length > 0 && !selectedRepository) {
         setSelectedRepository(repos[0].id)

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { RepositoryList } from './RepositoryList'
 import { RepositoryImportDialog } from './RepositoryImportDialog'
 import { useRepositoryStore, useModal, useNotifications } from '@/stores'
+import { useNavigation } from '@/components/layout/Navigation'
 import {
   Download,
   Database,
@@ -25,6 +26,7 @@ export function RepositoryManagement() {
     isLoading,
     error
   } = useRepositoryStore()
+  const { setCurrentView } = useNavigation()
 
   const { isOpen: showImportDialog, open: openImportDialog, close: closeImportDialog } = useModal('repository-import')
   const { addNotification } = useNotifications()
@@ -45,6 +47,8 @@ export function RepositoryManagement() {
 
   const handleRepositorySelect = (repository: any) => {
     setCurrentRepository(repository)
+    // Navigate to Reader so the user can read immediately
+    setCurrentView('reader')
   }
 
   return (

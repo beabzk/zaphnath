@@ -12,9 +12,30 @@ export class DatabaseQueries {
   // Repository queries
   public getRepositories(): Zaphnath.BibleRepository[] {
     const stmt = this.db.prepare(`
-      SELECT id, name, description, language, version, created_at, updated_at
-      FROM repositories
-      ORDER BY name
+      SELECT
+        r.id,
+        r.name,
+        r.description,
+        r.language,
+        r.version,
+        r.created_at,
+        r.updated_at,
+        r.type,
+        r.parent_id,
+        COALESCE(book_counts.book_count, 0) as book_count,
+        COALESCE(verse_counts.verse_count, 0) as verse_count
+      FROM repositories r
+      LEFT JOIN (
+        SELECT repository_id, COUNT(*) as book_count
+        FROM books
+        GROUP BY repository_id
+      ) book_counts ON r.id = book_counts.repository_id
+      LEFT JOIN (
+        SELECT repository_id, COUNT(*) as verse_count
+        FROM verses
+        GROUP BY repository_id
+      ) verse_counts ON r.id = verse_counts.repository_id
+      ORDER BY r.name
     `);
     return stmt.all() as Zaphnath.BibleRepository[];
   }
@@ -52,7 +73,7 @@ export class DatabaseQueries {
   // Book queries
   public getBooks(repositoryId?: string): Zaphnath.BibleBook[] {
     let query = `
-      SELECT id, repository_id, name, abbreviation, testament, book_order as order, chapter_count
+      SELECT id, repository_id, name, abbreviation, testament, book_order as "order", chapter_count
       FROM books
     `;
     let params: any[] = [];
@@ -70,7 +91,7 @@ export class DatabaseQueries {
 
   public getBook(id: number): Zaphnath.BibleBook | null {
     const stmt = this.db.prepare(`
-      SELECT id, repository_id, name, abbreviation, testament, book_order as order, chapter_count
+      SELECT id, repository_id, name, abbreviation, testament, book_order as "order", chapter_count
       FROM books
       WHERE id = ?
     `);
