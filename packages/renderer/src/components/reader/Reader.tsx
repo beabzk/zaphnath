@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { useRepositoryStore } from '@/stores'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+
 
 export function Reader() {
   const {
@@ -16,6 +17,8 @@ export function Reader() {
   } = useRepositoryStore()
 
   const [chapterSelect, setChapterSelect] = useState<number | null>(null)
+  const [progress, setProgress] = useState(0)
+  const scrollRef = useRef<HTMLDivElement | null>(null)
 
   // When repository changes and books are empty, load books
   useEffect(() => {
@@ -32,6 +35,15 @@ export function Reader() {
     }
   }, [currentBook, currentChapter, loadChapter])
 
+  // Sync chapterSelect when chapter changes
+  useEffect(() => {
+    if (currentChapter?.number) {
+      setChapterSelect(currentChapter.number)
+      // Reset scroll to top on chapter change
+      if (scrollRef.current) scrollRef.current.scrollTop = 0
+    }
+  }, [currentChapter?.number])
+
   const chaptersForCurrentBook = useMemo(() => {
     return currentBook ? Array.from({ length: currentBook.chapter_count }, (_, i) => i + 1) : []
   }, [currentBook])
@@ -45,12 +57,79 @@ export function Reader() {
     }
   }
 
-  const handleChangeChapter = (num: number) => {
+  const handleChangeChapter = useCallback((num: number) => {
     if (currentBook) {
-      setChapterSelect(num)
-      loadChapter(currentBook.id, num)
+      const clamped = Math.max(1, Math.min(currentBook.chapter_count, num))
+      setChapterSelect(clamped)
+      loadChapter(currentBook.id, clamped)
     }
-  }
+  }, [currentBook, loadChapter])
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (!currentBook) return
+      const container = scrollRef.current
+      const delta = 70
+      const page = container ? Math.floor(container.clientHeight * 0.9) : 500
+
+      switch (e.key) {
+        case 'ArrowRight':
+          e.preventDefault()
+          handleChangeChapter((chapterSelect || 1) + 1)
+          break
+        case 'ArrowLeft':
+          e.preventDefault()
+          handleChangeChapter((chapterSelect || 1) - 1)
+          break
+        case 'ArrowDown':
+          if (container) { container.scrollBy({ top: delta, behavior: 'smooth' }) }
+          break
+        case 'ArrowUp':
+          if (container) { container.scrollBy({ top: -delta, behavior: 'smooth' }) }
+          break
+        case 'PageDown':
+          if (container) { container.scrollBy({ top: page, behavior: 'smooth' }) }
+          break
+        case 'PageUp':
+          if (container) { container.scrollBy({ top: -page, behavior: 'smooth' }) }
+          break
+        case 'Home':
+          if (e.ctrlKey) {
+            e.preventDefault()
+            handleChangeChapter(1)
+          } else if (container) {
+            container.scrollTo({ top: 0, behavior: 'smooth' })
+          }
+          break
+        case 'End':
+          if (e.ctrlKey) {
+            e.preventDefault()
+            handleChangeChapter(currentBook.chapter_count)
+          } else if (container) {
+            container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' })
+          }
+          break
+        default:
+          break
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [currentBook, chapterSelect, handleChangeChapter])
+
+  // Progress tracking by scroll position
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const onScroll = () => {
+      const max = Math.max(1, el.scrollHeight - el.clientHeight)
+      setProgress(Math.max(0, Math.min(1, el.scrollTop / max)))
+    }
+    onScroll()
+    el.addEventListener('scroll', onScroll)
+    return () => el.removeEventListener('scroll', onScroll)
+  }, [currentBook, currentChapter, verses.length])
 
   if (!currentRepository) {
     return (
@@ -64,6 +143,8 @@ export function Reader() {
       </Card>
     )
   }
+
+  const percent = Math.round(progress * 100)
 
   return (
     <div className="grid grid-cols-12 gap-4">
@@ -99,10 +180,26 @@ export function Reader() {
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="text-base">
-                {currentBook ? `${currentBook.name}` : 'Select a book'}
-                {currentChapter ? ` — Chapter ${currentChapter.number}` : ''}
-              </CardTitle>
+              <div>
+                {/* Breadcrumbs */}
+                <div className="text-xs text-muted-foreground">
+                  <span>Reader</span>
+                  <span className="mx-1">/</span>
+                  <span>{currentRepository.name}</span>
+                  {currentBook && <>
+                    <span className="mx-1">/</span>
+                    <span>{currentBook.name}</span>
+                  </>}
+                  {currentChapter && <>
+                    <span className="mx-1">/</span>
+                    <span>Chapter {currentChapter.number}</span>
+                  </>}
+                </div>
+                <CardTitle className="text-base mt-1">
+                  {currentBook ? `${currentBook.name}` : 'Select a book'}
+                  {currentChapter ? ` — Chapter ${currentChapter.number}` : ''}
+                </CardTitle>
+              </div>
               {currentBook && (
                 <div className="flex items-center gap-2">
                   <Button
@@ -134,17 +231,27 @@ export function Reader() {
                 </div>
               )}
             </div>
+
+            {/* Progress bar */}
+            {currentBook && (
+              <div className="mt-3">
+                <div className="h-1.5 w-full bg-muted rounded">
+                  <div className="h-1.5 bg-primary rounded" style={{ width: `${percent}%` }} />
+                </div>
+                <div className="mt-1 text-[11px] text-muted-foreground">{percent}% — {verses.length} verses</div>
+              </div>
+            )}
           </CardHeader>
           <CardContent>
             {!currentBook && (
               <p className="text-muted-foreground">Choose a book from the left to start reading.</p>
             )}
             {currentBook && (
-              <div className="space-y-3">
+              <div ref={scrollRef} className="space-y-3 max-h-[70vh] overflow-auto pr-2">
                 {verses.map(v => (
                   <div key={v.id} className="flex items-start gap-2">
-                    <span className="text-xs text-muted-foreground w-6 text-right select-none">{v.number}</span>
-                    <p className="leading-7">{v.text}</p>
+                    <span className="text-xs text-muted-foreground w-6 text-right select-none leading-7">{v.number}</span>
+                    <p className="leading-7 whitespace-pre-wrap break-words">{v.text}</p>
                   </div>
                 ))}
                 {verses.length === 0 && (
