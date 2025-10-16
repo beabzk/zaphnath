@@ -72,12 +72,49 @@ export function RepositoryList({ onImportClick, onRepositorySelect }: Repository
       setLoading(true)
       setError(null)
       
-      const repos = await repository.list()
-      setRepositories(repos || [])
+      const repos = await repository.list() as Repository[]
+      
+      // Filter out translation repositories that have a parent
+      // They should only show up as nested items under their parent
+      const filteredRepos = (repos || []).filter(repo => {
+        // Show parent repositories
+        if (repo.type === 'parent') return true
+        // Show standalone translations (no parent_id)
+        if (repo.type === 'translation' && !repo.parent_id) return true
+        // Hide translations that belong to a parent
+        if (repo.type === 'translation' && repo.parent_id) return false
+        // Show any other repositories (backwards compatibility)
+        return true
+      })
+      
+      // For each parent repository, fetch its translations
+      for (const repo of filteredRepos) {
+        if (repo.type === 'parent') {
+          try {
+            const translations = await repository.getTranslations(repo.id)
+            // Convert the database format to the expected format
+            // Use translation_id (the actual repository ID) not the composite id
+            repo.translations = translations?.map(t => ({
+              id: t.translation_id || t.id,  // translation_id is the actual repository ID in books table
+              name: t.translation_name || t.name,
+              directory: t.directory_name || t.directory,
+              language: t.language_code || t.language,
+              status: t.status || 'active',
+              book_count: t.book_count,
+              verse_count: t.verse_count
+            })) || []
+          } catch (error) {
+            console.error(`Failed to fetch translations for ${repo.id}:`, error)
+            repo.translations = []
+          }
+        }
+      }
+      
+      setRepositories(filteredRepos)
 
       // Set first repository as selected if none selected
-      if (repos && repos.length > 0 && !selectedRepository) {
-        setSelectedRepository(repos[0].id)
+      if (filteredRepos.length > 0 && !selectedRepository) {
+        setSelectedRepository(filteredRepos[0].id)
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load repositories')
@@ -214,28 +251,30 @@ export function RepositoryList({ onImportClick, onRepositorySelect }: Repository
           <div key={repo.id} className="space-y-2">
             {/* Parent Repository or Standalone Translation */}
             <div
-              className={`p-4 rounded-lg border cursor-pointer transition-all hover:bg-accent/50 ${
+              className={`p-4 rounded-lg border transition-all ${
+                repo.type === 'parent' ? 'cursor-default' : 'cursor-pointer hover:bg-accent/50'
+              } ${
                 selectedRepository === repo.id ? 'border-primary bg-accent/20' : 'border-border'
               }`}
-              onClick={() => handleRepositorySelect(repo)}
+              onClick={() => {
+                if (repo.type === 'parent') {
+                  toggleParentExpansion(repo.id)
+                } else {
+                  handleRepositorySelect(repo)
+                }
+              }}
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1 space-y-2">
                   <div className="flex items-center gap-2">
                     {repo.type === 'parent' && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          toggleParentExpansion(repo.id)
-                        }}
-                        className="p-1 hover:bg-accent rounded"
-                      >
+                      <div className="p-1">
                         {expandedParents.has(repo.id) ? (
                           <ChevronDown className="h-4 w-4" />
                         ) : (
                           <ChevronRight className="h-4 w-4" />
                         )}
-                      </button>
+                      </div>
                     )}
 
                     {repo.type === 'parent' ? (
@@ -316,9 +355,31 @@ export function RepositoryList({ onImportClick, onRepositorySelect }: Repository
                 {repo.translations.map((translation) => (
                   <div
                     key={translation.id}
-                    className="p-3 rounded-lg border border-dashed border-muted-foreground/30 bg-muted/20"
+                    className={`p-3 rounded-lg border cursor-pointer transition-all hover:bg-accent/50 ${
+                      selectedRepository === translation.id ? 'border-primary bg-accent/20' : 'border-dashed border-muted-foreground/30 bg-muted/20'
+                    }`}
+                    onClick={() => {
+                      // Create a repository object for the translation
+                      const translationRepo: Repository = {
+                        id: translation.id,
+                        name: translation.name,
+                        description: `${translation.name} from ${repo.name}`,
+                        language: translation.language,
+                        version: repo.version,
+                        created_at: repo.created_at,
+                        updated_at: repo.updated_at,
+                        type: 'translation',
+                        parent_id: repo.id,
+                        book_count: translation.book_count,
+                        verse_count: translation.verse_count
+                      }
+                      handleRepositorySelect(translationRepo)
+                    }}
                   >
                     <div className="flex items-center gap-2 mb-2">
+                      {selectedRepository === translation.id && (
+                        <CheckCircle className="h-3 w-3 text-primary" />
+                      )}
                       <BookOpen className="h-3 w-3 text-green-600" />
                       <span className="font-medium text-sm">{translation.name}</span>
                       <Badge variant="outline" className="text-xs">

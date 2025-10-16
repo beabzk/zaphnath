@@ -30,10 +30,10 @@ export class RepositoryDiscoveryService {
   }
 
   private initializeDefaultSources(): void {
-    // Official Zaphnath repository index
+    // Official Zaphnath repository registry
     this.repositorySources.push({
       type: "official",
-      url: "https://repositories.zaphnath.org/index.json",
+      url: "https://raw.githubusercontent.com/beabzk/zbrs-registry/main/manifest.json",
       name: "Official Zaphnath Repositories",
       enabled: true,
     });
@@ -95,9 +95,32 @@ export class RepositoryDiscoveryService {
 
     try {
       const response = await this.fetchJson(indexUrl);
-      const index = response as RepositoryIndex;
 
-      // Validate index structure
+      // Handle GitHub registry format
+      if (response.registry && Array.isArray(response.repositories)) {
+        const repositories = response.repositories.map((repo: any) => ({
+          id: repo.id,
+          name: repo.name,
+          url: repo.url,
+          language: repo.language || 'unknown',
+          license: repo.license || 'unknown',
+          verified: repo.verified || false,
+          last_updated: repo.last_updated,
+          description: repo.description,
+          tags: repo.tags || []
+        }));
+
+        // Cache the result
+        this.cache.set(indexUrl, {
+          data: repositories,
+          timestamp: Date.now(),
+        });
+
+        return repositories;
+      }
+
+      // Handle legacy format
+      const index = response as RepositoryIndex;
       if (!index.version || !Array.isArray(index.repositories)) {
         throw new Error("Invalid repository index format");
       }
@@ -120,10 +143,18 @@ export class RepositoryDiscoveryService {
   public async fetchRepositoryManifest(
     repositoryUrl: string
   ): Promise<ZBRSManifest> {
-    // Ensure URL ends with manifest.json
-    const manifestUrl = repositoryUrl.endsWith("/")
-      ? `${repositoryUrl}manifest.json`
-      : `${repositoryUrl}/manifest.json`;
+    // Handle URLs that already point to manifest.json
+    let manifestUrl: string;
+    if (repositoryUrl.endsWith("manifest.json")) {
+      manifestUrl = repositoryUrl;
+    } else {
+      // Ensure URL ends with manifest.json
+      manifestUrl = repositoryUrl.endsWith("/")
+        ? `${repositoryUrl}manifest.json`
+        : `${repositoryUrl}/manifest.json`;
+    }
+
+    console.log(`Fetching manifest from: ${manifestUrl}`);
 
     // Validate URL
     const urlValidation = this.validator.validateRepositoryUrl(manifestUrl);
@@ -207,7 +238,9 @@ export class RepositoryDiscoveryService {
         );
 
         const manifestContent = await readFile(manifestPath, "utf-8");
-        const manifest = JSON.parse(manifestContent) as ZBRSManifest;
+        // Remove BOM if present
+        const cleanContent = manifestContent.replace(/^\uFEFF/, '');
+        const manifest = JSON.parse(cleanContent) as ZBRSManifest;
 
         if (!isTranslationManifest(manifest)) {
           throw new Error("Invalid translation manifest structure");
@@ -342,7 +375,9 @@ export class RepositoryDiscoveryService {
 
             // Try to read and validate the manifest
             const manifestContent = await readFile(manifestPath, "utf-8");
-            const manifest = JSON.parse(manifestContent) as ZBRSManifest;
+            // Remove BOM if present
+            const cleanContent = manifestContent.replace(/^\uFEFF/, '');
+            const manifest = JSON.parse(cleanContent) as ZBRSManifest;
 
             // Validate the manifest
             const validation = this.validator.validateManifest(manifest);
@@ -369,7 +404,9 @@ export class RepositoryDiscoveryService {
         try {
           await access(manifestPath);
           const manifestContent = await readFile(manifestPath, "utf-8");
-          const manifest = JSON.parse(manifestContent) as ZBRSManifest;
+          // Remove BOM if present
+          const cleanContent = manifestContent.replace(/^\uFEFF/, '');
+          const manifest = JSON.parse(cleanContent) as ZBRSManifest;
           const validation = this.validator.validateManifest(manifest);
 
           repositories.push({
@@ -442,7 +479,9 @@ export class RepositoryDiscoveryService {
       try {
         await access(parentManifestPath);
         const manifestContent = await readFile(parentManifestPath, "utf-8");
-        const manifest = JSON.parse(manifestContent) as ZBRSManifest;
+        // Remove BOM if present
+        const cleanContent = manifestContent.replace(/^\uFEFF/, '');
+        const manifest = JSON.parse(cleanContent) as ZBRSManifest;
 
         if (isParentManifest(manifest)) {
           const validation = this.validator.validateManifest(manifest);
@@ -466,8 +505,10 @@ export class RepositoryDiscoveryService {
                 translationManifestPath,
                 "utf-8"
               );
+              // Remove BOM if present
+              const cleanTranslationContent = translationContent.replace(/^\uFEFF/, '');
               const translationManifest = JSON.parse(
-                translationContent
+                cleanTranslationContent
               ) as ZBRSManifest;
 
               if (isTranslationManifest(translationManifest)) {
@@ -513,7 +554,9 @@ export class RepositoryDiscoveryService {
             try {
               await access(manifestPath);
               const manifestContent = await readFile(manifestPath, "utf-8");
-              const manifest = JSON.parse(manifestContent) as ZBRSManifest;
+              // Remove BOM if present
+              const cleanContent = manifestContent.replace(/^\uFEFF/, '');
+              const manifest = JSON.parse(cleanContent) as ZBRSManifest;
 
               if (isTranslationManifest(manifest)) {
                 const validation = this.validator.validateManifest(manifest);
@@ -620,7 +663,9 @@ export class RepositoryDiscoveryService {
         response.on("end", () => {
           clearTimeout(timeout);
           try {
-            const jsonData = JSON.parse(responseData);
+            // Remove BOM (Byte Order Mark) if present - common with GitHub raw content
+            const cleanData = responseData.replace(/^\uFEFF/, '');
+            const jsonData = JSON.parse(cleanData);
             resolve(jsonData);
           } catch (error) {
             reject(new Error(`Invalid JSON response: ${error}`));
@@ -653,7 +698,9 @@ export class RepositoryDiscoveryService {
 
       // Read and parse JSON file
       const fileContent = await readFile(filePath, "utf-8");
-      return JSON.parse(fileContent);
+      // Remove BOM (Byte Order Mark) if present
+      const cleanContent = fileContent.replace(/^\uFEFF/, '');
+      return JSON.parse(cleanContent);
     } catch (error) {
       throw new Error(`Failed to read local file: ${error}`);
     }

@@ -141,6 +141,59 @@ export const migrations: Migration[] = [
       -- For rollback, we'll leave the columns but they won't be used
     `,
   },
+  {
+    version: 6,
+    name: "fix_missing_language_column",
+    up: `
+      -- This migration fixes databases that may have been created without the language column
+      -- We use a safer approach that works regardless of the current table state
+
+      -- Temporarily disable foreign key constraints
+      PRAGMA foreign_keys = OFF;
+
+      -- Create a new repositories table with the correct schema
+      CREATE TABLE repositories_new (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT,
+        language TEXT NOT NULL DEFAULT 'en',
+        version TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        type TEXT DEFAULT 'translation',
+        parent_id TEXT
+      );
+
+      -- Copy data from old table to new table, handling missing columns gracefully
+      INSERT INTO repositories_new (id, name, description, language, version, created_at, updated_at, type, parent_id)
+      SELECT
+        id,
+        name,
+        COALESCE(description, '') as description,
+        COALESCE(language, 'en') as language,
+        version,
+        COALESCE(created_at, CURRENT_TIMESTAMP) as created_at,
+        COALESCE(updated_at, CURRENT_TIMESTAMP) as updated_at,
+        COALESCE(type, 'translation') as type,
+        parent_id
+      FROM repositories;
+
+      -- Drop the old table and rename the new one
+      DROP TABLE repositories;
+      ALTER TABLE repositories_new RENAME TO repositories;
+
+      -- Recreate indexes
+      CREATE INDEX IF NOT EXISTS idx_repositories_parent ON repositories(parent_id);
+      CREATE INDEX IF NOT EXISTS idx_repositories_type ON repositories(type);
+
+      -- Re-enable foreign key constraints
+      PRAGMA foreign_keys = ON;
+    `,
+    down: `
+      -- Note: Cannot easily rollback this migration without data loss
+      -- The table structure should be correct after this migration
+    `,
+  },
 ];
 
 export class MigrationRunner {
@@ -251,5 +304,42 @@ export class MigrationRunner {
     }
 
     console.log("Rollback completed successfully");
+  }
+
+  public getTableSchema(tableName: string): any[] {
+    const result = this.db.prepare(`PRAGMA table_info(${tableName})`).all();
+    return result;
+  }
+
+  public getAllTables(): string[] {
+    const result = this.db.prepare(`
+      SELECT name FROM sqlite_master
+      WHERE type='table' AND name NOT LIKE 'sqlite_%'
+      ORDER BY name
+    `).all() as { name: string }[];
+    return result.map(row => row.name);
+  }
+
+  public debugDatabaseSchema(): void {
+    console.log("=== Database Schema Debug ===");
+    const tables = this.getAllTables();
+
+    for (const table of tables) {
+      console.log(`\nTable: ${table}`);
+      const schema = this.getTableSchema(table);
+      schema.forEach(column => {
+        console.log(`  ${column.name}: ${column.type} ${column.notnull ? 'NOT NULL' : ''} ${column.dflt_value ? `DEFAULT ${column.dflt_value}` : ''}`);
+      });
+    }
+
+    console.log("\n=== Migration Status ===");
+    const currentVersion = this.getCurrentVersion();
+    console.log(`Current migration version: ${currentVersion}`);
+
+    const appliedMigrations = this.db.prepare("SELECT * FROM migrations ORDER BY version").all();
+    console.log("Applied migrations:");
+    appliedMigrations.forEach(migration => {
+      console.log(`  ${migration.version}: ${migration.name} (${migration.applied_at})`);
+    });
   }
 }

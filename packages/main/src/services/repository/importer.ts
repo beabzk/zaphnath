@@ -276,7 +276,9 @@ export class RepositoryImporter {
         const bookUrl = `${baseUrl}books/${bookFileName}`;
 
         const bookData = await this.discoveryService.downloadFile(bookUrl);
-        const bookJson = JSON.parse(bookData.toString("utf-8")) as ZBRSBook;
+        // Remove BOM if present before parsing
+        const bookDataString = bookData.toString("utf-8").replace(/^\uFEFF/, '');
+        const bookJson = JSON.parse(bookDataString) as ZBRSBook;
 
         // Validate book
         const bookValidation = this.validator.validateBook(bookJson, bookOrder);
@@ -599,9 +601,17 @@ export class RepositoryImporter {
           translationRef.directory
         );
 
+      // Construct proper base URL for translation
+      // Remove /manifest.json if present in the URL
+      let baseUrl = parentRepositoryUrl.replace(/\/manifest\.json$/, '');
+      // Ensure it doesn't end with a slash
+      if (baseUrl.endsWith('/')) {
+        baseUrl = baseUrl.slice(0, -1);
+      }
+      
       // Import the translation with clean options
       const cleanImportOptions = {
-        repository_url: `${parentRepositoryUrl}/${translationRef.directory}`,
+        repository_url: `${baseUrl}/${translationRef.directory}`,
         validate_checksums: options.validate_checksums || true,
         overwrite_existing: options.overwrite_existing || false,
         import_type: "translation" as const,

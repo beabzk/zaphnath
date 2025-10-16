@@ -215,10 +215,44 @@ export function RepositoryImportDialog({ isOpen, onClose, onImportComplete }: Re
     }
   }
 
-  const handleRepositorySelect = (url: string) => {
+  const handleRepositorySelect = async (url: string) => {
     setImportUrl(url)
-    setImportType('url')
-    handleValidate()
+    // Stay on discover tab, don't switch to URL tab
+    // setImportType('url')
+
+    // Immediately validate the selected repository
+    try {
+      setIsValidating(true)
+      setValidation(null)
+      setManifest(null)
+      setRepositoryManifest(null)
+
+      const validationResult = await repository.validate(url.trim())
+      setValidation(validationResult)
+
+      if (validationResult.valid) {
+        const manifestData = await repository.getManifest(url.trim())
+        setManifest(manifestData)
+        setRepositoryManifest(manifestData)
+
+        // If this is a parent repository, initialize translation selection
+        if ((manifestData as any).repository?.type === 'parent' && (manifestData as any).translations) {
+          setSelectedTranslations((manifestData as any).translations.map((t: TranslationInfo) => t.id))
+        }
+      }
+    } catch (error) {
+      setValidation({
+        valid: false,
+        errors: [{
+          code: 'VALIDATION_ERROR',
+          message: error instanceof Error ? error.message : 'Validation failed',
+          severity: 'error'
+        }],
+        warnings: []
+      })
+    } finally {
+      setIsValidating(false)
+    }
   }
 
   const handleClose = () => {
@@ -292,7 +326,24 @@ export function RepositoryImportDialog({ isOpen, onClose, onImportComplete }: Re
               </div>
 
               {importType === 'discover' ? (
-                <RepositoryDiscovery onRepositorySelect={handleRepositorySelect} />
+                <div className="space-y-4">
+                  <RepositoryDiscovery onRepositorySelect={handleRepositorySelect} />
+
+                  {/* Show validation results and import options when a repository is selected */}
+                  {importUrl && (
+                    <div className="border-t pt-4 space-y-4">
+                      <div className="text-sm font-medium">Selected Repository</div>
+                      <div className="text-sm text-muted-foreground break-all">{importUrl}</div>
+
+                      {isValidating && (
+                        <div className="flex items-center gap-2 text-sm">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Validating repository...
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               ) : importType === 'url' ? (
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Repository URL</label>
@@ -445,8 +496,8 @@ export function RepositoryImportDialog({ isOpen, onClose, onImportComplete }: Re
                             className="h-4 w-4"
                           />
                           <label htmlFor={`translation-${translation.id}`} className="text-sm">
-                            <span className="font-medium">{translation.name}</span>
-                            <span className="text-muted-foreground ml-2">({translation.language.name})</span>
+                            <span className="font-medium">{translation.name || 'Unknown Translation'}</span>
+                            <span className="text-muted-foreground ml-2">({translation.language?.name || 'Unknown Language'})</span>
                           </label>
                         </div>
                       ))}
@@ -520,7 +571,7 @@ export function RepositoryImportDialog({ isOpen, onClose, onImportComplete }: Re
             )}
 
             {/* Repository Preview */}
-            {manifest && validation?.valid && (
+            {manifest && validation?.valid && manifest.repository && (
               <div className="space-y-4">
                 <Separator />
                 <div className="space-y-3">
@@ -528,22 +579,22 @@ export function RepositoryImportDialog({ isOpen, onClose, onImportComplete }: Re
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <span className="text-muted-foreground">Name:</span>
-                      <div className="font-medium">{manifest.repository.name}</div>
+                      <div className="font-medium">{manifest.repository?.name || 'Unknown'}</div>
                     </div>
                     <div>
                       <span className="text-muted-foreground">Language:</span>
-                      <div className="font-medium">{manifest.repository.language.name}</div>
+                      <div className="font-medium">{manifest.repository?.language?.name || 'Unknown'}</div>
                     </div>
                     <div>
                       <span className="text-muted-foreground">Version:</span>
-                      <div className="font-medium">v{manifest.repository.version}</div>
+                      <div className="font-medium">v{manifest.repository?.version || '0.0.0'}</div>
                     </div>
                     <div>
                       <span className="text-muted-foreground">Books:</span>
-                      <div className="font-medium">{manifest.content.books_count}</div>
+                      <div className="font-medium">{manifest.content?.books_count || 0}</div>
                     </div>
                   </div>
-                  <p className="text-sm text-muted-foreground">{manifest.repository.description}</p>
+                  <p className="text-sm text-muted-foreground">{manifest.repository?.description || 'No description available'}</p>
                 </div>
               </div>
             )}

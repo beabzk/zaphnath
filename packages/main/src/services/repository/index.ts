@@ -61,10 +61,10 @@ export class RepositoryService {
   }
 
   private setupDefaultSources(): void {
-    // Add official Zaphnath repository
+    // Add official Zaphnath registry
     this.discoveryService.addRepositorySource({
       type: "official",
-      url: "https://repositories.zaphnath.org/index.json",
+      url: "https://raw.githubusercontent.com/beabzk/zbrs-registry/main/manifest.json",
       name: "Official Zaphnath Repositories",
       enabled: true,
     });

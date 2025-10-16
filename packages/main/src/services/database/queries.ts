@@ -23,7 +23,8 @@ export class DatabaseQueries {
         r.type,
         r.parent_id,
         COALESCE(book_counts.book_count, 0) as book_count,
-        COALESCE(verse_counts.verse_count, 0) as verse_count
+        COALESCE(verse_counts.verse_count, 0) as verse_count,
+        COALESCE(translation_counts.translation_count, 0) as translation_count
       FROM repositories r
       LEFT JOIN (
         SELECT repository_id, COUNT(*) as book_count
@@ -35,6 +36,12 @@ export class DatabaseQueries {
         FROM verses
         GROUP BY repository_id
       ) verse_counts ON r.id = verse_counts.repository_id
+      LEFT JOIN (
+        SELECT parent_id, COUNT(*) as translation_count
+        FROM repositories
+        WHERE type = 'translation' AND parent_id IS NOT NULL
+        GROUP BY parent_id
+      ) translation_counts ON r.id = translation_counts.parent_id
       ORDER BY r.name
     `);
     return stmt.all() as Zaphnath.BibleRepository[];
@@ -354,9 +361,24 @@ export class DatabaseQueries {
 
   public getRepositoryTranslations(parentId: string): any[] {
     const stmt = this.db.prepare(`
-      SELECT rt.*, r.name as translation_name, r.description as translation_description
+      SELECT 
+        rt.*, 
+        r.name as translation_name, 
+        r.description as translation_description,
+        COALESCE(book_counts.book_count, 0) as book_count,
+        COALESCE(verse_counts.verse_count, 0) as verse_count
       FROM repository_translations rt
       JOIN repositories r ON rt.translation_id = r.id
+      LEFT JOIN (
+        SELECT repository_id, COUNT(*) as book_count
+        FROM books
+        GROUP BY repository_id
+      ) book_counts ON r.id = book_counts.repository_id
+      LEFT JOIN (
+        SELECT repository_id, COUNT(*) as verse_count
+        FROM verses
+        GROUP BY repository_id
+      ) verse_counts ON r.id = verse_counts.repository_id
       WHERE rt.parent_repository_id = ?
       ORDER BY rt.directory_name
     `);

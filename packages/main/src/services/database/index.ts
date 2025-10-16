@@ -35,7 +35,16 @@ export class DatabaseService {
 
       // Initialize migration runner and run migrations
       this.migrationRunner = new MigrationRunner(db);
+
+      // Debug schema before migrations
+      console.log("=== BEFORE MIGRATIONS ===");
+      this.migrationRunner.debugDatabaseSchema();
+
       await this.migrationRunner.runMigrations();
+
+      // Debug schema after migrations
+      console.log("=== AFTER MIGRATIONS ===");
+      this.migrationRunner.debugDatabaseSchema();
 
       // Initialize queries
       this.queries = new DatabaseQueries();
@@ -80,6 +89,15 @@ export class DatabaseService {
 
   public isReady(): boolean {
     return this.isInitialized && this.connection.isConnected();
+  }
+
+  public debugSchema(): void {
+    if (!this.isInitialized) {
+      throw new Error(
+        "Database service not initialized. Call initialize() first."
+      );
+    }
+    this.migrationRunner.debugDatabaseSchema();
   }
 
   // Convenience methods that delegate to queries
