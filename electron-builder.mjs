@@ -26,14 +26,11 @@ export default /** @type import('electron-builder').Configuration */
       icon: 'buildResources/icon.icns',
       darkModeSupport: true,
       gatekeeperAssess: false,
-      hardenedRuntime: true,
-      entitlements: 'buildResources/entitlements.mac.plist',
-      entitlementsInherit: 'buildResources/entitlements.mac.plist',
+      hardenedRuntime: false,
     },
     win: {
       target: ['nsis', 'portable'],
       icon: 'buildResources/icon.ico',
-      publisherName: 'Beabfekad Zikie',
       verifyUpdateCodeSignature: false,
     },
     nsis: {
@@ -42,18 +39,21 @@ export default /** @type import('electron-builder').Configuration */
       createDesktopShortcut: true,
       createStartMenuShortcut: true,
       shortcutName: 'Zaphnath Bible Reader',
-      include: 'buildResources/installer.nsh',
       deleteAppDataOnUninstall: false, // Preserve user's Bible data and settings
     },
     linux: {
       target: ['deb', 'AppImage', 'tar.gz'],
       category: 'Education',
       icon: 'buildResources/icon.png',
+      description: 'Modern Bible study application',
+      maintainer: 'Beabfekad Zikie',
       desktop: {
-        Name: 'Zaphnath Bible Reader',
-        Comment: 'Modern Bible study application',
-        Keywords: 'bible;study;religion;scripture;christian;',
-        StartupWMClass: 'zaphnath',
+        entry: {
+          Name: 'Zaphnath Bible Reader',
+          Comment: 'Modern Bible study application',
+          Keywords: 'bible;study;religion;scripture;christian;',
+          StartupWMClass: 'zaphnath',
+        },
       },
     },
     /**
