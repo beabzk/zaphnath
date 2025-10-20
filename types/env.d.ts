@@ -142,8 +142,10 @@ declare namespace Zaphnath {
     success: boolean;
     repository_id: string;
     books_imported: number;
-    errors: string[];
-    warnings: string[];
+    translations_imported?: string[];
+    translations_skipped?: string[];
+    errors: ValidationError[];
+    warnings: ValidationWarning[];
     duration_ms: number;
   }
 
@@ -157,13 +159,18 @@ declare namespace Zaphnath {
     code: string;
     message: string;
     path?: string;
-    severity: "error" | "warning";
+    severity: "error";
+    details?: Record<string, unknown>;
+    name?: string;
   }
 
   interface ValidationWarning {
     code: string;
     message: string;
     path?: string;
+    severity?: "warning";
+    details?: Record<string, unknown>;
+    name?: string;
   }
 
   interface ZBRSManifest {
@@ -207,6 +214,12 @@ declare namespace Zaphnath {
         footnotes: boolean;
         study_notes: boolean;
       };
+      books?: Array<{
+        path: string;
+        checksum: string;
+        size_bytes?: number;
+        media_type?: string;
+      }>;
     };
     technical: {
       encoding: "UTF-8";

@@ -7,7 +7,7 @@ import reactHooks from 'eslint-plugin-react-hooks';
 export default [
   js.configs.recommended,
   {
-    files: ['**/*.{js,jsx,ts,tsx}'],
+    files: ['**/*.{js,mjs,cjs,jsx,ts,tsx}'],
     languageOptions: {
       parser: typescriptParser,
       parserOptions: {
@@ -38,18 +38,18 @@ export default [
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/ban-ts-comment': 'warn',
       '@typescript-eslint/no-non-null-assertion': 'warn',
-      
+
       // Relaxed JavaScript rules
       'no-unused-vars': 'off', // Handled by TypeScript
       'no-console': 'warn',
       'no-debugger': 'warn',
       'no-undef': 'off', // TypeScript handles this
-      
+
       // React rules (relaxed)
       'react/react-in-jsx-scope': 'off', // Not needed in React 17+
       'react/prop-types': 'off', // Using TypeScript
       'react/display-name': 'warn',
-      
+
       // React Hooks rules
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'warn',
@@ -70,7 +70,10 @@ export default [
     ignores: [
       'node_modules/**',
       'dist/**',
+      '**/dist/**',
+      'packages/*/dist/**',
       'build/**',
+      'tools/**',
       '*.min.js',
       'coverage/**',
       '.vscode/**',

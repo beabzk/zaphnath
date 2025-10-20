@@ -336,7 +336,11 @@ export class MigrationRunner {
     const currentVersion = this.getCurrentVersion();
     console.log(`Current migration version: ${currentVersion}`);
 
-    const appliedMigrations = this.db.prepare("SELECT * FROM migrations ORDER BY version").all();
+    const appliedMigrations = this.db.prepare("SELECT * FROM migrations ORDER BY version").all() as Array<{
+      version: number;
+      name: string;
+      applied_at: string;
+    }>;
     console.log("Applied migrations:");
     appliedMigrations.forEach(migration => {
       console.log(`  ${migration.version}: ${migration.name} (${migration.applied_at})`);

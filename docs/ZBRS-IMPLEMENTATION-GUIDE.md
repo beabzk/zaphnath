@@ -294,10 +294,10 @@ try {
 
 ## Repository Index Management
 
-### Official Index
+### Official Registry
 
-The official Zaphnath repository index is maintained at:
-`https://repositories.zaphnath.org/index.json`
+The official Zaphnath repository registry is maintained at:
+`https://raw.githubusercontent.com/beabzk/zbrs-registry/main/manifest.json`
 
 ### Adding to Official Index
 

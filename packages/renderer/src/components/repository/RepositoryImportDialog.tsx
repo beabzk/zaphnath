@@ -27,13 +27,7 @@ interface ValidationResult {
   warnings: Array<{ code: string; message: string }>
 }
 
-interface ImportResult {
-  success: boolean
-  books_imported: number
-  translations_imported?: number
-  errors?: string[]
-  repository_id?: string
-}
+type ImportResult = Zaphnath.ImportResult
 
 interface TranslationInfo {
   id: string
@@ -189,10 +183,22 @@ export function RepositoryImportDialog({ isOpen, onClose, onImportComplete }: Re
         }, 2000)
       }
     } catch (error) {
+      const message = error instanceof Error ? error.message : 'Import failed'
       setImportResult({
         success: false,
+        repository_id: '',
         books_imported: 0,
-        errors: [error instanceof Error ? error.message : 'Import failed']
+        translations_imported: [],
+        translations_skipped: [],
+        errors: [
+          {
+            code: 'import-failed',
+            message,
+            severity: 'error'
+          }
+        ],
+        warnings: [],
+        duration_ms: 0
       })
     } finally {
       setIsImporting(false)
@@ -644,9 +650,9 @@ export function RepositoryImportDialog({ isOpen, onClose, onImportComplete }: Re
                     </p>
                   ) : (
                     <div className="space-y-2">
-                      {importResult.errors?.map((error, index) => (
+                      {importResult.errors.map((error, index) => (
                         <div key={index} className="text-sm text-red-600 bg-red-50 dark:bg-red-950/20 p-2 rounded">
-                          {error}
+                          {error.message}
                         </div>
                       ))}
                     </div>

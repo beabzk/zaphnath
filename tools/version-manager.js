@@ -209,7 +209,7 @@ function main() {
       bumpVersion('prerelease');
       break;
     
-    case 'set':
+    case 'set': {
       const customVersion = args[1];
       if (!customVersion) {
         console.error('❌ Please provide a version number: node version-manager.js set 1.0.0');
@@ -217,6 +217,7 @@ function main() {
       }
       bumpVersion('custom', customVersion);
       break;
+    }
     
     case 'help':
     case '--help':

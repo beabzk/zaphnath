@@ -1,5 +1,6 @@
 import type Database from "better-sqlite3";
 import { DatabaseConnection } from "./connection.js";
+import type { RepositoryDbRecord, ZBRSBook } from "../repository/types.js";
 
 export class DatabaseQueries {
   private db: Database.Database;
@@ -77,6 +78,35 @@ export class DatabaseQueries {
     stmt.run(id);
   }
 
+  public upsertRepository(record: RepositoryDbRecord): void {
+    const stmt = this.db.prepare(
+      `
+        INSERT INTO repositories (id, name, description, language, version, created_at, updated_at, type, parent_id)
+        VALUES (@id, @name, @description, @language, @version, @created_at, @updated_at, @type, @parent_id)
+        ON CONFLICT(id) DO UPDATE SET
+          name = excluded.name,
+          description = excluded.description,
+          language = excluded.language,
+          version = excluded.version,
+          updated_at = excluded.updated_at,
+          type = excluded.type,
+          parent_id = excluded.parent_id
+      `
+    );
+
+    stmt.run({
+      id: record.id,
+      name: record.name,
+      description: record.description ?? null,
+      language: record.language ?? "en",
+      version: record.version,
+      created_at: record.created_at,
+      updated_at: record.updated_at,
+      type: record.type,
+      parent_id: record.parent_id,
+    });
+  }
+
   // Book queries
   public getBooks(repositoryId?: string): Zaphnath.BibleBook[] {
     let query = `
@@ -119,6 +149,56 @@ export class DatabaseQueries {
       book.chapter_count
     );
     return result.lastInsertRowid as number;
+  }
+
+  public importBook(book: ZBRSBook, repositoryId: string): void {
+    const runImport = this.db.transaction(() => {
+      const existing = this.db
+        .prepare(
+          "SELECT id FROM books WHERE repository_id = ? AND book_order = ?"
+        )
+        .get(repositoryId, book.book.order) as { id: number } | undefined;
+
+      if (existing?.id) {
+        this.db
+          .prepare("DELETE FROM verses WHERE book_id = ?")
+          .run(existing.id);
+        this.db.prepare("DELETE FROM books WHERE id = ?").run(existing.id);
+      }
+
+      const chapterCount =
+        typeof book.book.chapters_count === "number"
+          ? book.book.chapters_count
+          : book.chapters.length;
+
+      const bookId = this.createBook({
+        repository_id: repositoryId,
+        name: book.book.name,
+        abbreviation: book.book.abbreviation,
+        testament: book.book.testament === "old" ? "OT" : "NT",
+        order: book.book.order,
+        chapter_count: chapterCount,
+      });
+
+      const verseStatement = this.db.prepare(`
+        INSERT INTO verses (repository_id, book_id, chapter, verse, text)
+        VALUES (?, ?, ?, ?, ?)
+      `);
+
+      for (const chapter of book.chapters) {
+        for (const verse of chapter.verses) {
+          verseStatement.run(
+            repositoryId,
+            bookId,
+            chapter.number,
+            verse.number,
+            verse.text ?? ""
+          );
+        }
+      }
+    });
+
+    runImport();
   }
 
   // Verse queries

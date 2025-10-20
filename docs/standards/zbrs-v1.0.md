@@ -288,22 +288,29 @@ Audio files are referenced using Media Fragment URIs:
 ## Repository Discovery
 
 ### Official Repository Index
-The Zaphnath project maintains an official index at:
-`https://repositories.zaphnath.org/index.json`
+The Zaphnath project maintains an official registry at:
+`https://raw.githubusercontent.com/beabzk/zbrs-registry/main/manifest.json`
 
 ```json
 {
-  "version": "1.0",
+  "zbrs_version": "1.0",
+  "registry": {
+    "id": "zbrs-registry",
+    "name": "Zaphnath Bible Repository Registry",
+    "description": "Official registry of ZBRS-compatible Bible repositories",
+    "version": "1.0.0",
+    "created_at": "2025-08-17T11:48:00Z",
+    "updated_at": "2025-08-17T11:48:00Z"
+  },
   "repositories": [
     {
-      "id": "beabzk-zbrs-repo",
-      "name": "Beabzk Bible Repository Collection",
-      "url": "https://repositories.zaphnath.org/beabzk-zbrs-repo/",
-      "type": "parent",
-      "translations": ["kjv-1769", "web-2000", "amharic-1962"],
-      "languages": ["en", "am"],
+      "id": "zbrs-official",
+      "name": "Official Zaphnath Bible Repositories",
+      "url": "https://raw.githubusercontent.com/beabzk/zbrs-official/main/manifest.json",
+      "description": "The official, verified collection of Bible repositories for the Zaphnath project.",
       "verified": true,
-      "last_updated": "2025-01-01T00:00:00Z"
+      "last_updated": "2025-08-17T11:48:00Z",
+      "tags": ["official", "collection"]
     }
   ]
 }

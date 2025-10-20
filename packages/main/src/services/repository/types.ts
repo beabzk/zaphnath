@@ -88,6 +88,7 @@ export interface ContentInfo {
     footnotes: boolean;
     study_notes: boolean;
   };
+  books?: ContentBookReference[];
 }
 
 export interface TechnicalInfo {
@@ -100,6 +101,13 @@ export interface TechnicalInfo {
 export interface ExtensionInfo {
   version: string;
   data?: any;
+}
+
+export interface ContentBookReference {
+  path: string;
+  checksum: string;
+  size_bytes?: number;
+  media_type?: string;
 }
 
 export interface ZBRSBook {
@@ -206,6 +214,20 @@ export interface RepositorySource {
   last_checked?: string;
 }
 
+export interface RepositoryDbRecord {
+  id: string;
+  name: string;
+  description: string | null;
+  version: string;
+  type: "parent" | "translation";
+  parent_id: string | null;
+  language: string | null;
+  created_at: string;
+  updated_at: string;
+  imported_at?: string | null;
+  metadata?: string | null;
+}
+
 // Import and Validation Types
 
 export interface ImportProgress {
@@ -233,13 +255,18 @@ export interface ValidationError {
   code: string;
   message: string;
   path?: string;
-  severity: "error" | "warning";
+  severity: "error";
+  details?: Record<string, unknown>;
+  name?: string;
 }
 
 export interface ValidationWarning {
   code: string;
   message: string;
   path?: string;
+  severity?: "warning";
+  details?: Record<string, unknown>;
+  name?: string;
 }
 
 export interface ImportOptions {
@@ -256,9 +283,10 @@ export interface ImportResult {
   success: boolean;
   repository_id: string;
   books_imported: number;
-  translations_imported?: number; // New: for parent repository imports
-  errors: string[];
-  warnings: string[];
+  translations_imported?: string[];
+  translations_skipped?: string[];
+  errors: ValidationError[];
+  warnings: ValidationWarning[];
   duration_ms: number;
 }
 
@@ -286,13 +314,6 @@ export class ZBRSError extends Error {
   constructor(message: string, public code: string, public details?: any) {
     super(message);
     this.name = "ZBRSError";
-  }
-}
-
-export class ValidationError extends ZBRSError {
-  constructor(message: string, public path?: string, details?: any) {
-    super(message, "VALIDATION_ERROR", details);
-    this.name = "ValidationError";
   }
 }
 

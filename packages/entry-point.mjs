@@ -1,5 +1,7 @@
-import {initApp} from '@app/main';
-import {fileURLToPath} from 'node:url';
+/* eslint-env node */
+
+import { initApp } from '@app/main';
+import { fileURLToPath } from 'node:url';
 
 if (process.env.NODE_ENV === 'development' || process.env.PLAYWRIGHT_TEST === 'true' || !!process.env.CI) {
   function showAndExit(...args) {

@@ -1,3 +1,5 @@
+/* eslint-env node */
+
 import pkg from './package.json' with {type: 'json'};
 import mapWorkspaces from '@npmcli/map-workspaces';
 import { join } from 'node:path';

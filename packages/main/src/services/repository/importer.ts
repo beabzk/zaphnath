@@ -1,9 +1,8 @@
-import { join } from "path";
-import { app } from "electron";
 import { DatabaseService } from "../database/index.js";
 import { RepositoryDiscoveryService } from "./discovery.js";
 import { ZBRSValidator } from "./validator.js";
 import type {
+  RepositoryDbRecord,
   ZBRSParentManifest,
   ZBRSTranslationManifest,
   TranslationReference,
@@ -13,8 +12,26 @@ import type {
   ImportProgress,
   ValidationResult,
   SecurityPolicy,
+  ValidationError,
 } from "./types.js";
 import { isParentManifest, isTranslationManifest } from "./types.js";
+
+const createValidationError = (
+  code: string,
+  message: string,
+  path?: string,
+  details?: Record<string, unknown>
+): ValidationError => ({
+  code,
+  message,
+  path,
+  severity: "error",
+  details,
+  name: "ValidationError",
+});
+
+const toErrorMessage = (error: unknown): string =>
+  error instanceof Error ? error.message : String(error);
 
 export class RepositoryImporter {
   private databaseService: DatabaseService;
@@ -39,7 +56,6 @@ export class RepositoryImporter {
     };
 
     try {
-      // Stage 1: Discovery and validation
       this.reportProgress(options, {
         stage: "discovering",
         progress: 0,
@@ -51,17 +67,26 @@ export class RepositoryImporter {
       );
       result.repository_id = manifest.repository.id;
 
-      // Route to appropriate import method based on manifest type
       if (isParentManifest(manifest)) {
         return await this.importParentRepository(manifest, options);
       } else if (isTranslationManifest(manifest)) {
         return await this.importTranslation(manifest, options);
       } else {
-        result.errors.push("Unknown manifest type - cannot import");
+        result.errors.push(
+          createValidationError(
+            "unknown-manifest-type",
+            "Unknown manifest type - cannot import"
+          )
+        );
         return result;
       }
     } catch (error) {
-      result.errors.push(`Import failed: ${error}`);
+      result.errors.push(
+        createValidationError(
+          "import-failed",
+          `Import failed: ${toErrorMessage(error)}`
+        )
+      );
       result.duration_ms = Date.now() - startTime;
       return result;
     }
@@ -79,432 +104,109 @@ export class RepositoryImporter {
       errors: [],
       warnings: [],
       duration_ms: 0,
-      translations_imported: 0,
+      translations_imported: [],
+      translations_skipped: [],
     };
 
     try {
-      // Stage 2: Validation
       this.reportProgress(options, {
         stage: "validating",
         progress: 10,
-        message: "Validating parent repository structure...",
+        message: "Validating parent repository...",
       });
 
       const validation = this.validator.validateParentManifest(manifest);
       if (!validation.valid) {
-        result.errors = validation.errors.map((e) => e.message);
+        result.errors.push(...validation.errors);
         return result;
       }
+      result.warnings.push(...validation.warnings);
 
-      result.warnings = validation.warnings.map((w) => w.message);
-
-      // Stage 3: Check if parent repository already exists
-      const existingRepo = this.databaseService
-        .getQueries()
-        .getRepository(manifest.repository.id);
-      if (existingRepo && !options.overwrite_existing) {
-        result.errors.push(
-          `Parent repository ${manifest.repository.id} already exists. Use overwrite option to replace.`
-        );
-        return result;
-      }
-
-      // Stage 4: Create parent repository record
-      this.reportProgress(options, {
-        stage: "processing",
-        progress: 20,
-        message: "Creating parent repository...",
+      await this.createOrUpdateRepositoryRecord({
+        id: manifest.repository.id,
+        name: manifest.repository.name,
+        description: manifest.repository.description,
+        version: manifest.repository.version,
+        type: "parent",
+        parent_id: null,
+        language: null, // Parent repos don't have a single language
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        imported_at: new Date().toISOString(),
+        metadata: JSON.stringify({
+          publisher: manifest.publisher,
+          technical: manifest.technical,
+          extensions: manifest.extensions || {},
+        }),
       });
 
-      await this.createParentRepositoryRecord(manifest);
-
-      // Stage 5: Import translations
-      const translationsToImport = options.selected_translations
-        ? manifest.translations.filter((t) =>
-            options.selected_translations!.includes(t.id)
-          )
-        : manifest.translations;
-
-      let totalBooksImported = 0;
-      let translationsImported = 0;
-
-      for (let i = 0; i < translationsToImport.length; i++) {
-        const translation = translationsToImport[i];
-        const progress = 30 + (i / translationsToImport.length) * 60;
-
-        this.reportProgress(options, {
-          stage: "downloading",
-          progress,
-          message: `Importing translation: ${translation.name}...`,
-        });
-
-        try {
-          // Create clean options without progress callback to avoid cloning issues
-          const cleanOptions = {
-            repository_url: options.repository_url,
-            validate_checksums: options.validate_checksums,
-            overwrite_existing: options.overwrite_existing,
-            import_type: options.import_type,
-            selected_translations: options.selected_translations,
-          };
-
-          const translationResult = await this.importTranslationFromParent(
-            options.repository_url,
-            translation,
-            manifest.repository.id,
-            cleanOptions
-          );
-
-          if (translationResult.success) {
-            totalBooksImported += translationResult.books_imported;
-            translationsImported++;
-          } else {
-            result.warnings.push(
-              `Failed to import translation ${
-                translation.name
-              }: ${translationResult.errors.join(", ")}`
-            );
-          }
-        } catch (error) {
-          result.warnings.push(
-            `Failed to import translation ${translation.name}: ${error}`
-          );
+      for (const translation of manifest.translations) {
+        const translationResult = await this.importTranslationFromParent(
+          options.repository_url,
+          translation,
+          manifest.repository.id,
+          options
+        );
+        if (translationResult.success) {
+          result.translations_imported!.push(translation.id);
+        } else {
+          result.translations_skipped!.push(translation.id);
+          result.errors.push(...translationResult.errors);
+          result.warnings.push(...translationResult.warnings);
         }
       }
-
-      result.books_imported = totalBooksImported;
-      result.translations_imported = translationsImported;
-
-      // Stage 6: Complete
-      this.reportProgress(options, {
-        stage: "complete",
-        progress: 100,
-        message: `Import completed! ${translationsImported} translations, ${totalBooksImported} books imported.`,
-      });
-
-      result.success = true;
+      result.success = result.errors.length === 0;
     } catch (error) {
-      this.reportProgress(options, {
-        stage: "error",
-        progress: 0,
-        message: `Import failed: ${error}`,
-      });
-
-      result.errors.push(`Import failed: ${error}`);
+      result.errors.push(
+        createValidationError(
+          "parent-import-failed",
+          `Import failed: ${toErrorMessage(error)}`
+        )
+      );
     } finally {
       result.duration_ms = Date.now() - startTime;
     }
-
     return result;
   }
 
-  private async validateRepository(
+  private async validateAndPrepareTranslation(
     manifest: ZBRSTranslationManifest,
-    options: ImportOptions
-  ): Promise<ValidationResult> {
-    // Validate manifest
-    const manifestValidation = this.validator.validateManifest(manifest);
-    if (!manifestValidation.valid) {
-      return manifestValidation;
-    }
+    options: ImportOptions,
+    parentId: string | null,
+    directoryName: string | null
+  ): Promise<[ValidationResult, RepositoryDbRecord | null]> {
+    const validation = await this.validateRepositoryChecksums(
+      manifest,
+      options
+    );
+    if (!validation.valid) return [validation, null];
 
-    // Additional validation for import
-    const errors = [...manifestValidation.errors];
-    const warnings = [...manifestValidation.warnings];
-
-    // Check repository size limits
-    const maxSize = 1024 * 1024 * 1024; // 1GB
-    if (manifest.technical.size_bytes > maxSize) {
-      errors.push({
-        code: "REPOSITORY_TOO_LARGE",
-        message: `Repository size (${manifest.technical.size_bytes} bytes) exceeds limit (${maxSize} bytes)`,
-        severity: "error",
-        name: "ValidationError",
-      });
-    }
-
-    // Validate book count
-    if (
-      manifest.content.books_count < 1 ||
-      manifest.content.books_count > 100
-    ) {
-      errors.push({
-        code: "INVALID_BOOK_COUNT",
-        message: `Invalid book count: ${manifest.content.books_count}`,
-        severity: "error",
-        name: "ValidationError",
-      });
-    }
-
-    return {
-      valid: errors.length === 0,
-      errors,
-      warnings,
-    };
-  }
-
-  private async importBooks(
-    manifest: ZBRSTranslationManifest,
-    options: ImportOptions
-  ): Promise<number> {
-    let importedCount = 0;
-    const baseUrl = options.repository_url.endsWith("/")
-      ? options.repository_url
-      : `${options.repository_url}/`;
-
-    // Get list of actual book files instead of using hardcoded names
-    const bookFiles = await this.getBookFiles(baseUrl);
-
-    // Import books in order
-    for (
-      let i = 0;
-      i < Math.min(bookFiles.length, manifest.content.books_count);
-      i++
-    ) {
-      const bookOrder = i + 1;
-      try {
-        this.reportProgress(options, {
-          stage: "downloading",
-          progress: 20 + (bookOrder / manifest.content.books_count) * 60,
-          message: `Importing book ${bookOrder} of ${manifest.content.books_count}...`,
-          total_books: manifest.content.books_count,
-          processed_books: bookOrder - 1,
-        });
-
-        // Download book file using actual filename
-        const bookFileName = bookFiles[i];
-        const bookUrl = `${baseUrl}books/${bookFileName}`;
-
-        const bookData = await this.discoveryService.downloadFile(bookUrl);
-        // Remove BOM if present before parsing
-        const bookDataString = bookData.toString("utf-8").replace(/^\uFEFF/, '');
-        const bookJson = JSON.parse(bookDataString) as ZBRSBook;
-
-        // Validate book
-        const bookValidation = this.validator.validateBook(bookJson, bookOrder);
-        if (!bookValidation.valid) {
-          console.error(
-            `Book ${bookOrder} validation failed:`,
-            bookValidation.errors
-          );
-          continue; // Skip invalid books but continue import
-        }
-
-        // Import book into database
-        await this.importBookToDatabase(bookJson, manifest.repository.id);
-        importedCount++;
-      } catch (error) {
-        console.error(`Failed to import book ${bookOrder}:`, error);
-        // Continue with next book
-      }
-    }
-
-    return importedCount;
-  }
-
-  private generateBookFileName(order: number): string {
-    // Standard ZBRS naming convention: {order:02d}-{name}.json
-    const bookNames = [
-      "genesis",
-      "exodus",
-      "leviticus",
-      "numbers",
-      "deuteronomy",
-      "joshua",
-      "judges",
-      "ruth",
-      "1-samuel",
-      "2-samuel",
-      "1-kings",
-      "2-kings",
-      "1-chronicles",
-      "2-chronicles",
-      "ezra",
-      "nehemiah",
-      "esther",
-      "job",
-      "psalms",
-      "proverbs",
-      "ecclesiastes",
-      "song-of-solomon",
-      "isaiah",
-      "jeremiah",
-      "lamentations",
-      "ezekiel",
-      "daniel",
-      "hosea",
-      "joel",
-      "amos",
-      "obadiah",
-      "jonah",
-      "micah",
-      "nahum",
-      "habakkuk",
-      "zephaniah",
-      "haggai",
-      "zechariah",
-      "malachi",
-      "matthew",
-      "mark",
-      "luke",
-      "john",
-      "acts",
-      "romans",
-      "1-corinthians",
-      "2-corinthians",
-      "galatians",
-      "ephesians",
-      "philippians",
-      "colossians",
-      "1-thessalonians",
-      "2-thessalonians",
-      "1-timothy",
-      "2-timothy",
-      "titus",
-      "philemon",
-      "hebrews",
-      "james",
-      "1-peter",
-      "2-peter",
-      "1-john",
-      "2-john",
-      "3-john",
-      "jude",
-      "revelation",
-    ];
-
-    if (order < 1 || order > bookNames.length) {
-      throw new Error(`Invalid book order: ${order}`);
-    }
-
-    return `${order.toString().padStart(2, "0")}-${bookNames[order - 1]}.json`;
-  }
-
-  private async getBookFiles(baseUrl: string): Promise<string[]> {
-    try {
-      // For local file paths, read directory directly
-      if (baseUrl.startsWith("file://")) {
-        const { fileURLToPath } = await import("url");
-        const { readdir } = await import("fs/promises");
-        const { join } = await import("path");
-
-        const localPath = fileURLToPath(baseUrl);
-        const booksPath = join(localPath, "books");
-
-        const files = await readdir(booksPath);
-
-        // Filter for JSON files and sort them
-        const bookFiles = files.filter((file) => file.endsWith(".json")).sort(); // This will sort 01-genesis.json, 02-psalms.json, 03-john.json correctly
-
-        return bookFiles;
-      } else {
-        // For HTTP URLs, fall back to the hardcoded approach for now
-        // In a real implementation, you might want to fetch a directory listing
-        const bookCount = 66; // Standard Bible book count
-        const bookFiles: string[] = [];
-
-        for (let i = 1; i <= bookCount; i++) {
-          try {
-            const fileName = this.generateBookFileName(i);
-            // Try to check if file exists (this is a simplified approach)
-            bookFiles.push(fileName);
-          } catch {
-            break;
-          }
-        }
-
-        return bookFiles;
-      }
-    } catch (error) {
-      console.error("Failed to get book files:", error);
-      return [];
-    }
-  }
-
-  private async importBookToDatabase(
-    book: ZBRSBook,
-    repositoryId: string
-  ): Promise<void> {
-    const queries = this.databaseService.getQueries();
-
-    // Create book record
-    const bookId = queries.createBook({
-      repository_id: repositoryId,
-      name: book.book.name,
-      abbreviation: book.book.abbreviation,
-      testament: book.book.testament === "old" ? "OT" : "NT",
-      order: book.book.order,
-      chapter_count: book.book.chapters_count,
-    });
-
-    // Import verses
-    for (const chapter of book.chapters) {
-      for (const verse of chapter.verses) {
-        queries.createVerse({
-          repository_id: repositoryId,
-          book_id: bookId,
-          chapter: chapter.number,
-          verse: verse.number,
-          text: verse.text,
-        });
-      }
-    }
-  }
-
-  private async createRepositoryRecord(
-    manifest: ZBRSTranslationManifest
-  ): Promise<void> {
-    const queries = this.databaseService.getQueries();
-
-    // Delete existing repository if it exists
-    try {
-      queries.deleteRepository(manifest.repository.id);
-    } catch (error) {
-      // Repository doesn't exist, which is fine
-    }
-
-    // Create new repository record
-    queries.createRepository({
+    const record: RepositoryDbRecord = {
       id: manifest.repository.id,
       name: manifest.repository.name,
       description: manifest.repository.description,
-      language: manifest.repository.language.code,
       version: manifest.repository.version,
-    });
-  }
+      language: manifest.repository.language.code,
+      type: "translation",
+      parent_id: parentId,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      imported_at: new Date().toISOString(),
+      metadata: JSON.stringify({
+        technical: manifest.technical,
+        content: manifest.content,
+        extensions: manifest.extensions || {},
+      }),
+    };
 
-  private reportProgress(
-    options: any, // Use any to handle both ImportOptions and clean options
-    progress: ImportProgress
-  ): void {
-    if (options.progress_callback) {
-      options.progress_callback(progress);
-    }
+    return [validation, record];
   }
-
-  public async listAvailableRepositories(): Promise<any[]> {
-    try {
-      return await this.discoveryService.discoverRepositories();
-    } catch (error) {
-      console.error("Failed to discover repositories:", error);
-      return [];
-    }
-  }
-
-  public async validateRepositoryUrl(url: string): Promise<ValidationResult> {
-    return this.discoveryService.validateRepository(url);
-  }
-
-  public getDiscoveryService(): RepositoryDiscoveryService {
-    return this.discoveryService;
-  }
-
-  // New methods for hierarchical repository support
 
   public async importTranslation(
     manifest: ZBRSTranslationManifest,
-    options: any, // Use any to avoid cloning issues with ImportOptions
-    parentId?: string
+    options: ImportOptions,
+    parentId: string | null = null,
+    directoryName: string | null = null
   ): Promise<ImportResult> {
     const startTime = Date.now();
     const result: ImportResult = {
@@ -517,134 +219,82 @@ export class RepositoryImporter {
     };
 
     try {
-      // Stage 2: Validation
-      this.reportProgress(options, {
-        stage: "validating",
-        progress: 10,
-        message: "Validating translation structure...",
-      });
+      const [validation, record] = await this.validateAndPrepareTranslation(
+        manifest,
+        options,
+        parentId,
+        directoryName
+      );
 
-      const validation = this.validator.validateTranslationManifest(manifest);
-      if (!validation.valid) {
-        result.errors = validation.errors.map((e) => e.message);
+      result.warnings.push(...validation.warnings);
+      if (!validation.valid || !record) {
+        result.errors.push(...validation.errors);
         return result;
       }
 
-      result.warnings = validation.warnings.map((w) => w.message);
+      await this.createOrUpdateRepositoryRecord(record);
 
-      // Stage 3: Check if translation already exists
-      const existingRepo = this.databaseService
-        .getQueries()
-        .getRepository(manifest.repository.id);
-      if (existingRepo && !options.overwrite_existing) {
-        result.errors.push(
-          `Translation ${manifest.repository.id} already exists. Use overwrite option to replace.`
-        );
-        return result;
-      }
+      const importedCount = await this.importBooks(manifest, options);
+      result.books_imported = importedCount;
 
-      // Stage 4: Create translation repository record first
-      this.reportProgress(options, {
-        stage: "processing",
-        progress: 20,
-        message: "Creating translation repository...",
-      });
-
-      await this.createTranslationRepositoryRecord(manifest, parentId);
-
-      // Stage 5: Download and import books
-      this.reportProgress(options, {
-        stage: "downloading",
-        progress: 30,
-        message: "Downloading Bible books...",
-        total_books: manifest.content.books_count,
-        processed_books: 0,
-      });
-
-      const importedBooks = await this.importBooks(manifest, options);
-      result.books_imported = importedBooks;
-
-      // Stage 6: Complete
       this.reportProgress(options, {
         stage: "complete",
         progress: 100,
-        message: "Translation import completed successfully!",
+        message: `Import complete! ${importedCount} books imported.`,
       });
 
       result.success = true;
     } catch (error) {
-      this.reportProgress(options, {
-        stage: "error",
-        progress: 0,
-        message: `Translation import failed: ${error}`,
-      });
-
-      result.errors.push(`Translation import failed: ${error}`);
+      result.errors.push(
+        createValidationError(
+          "translation-import-failed",
+          `Import failed: ${toErrorMessage(error)}`
+        )
+      );
     } finally {
       result.duration_ms = Date.now() - startTime;
     }
-
     return result;
   }
 
-  public async importTranslationFromParent(
-    parentRepositoryUrl: string,
-    translationRef: TranslationReference,
+  private async importTranslationFromParent(
+    baseUrl: string,
+    translation: TranslationReference,
     parentId: string,
-    options: any // Use any to avoid cloning issues with ImportOptions
+    options: ImportOptions
   ): Promise<ImportResult> {
+    const translationUrl =
+      (baseUrl.endsWith("/") ? baseUrl : baseUrl + "/") + translation.directory;
+
     try {
-      // Fetch the translation manifest
-      const translationManifest =
-        await this.discoveryService.fetchTranslationManifest(
-          parentRepositoryUrl,
-          translationRef.directory
-        );
-
-      // Construct proper base URL for translation
-      // Remove /manifest.json if present in the URL
-      let baseUrl = parentRepositoryUrl.replace(/\/manifest\.json$/, '');
-      // Ensure it doesn't end with a slash
-      if (baseUrl.endsWith('/')) {
-        baseUrl = baseUrl.slice(0, -1);
-      }
-      
-      // Import the translation with clean options
-      const cleanImportOptions = {
-        repository_url: `${baseUrl}/${translationRef.directory}`,
-        validate_checksums: options.validate_checksums || true,
-        overwrite_existing: options.overwrite_existing || false,
-        import_type: "translation" as const,
-        // Don't pass progress_callback to avoid cloning issues
-      };
-
-      const result = await this.importTranslation(
-        translationManifest,
-        cleanImportOptions,
-        parentId
+      const manifest = await this.discoveryService.fetchRepositoryManifest(
+        translationUrl
       );
 
-      // Create the parent-translation relationship
-      if (result.success) {
-        const queries = this.databaseService.getQueries();
-        queries.createRepositoryTranslation({
-          id: `${parentId}-${translationRef.id}`,
-          parent_repository_id: parentId,
-          translation_id: translationRef.id,
-          directory_name: translationRef.directory,
-          language_code: translationRef.language.code,
-          status: translationRef.status,
-        });
+      if (!isTranslationManifest(manifest)) {
+        throw new Error(
+          `Expected a translation manifest for ${translation.name}, but found a different type.`
+        );
       }
 
-      return result;
+      return this.importTranslation(
+        manifest,
+        { ...options, repository_url: translationUrl },
+        parentId,
+        translation.directory
+      );
     } catch (error) {
       return {
         success: false,
-        repository_id: translationRef.id,
+        repository_id: translation.id,
         books_imported: 0,
         errors: [
-          `Failed to import translation ${translationRef.name}: ${error}`,
+          createValidationError(
+            "fetch-translation-failed",
+            `Failed to import translation ${translation.name}: ${toErrorMessage(
+              error
+            )}`
+          ),
         ],
         warnings: [],
         duration_ms: 0,
@@ -652,48 +302,232 @@ export class RepositoryImporter {
     }
   }
 
-  private async createParentRepositoryRecord(
-    manifest: ZBRSParentManifest
-  ): Promise<void> {
-    const queries = this.databaseService.getQueries();
-
-    // Delete existing repository if it exists
-    try {
-      queries.deleteRepository(manifest.repository.id);
-    } catch (error) {
-      // Repository doesn't exist, which is fine
-    }
-
-    // Create new parent repository record
-    queries.createParentRepository({
-      id: manifest.repository.id,
-      name: manifest.repository.name,
-      description: manifest.repository.description,
-      version: manifest.repository.version,
-    });
+  private createOrUpdateRepositoryRecord(record: RepositoryDbRecord) {
+    this.databaseService.getQueries().upsertRepository(record);
   }
 
-  private async createTranslationRepositoryRecord(
+  private async validateRepositoryChecksums(
     manifest: ZBRSTranslationManifest,
-    parentId?: string
-  ): Promise<void> {
-    const queries = this.databaseService.getQueries();
+    options: ImportOptions
+  ): Promise<ValidationResult> {
+    const validation = this.validator.validateTranslationManifest(manifest);
+    if (!validation.valid) return validation;
 
-    // Delete existing repository if it exists
-    try {
-      queries.deleteRepository(manifest.repository.id);
-    } catch (error) {
-      // Repository doesn't exist, which is fine
+    if (options.validate_checksums) {
+      this.reportProgress(options, {
+        stage: "validating",
+        progress: 50,
+        message: "Validating file checksums...",
+      });
+
+      const baseUrl = options.repository_url;
+      const bookFiles = manifest.content?.books ?? [];
+
+      for (const bookFile of bookFiles) {
+        const bookUrl = `${baseUrl}/${bookFile.path}`;
+        const expectedChecksum = bookFile.checksum;
+        const integrityValidation = await this.validator.validateFileIntegrity(
+          bookUrl,
+          expectedChecksum
+        );
+        if (!integrityValidation.valid) {
+          validation.valid = false;
+          validation.errors.push(
+            createValidationError(
+              "checksum-mismatch",
+              `Checksum mismatch for ${bookFile.path}`,
+              bookFile.path,
+              {
+                expected: expectedChecksum,
+                actual: integrityValidation.actual_checksum,
+              }
+            )
+          );
+        }
+      }
+    }
+    return validation;
+  }
+
+  private async importBooks(
+    manifest: ZBRSTranslationManifest,
+    options: ImportOptions
+  ): Promise<number> {
+    const baseUrl = options.repository_url;
+    const bookFiles = manifest.content?.books ?? [];
+    let importedCount = 0;
+
+    if (!Array.isArray(bookFiles) || bookFiles.length === 0) {
+      console.error(
+        "No book files found or bookFiles is not an array in the manifest:",
+        manifest
+      );
+      throw new Error(
+        "Invalid manifest content: book files are missing or not in an array."
+      );
     }
 
-    // Create new translation repository record
-    queries.createTranslationRepository({
-      id: manifest.repository.id,
-      name: manifest.repository.name,
-      description: manifest.repository.description,
-      language: manifest.repository.language.code,
-      version: manifest.repository.version,
-      parent_id: parentId,
-    });
+    for (const [index, bookFile] of bookFiles.entries()) {
+      const bookFileName = bookFile.path;
+      this.reportProgress(options, {
+        stage: "downloading",
+        progress: (index / bookFiles.length) * 100,
+        message: `Importing book ${bookFileName}...`,
+      });
+
+      try {
+        const bookUrl =
+          (baseUrl.endsWith("/") ? baseUrl : baseUrl + "/") + bookFileName;
+        const response = await fetch(bookUrl);
+        if (!response.ok)
+          throw new Error(`Failed to fetch book: ${response.statusText}`);
+        const book = (await response.json()) as ZBRSBook;
+
+        await this.databaseService
+          .getQueries()
+          .importBook(book, manifest.repository.id);
+        importedCount++;
+      } catch (error) {
+        console.error(`Failed to import book ${bookFileName}:`, error);
+        // Optionally add a warning to the result
+      }
+    }
+    return importedCount;
+  }
+
+  private reportProgress(
+    options: ImportOptions,
+    progress: ImportProgress
+  ): void {
+    if (options.progress_callback) {
+      options.progress_callback(progress);
+    }
+  }
+
+  public getDiscoveryService(): RepositoryDiscoveryService {
+    return this.discoveryService;
+  }
+
+  // New hierarchical import method for ZBRS v1.0 with translation selection
+  public async importRepositoryHierarchical(
+    repositoryUrl: string,
+    selectedTranslations: string[]
+  ): Promise<ImportResult> {
+    const startTime = Date.now();
+    const result: ImportResult = {
+      success: false,
+      repository_id: "",
+      translations_imported: [],
+      translations_skipped: [],
+      books_imported: 0,
+      errors: [],
+      warnings: [],
+      duration_ms: 0,
+    };
+
+    try {
+      // Fetch the parent repository manifest
+      const manifest = await this.discoveryService.fetchRepositoryManifest(
+        repositoryUrl
+      );
+
+      if (!isParentManifest(manifest)) {
+        result.errors.push(
+          createValidationError(
+            "not-parent-repository",
+            "URL does not point to a parent repository manifest"
+          )
+        );
+        result.duration_ms = Date.now() - startTime;
+        return result;
+      }
+
+      result.repository_id = manifest.repository.id;
+
+      // Validate parent repository
+      const validation = this.validator.validateParentManifest(manifest);
+      if (!validation.valid) {
+        result.errors.push(...validation.errors);
+        result.duration_ms = Date.now() - startTime;
+        return result;
+      }
+      result.warnings.push(...validation.warnings);
+
+      // Create parent repository record
+      await this.createOrUpdateRepositoryRecord({
+        id: manifest.repository.id,
+        name: manifest.repository.name,
+        description: manifest.repository.description || null,
+        type: "parent",
+        parent_id: null,
+        language: null,
+        version: manifest.repository.version,
+        created_at: manifest.repository.created_at || new Date().toISOString(),
+        updated_at: manifest.repository.updated_at || new Date().toISOString(),
+        imported_at: new Date().toISOString(),
+        metadata: JSON.stringify({
+          publisher: manifest.publisher,
+          technical: manifest.technical,
+          extensions: manifest.extensions || {},
+        }),
+      });
+
+      // Import selected translations
+      const baseUrl = repositoryUrl.replace("/manifest.json", "");
+      let totalBooksImported = 0;
+
+      for (const translation of manifest.translations) {
+        if (selectedTranslations.includes(translation.id)) {
+          try {
+            const translationResult = await this.importTranslationFromParent(
+              baseUrl,
+              translation,
+              manifest.repository.id,
+              {
+                repository_url: repositoryUrl,
+                validate_checksums: true,
+                download_audio: false,
+                overwrite_existing: false,
+              }
+            );
+
+            if (translationResult.success) {
+              result.translations_imported!.push(translation.id);
+              totalBooksImported += translationResult.books_imported;
+            } else {
+              result.translations_skipped!.push(translation.id);
+              result.errors.push(...translationResult.errors);
+            }
+          } catch (error) {
+            result.translations_skipped!.push(translation.id);
+            result.errors.push(
+              createValidationError(
+                "translation-import-failed",
+                `Failed to import translation ${
+                  translation.name
+                }: ${toErrorMessage(error)}`
+              )
+            );
+          }
+        } else {
+          result.translations_skipped!.push(translation.id);
+        }
+      }
+
+      result.books_imported = totalBooksImported;
+      result.success = result.translations_imported!.length > 0;
+      result.duration_ms = Date.now() - startTime;
+
+      return result;
+    } catch (error) {
+      result.errors.push(
+        createValidationError(
+          "hierarchical-import-failed",
+          `Hierarchical import failed: ${toErrorMessage(error)}`
+        )
+      );
+      result.duration_ms = Date.now() - startTime;
+      return result;
+    }
   }
 }
