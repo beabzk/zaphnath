@@ -22,7 +22,7 @@
     "packages/*"
   ],
   "engines": {
-    "node": ">=22.18.0"
+    "node": ">=24.0.0"
   },
   "scripts": {
     "build": "npm run build -ws --if-present",
@@ -49,22 +49,22 @@
     "lint:fix": "eslint . --ext .ts,.tsx,.js,.jsx --fix"
   },
   "devDependencies": {
-    "@eslint/js": "^9.32.0",
-    "@npmcli/map-workspaces": "4.0.2",
+    "@eslint/js": "^9.38.0",
+    "@npmcli/map-workspaces": "5.0.0",
     "@types/better-sqlite3": "^7.6.13",
-    "@types/node": "^24.2.0",
-    "@typescript-eslint/eslint-plugin": "^8.39.0",
-    "@typescript-eslint/parser": "^8.39.0",
-    "electron": "^37.2.5",
+    "@types/node": "^24.9.0",
+    "@typescript-eslint/eslint-plugin": "^8.46.2",
+    "@typescript-eslint/parser": "^8.46.2",
+    "electron": "^38.3.0",
     "electron-builder": "26.0.12",
     "electron-rebuild": "^3.2.9",
-    "eslint": "^9.32.0",
+    "eslint": "^9.38.0",
     "eslint-plugin-react": "^7.37.5",
-    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-hooks": "^7.0.0",
     "glob": "11.0.3"
   },
   "dependencies": {
     "@app/main": "*",
-    "@radix-ui/react-dropdown-menu": "^2.1.15"
+    "@radix-ui/react-dropdown-menu": "^2.1.16"
   }
 }

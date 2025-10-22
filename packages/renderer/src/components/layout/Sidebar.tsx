@@ -117,23 +117,6 @@ export function Sidebar() {
             <Separator />
             <NavSection title="System" items={systemItems} />
           </div>
-          
-          {/* Repository Status */}
-          <div className="border-t p-4">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-muted-foreground">
-                  Current Repository
-                </span>
-              </div>
-              <div className="rounded-md border p-2">
-                <div className="text-sm font-medium">No repository selected</div>
-                <div className="text-xs text-muted-foreground">
-                  Import a Bible repository to get started
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </aside>
     </>

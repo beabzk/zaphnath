@@ -19,7 +19,6 @@ export default /** @type import('electron-builder').Configuration */
     compression: 'maximum', // Better compression for Bible data
     npmRebuild: true, // Required for better-sqlite3
     buildDependenciesFromSource: true, // Ensure native modules are built correctly
-    nodeGypRebuild: false, // Let electron-rebuild handle this
     mac: {
       category: 'public.app-category.reference',
       target: ['dmg', 'zip'],
