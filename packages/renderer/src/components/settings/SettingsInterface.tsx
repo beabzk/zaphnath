@@ -1,8 +1,5 @@
 import { useState } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
 import { useSettings } from './SettingsProvider'
 import { AppearanceSettings } from './AppearanceSettings'
 import { ReadingSettings } from './ReadingSettings'
@@ -93,69 +90,66 @@ export function SettingsInterface() {
 
   if (isLoading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Settings</CardTitle>
-          <CardDescription>Loading your preferences...</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="h-full flex flex-col">
+        <div className="px-6 py-4 border-b border-border">
+          <h2 className="text-lg font-semibold">Settings</h2>
+          <p className="text-sm text-muted-foreground">Loading your preferences...</p>
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </div>
     )
   }
 
   return (
-    <div className="space-y-6">
+    <div className="h-full flex flex-col">
       {/* Settings Header */}
-      <Card>
-        <CardHeader>
+      <div className="border-b border-border">
+        <div className="px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="flex items-center gap-2">
+              <div className="flex items-center gap-2 mb-1">
                 <SettingsIcon className="h-5 w-5" />
-                Settings
+                <h2 className="text-lg font-semibold">Settings</h2>
                 {hasUnsavedChanges && (
                   <Badge variant="secondary" className="text-xs">
                     <AlertCircle className="h-3 w-3 mr-1" />
                     Unsaved Changes
                   </Badge>
                 )}
-              </CardTitle>
-              <CardDescription>
+              </div>
+              <p className="text-sm text-muted-foreground">
                 Configure your Bible reading experience and application preferences
-              </CardDescription>
+              </p>
             </div>
             
             <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
+              <button
+                className="px-3 py-1 text-sm border border-border hover:bg-accent transition-colors inline-flex items-center gap-2"
                 onClick={() => setShowImportExport(!showImportExport)}
               >
-                <Download className="h-4 w-4 mr-2" />
+                <Download className="h-4 w-4" />
                 Import/Export
-              </Button>
+              </button>
               
               {hasUnsavedChanges && (
-                <Button onClick={saveSettings} size="sm">
-                  <Save className="h-4 w-4 mr-2" />
+                <button onClick={saveSettings} className="px-3 py-1 text-sm bg-primary text-primary-foreground hover:bg-primary/90 transition-colors inline-flex items-center gap-2">
+                  <Save className="h-4 w-4" />
                   Save Changes
-                </Button>
+                </button>
               )}
             </div>
           </div>
-        </CardHeader>
+        </div>
         
         {showImportExport && (
-          <CardContent className="pt-0">
-            <div className="flex items-center gap-2 p-4 bg-muted/50 rounded-lg">
-              <Button onClick={handleExportSettings} variant="outline" size="sm">
-                <Download className="h-4 w-4 mr-2" />
+          <div className="px-6 pb-4">
+            <div className="flex items-center gap-2 p-3 bg-muted/30 border border-border">
+              <button onClick={handleExportSettings} className="px-3 py-1 text-sm border border-border hover:bg-accent transition-colors inline-flex items-center gap-2">
+                <Download className="h-4 w-4" />
                 Export Settings
-              </Button>
+              </button>
               
               <div className="relative">
                 <input
@@ -164,119 +158,112 @@ export function SettingsInterface() {
                   onChange={handleImportSettings}
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 />
-                <Button variant="outline" size="sm">
-                  <Upload className="h-4 w-4 mr-2" />
+                <button className="px-3 py-1 text-sm border border-border hover:bg-accent transition-colors inline-flex items-center gap-2">
+                  <Upload className="h-4 w-4" />
                   Import Settings
-                </Button>
+                </button>
               </div>
               
-              <Separator orientation="vertical" className="h-6" />
+              <div className="h-6 w-px bg-border" />
               
-              <Button 
+              <button 
                 onClick={resetSettings} 
-                variant="outline" 
-                size="sm"
-                className="text-destructive hover:text-destructive"
+                className="px-3 py-1 text-sm border border-border hover:bg-destructive/10 text-destructive transition-colors inline-flex items-center gap-2"
               >
-                <RotateCcw className="h-4 w-4 mr-2" />
+                <RotateCcw className="h-4 w-4" />
                 Reset All
-              </Button>
+              </button>
             </div>
-          </CardContent>
+          </div>
         )}
-      </Card>
+      </div>
 
       {/* Settings Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <div className="flex flex-1 overflow-hidden">
         {/* Category Navigation */}
-        <Card className="lg:col-span-1">
-          <CardHeader>
-            <CardTitle className="text-base">Categories</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
+        <div className="w-56 border-r border-border">
+          <div className="px-4 py-3 border-b border-border">
+            <h3 className="text-sm font-medium">Categories</h3>
+          </div>
+          <div className="py-2">
             {settingsCategories.map((category) => {
               const Icon = iconMap[category.icon as keyof typeof iconMap]
               const isActive = activeCategory === category.id
 
               return (
-                <Button
+                <button
                   key={category.id}
-                  variant={isActive ? "secondary" : "ghost"}
-                  className="w-full justify-start gap-3 h-9"
+                  className={`w-full text-left px-4 py-2 inline-flex items-center gap-3 text-sm transition-colors ${
+                    isActive ? 'bg-accent text-accent-foreground' : 'hover:bg-accent/50'
+                  }`}
                   onClick={() => setActiveCategory(category.id)}
                 >
                   <Icon className="h-4 w-4" />
                   <span className="font-medium">{category.name}</span>
-                </Button>
+                </button>
               )
             })}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Category Content */}
-        <div className="lg:col-span-3">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    {(() => {
-                      const category = settingsCategories.find(c => c.id === activeCategory)
-                      const Icon = iconMap[category?.icon as keyof typeof iconMap]
-                      return (
-                        <>
-                          <Icon className="h-5 w-5" />
-                          {category?.name}
-                        </>
-                      )
-                    })()}
-                  </CardTitle>
-                  <CardDescription>
-                    {settingsCategories.find(c => c.id === activeCategory)?.description}
-                  </CardDescription>
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="px-6 py-4 border-b border-border">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  {(() => {
+                    const category = settingsCategories.find(c => c.id === activeCategory)
+                    const Icon = iconMap[category?.icon as keyof typeof iconMap]
+                    return (
+                      <>
+                        <Icon className="h-5 w-5" />
+                        <h2 className="text-lg font-semibold">{category?.name}</h2>
+                      </>
+                    )
+                  })()}
                 </div>
-                
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => resetCategory(activeCategory)}
-                  className="text-destructive hover:text-destructive"
-                >
-                  <RotateCcw className="h-4 w-4 mr-2" />
-                  Reset Category
-                </Button>
+                <p className="text-sm text-muted-foreground">
+                  {settingsCategories.find(c => c.id === activeCategory)?.description}
+                </p>
               </div>
-            </CardHeader>
-            <CardContent>
-              {renderCategoryContent()}
-            </CardContent>
-          </Card>
+              
+              <button
+                onClick={() => resetCategory(activeCategory)}
+                className="px-3 py-1 text-sm border border-border hover:bg-destructive/10 text-destructive transition-colors inline-flex items-center gap-2"
+              >
+                <RotateCcw className="h-4 w-4" />
+                Reset Category
+              </button>
+            </div>
+          </div>
+          <div className="flex-1 overflow-y-auto px-6 py-4">
+            {renderCategoryContent()}
+          </div>
         </div>
       </div>
 
       {/* Settings Info */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-1">
-                <CheckCircle className="h-4 w-4" />
-                <span>Settings Version: {settings.version}</span>
-              </div>
-              <div>
-                Last Modified: {new Date(settings.lastModified).toLocaleString()}
-              </div>
+      <div className="px-6 py-3 border-t border-border bg-muted/20">
+        <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1">
+              <CheckCircle className="h-4 w-4" />
+              <span>Settings Version: {settings.version}</span>
             </div>
-            
-            {hasUnsavedChanges && (
-              <div className="flex items-center gap-1 text-amber-600">
-                <AlertCircle className="h-4 w-4" />
-                <span>You have unsaved changes</span>
-              </div>
-            )}
+            <div>
+              Last Modified: {new Date(settings.lastModified).toLocaleString()}
+            </div>
           </div>
-        </CardContent>
-      </Card>
+          
+          {hasUnsavedChanges && (
+            <div className="flex items-center gap-1 text-amber-600">
+              <AlertCircle className="h-4 w-4" />
+              <span>You have unsaved changes</span>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

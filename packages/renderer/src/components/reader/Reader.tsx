@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { useRepositoryStore } from '@/stores'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 
 export function Reader() {
@@ -133,134 +131,113 @@ export function Reader() {
 
   if (!currentRepository) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Bible Reader</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground">Select a repository from Repositories to start reading.</p>
-        </CardContent>
-      </Card>
+      <div className="h-full flex items-center justify-center">
+        <p className="text-muted-foreground">Select a repository from Repositories to start reading.</p>
+      </div>
     )
   }
 
   const percent = Math.round(progress * 100)
 
   return (
-    <div className="grid grid-cols-12 gap-4">
-      {/* Books list */}
-      <div className="col-span-12 lg:col-span-3">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">{currentRepository.name} — Books</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="max-h-[70vh] overflow-auto space-y-1">
-              {books.map(b => (
-                <Button
-                  key={b.id}
-                  variant={currentBook?.id === b.id ? 'secondary' : 'ghost'}
-                  className="w-full justify-start h-8"
-                  onClick={() => handleSelectBook(b.id)}
-                >
-                  <span className="mr-2 text-xs text-muted-foreground w-8 text-right">{b.order}</span>
-                  <span className="truncate">{b.name}</span>
-                </Button>
-              ))}
-              {books.length === 0 && (
-                <div className="text-sm text-muted-foreground">No books found for this repository.</div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+    <div className="h-full flex">
+      {/* Books list - minimal sidebar */}
+      <div className="w-52 border-r border-border flex flex-col h-full">
+        <div className="px-3 py-2 border-b border-border">
+          <h3 className="text-sm font-medium">{currentRepository.name}</h3>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          {books.map(b => (
+            <button
+              key={b.id}
+              className={`w-full text-left px-3 py-1.5 hover:bg-accent/50 transition-colors flex items-center gap-2 text-sm ${
+                currentBook?.id === b.id ? 'bg-accent text-accent-foreground' : ''
+              }`}
+              onClick={() => handleSelectBook(b.id)}
+            >
+              <span className="text-xs text-muted-foreground w-5 text-right flex-shrink-0">{b.order}</span>
+              <span className="flex-1">{b.name}</span>
+            </button>
+          ))}
+          {books.length === 0 && (
+            <div className="px-3 py-2 text-sm text-muted-foreground">No books found</div>
+          )}
+        </div>
       </div>
 
-      {/* Reading area */}
-      <div className="col-span-12 lg:col-span-9">
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                {/* Breadcrumbs */}
-                <div className="text-xs text-muted-foreground">
-                  <span>Reader</span>
-                  <span className="mx-1">/</span>
-                  <span>{currentRepository.name}</span>
-                  {currentBook && <>
-                    <span className="mx-1">/</span>
-                    <span>{currentBook.name}</span>
-                  </>}
-                  {currentChapter && <>
-                    <span className="mx-1">/</span>
-                    <span>Chapter {currentChapter.number}</span>
-                  </>}
+      {/* Reading area - maximized */}
+      <div className="flex-1 flex flex-col h-full">
+        {/* Minimal header bar */}
+        <div className="px-4 py-2 border-b border-border flex items-center justify-between min-h-[48px]">
+          <div className="flex items-center gap-3">
+            {currentBook && currentChapter ? (
+              <>
+                <h1 className="text-lg font-medium">{currentBook.name}</h1>
+                <span className="text-muted-foreground">Chapter {currentChapter.number}</span>
+              </>
+            ) : (
+              <span className="text-muted-foreground">Select a book to begin reading</span>
+            )}
+          </div>
+          
+          {currentBook && (
+            <div className="flex items-center gap-1">
+              <button
+                className="px-3 py-1 text-sm hover:bg-accent/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={() => handleChangeChapter(Math.max(1, (chapterSelect || 1) - 1))}
+                disabled={!chapterSelect || chapterSelect <= 1}
+              >
+                ←
+              </button>
+              <select
+                className="bg-transparent border-0 px-2 py-1 text-sm focus:outline-none cursor-pointer"
+                value={chapterSelect ?? ''}
+                onChange={(e) => handleChangeChapter(Number(e.target.value))}
+              >
+                {chaptersForCurrentBook.map(n => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+              </select>
+              <button
+                className="px-3 py-1 text-sm hover:bg-accent/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={() => handleChangeChapter(Math.min((currentBook?.chapter_count || 1), (chapterSelect || 1) + 1))}
+                disabled={!chapterSelect || (currentBook ? chapterSelect >= currentBook.chapter_count : true)}
+              >
+                →
+              </button>
+            </div>
+          )}
+        </div>
+        
+        {/* Progress indicator - thin line */}
+        {currentBook && currentChapter && (
+          <div className="h-0.5 bg-muted relative">
+            <div className="h-full bg-primary/60 transition-all duration-300" style={{ width: `${percent}%` }} />
+          </div>
+        )}
+        
+        {/* Main reading content */}
+        {!currentBook ? (
+          <div className="flex-1 flex items-center justify-center">
+            <p className="text-muted-foreground">Choose a book from the sidebar to start reading</p>
+          </div>
+        ) : (
+          <div ref={scrollRef} className="flex-1 overflow-y-auto px-8 py-6">
+            <div className="max-w-3xl mx-auto">
+              {verses.map(v => (
+                <div key={v.id} className="flex items-start gap-3 mb-4">
+                  <span className="text-xs text-muted-foreground/60 w-6 text-right select-none mt-1 flex-shrink-0">
+                    {v.number}
+                  </span>
+                  <p className="text-base leading-relaxed">{v.text}</p>
                 </div>
-                <CardTitle className="text-base mt-1">
-                  {currentBook ? `${currentBook.name}` : 'Select a book'}
-                  {currentChapter ? ` — Chapter ${currentChapter.number}` : ''}
-                </CardTitle>
-              </div>
-              {currentBook && (
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleChangeChapter(Math.max(1, (chapterSelect || 1) - 1))}
-                    disabled={!chapterSelect || chapterSelect <= 1}
-                  >
-                    Prev
-                  </Button>
-                  <select
-                    className="border rounded px-2 py-1 text-sm"
-                    value={chapterSelect ?? ''}
-                    onChange={(e) => handleChangeChapter(Number(e.target.value))}
-                  >
-                    <option value="" disabled>Chapter</option>
-                    {chaptersForCurrentBook.map(n => (
-                      <option key={n} value={n}>{n}</option>
-                    ))}
-                  </select>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleChangeChapter(Math.min((currentBook?.chapter_count || 1), (chapterSelect || 1) + 1))}
-                    disabled={!chapterSelect || (currentBook ? chapterSelect >= currentBook.chapter_count : true)}
-                  >
-                    Next
-                  </Button>
-                </div>
+              ))}
+              {verses.length === 0 && (
+                <div className="text-sm text-muted-foreground">Loading verses...</div>
               )}
             </div>
-
-            {/* Progress bar */}
-            {currentBook && (
-              <div className="mt-3">
-                <div className="h-1.5 w-full bg-muted rounded">
-                  <div className="h-1.5 bg-primary rounded" style={{ width: `${percent}%` }} />
-                </div>
-                <div className="mt-1 text-[11px] text-muted-foreground">{percent}% — {verses.length} verses</div>
-              </div>
-            )}
-          </CardHeader>
-          <CardContent>
-            {!currentBook && (
-              <p className="text-muted-foreground">Choose a book from the left to start reading.</p>
-            )}
-            {currentBook && (
-              <div ref={scrollRef} className="space-y-3 max-h-[70vh] overflow-auto pr-2">
-                {verses.map(v => (
-                  <div key={v.id} className="flex items-start gap-2">
-                    <span className="text-xs text-muted-foreground w-6 text-right select-none leading-7">{v.number}</span>
-                    <p className="leading-7 whitespace-pre-wrap break-words">{v.text}</p>
-                  </div>
-                ))}
-                {verses.length === 0 && (
-                  <div className="text-sm text-muted-foreground">No verses found.</div>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+          </div>
+        )}
       </div>
     </div>
   )

@@ -1,6 +1,4 @@
 import { useState, useEffect } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
   BookOpen,
@@ -175,86 +173,86 @@ export function RepositoryList({ onImportClick, onRepositorySelect }: Repository
 
   if (loading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Installed Repositories</CardTitle>
-          <CardDescription>Loading your Bible repositories...</CardDescription>
-        </CardHeader>
-        <CardContent>
+      <div className="border-b border-border">
+        <div className="px-6 py-4">
+          <h2 className="text-lg font-semibold">Installed Repositories</h2>
+          <p className="text-sm text-muted-foreground">Loading your Bible repositories...</p>
+        </div>
+        <div className="px-6 pb-8">
           <div className="flex items-center justify-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     )
   }
 
   if (error) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Installed Repositories</CardTitle>
-          <CardDescription>Error loading repositories</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-2 text-destructive">
+      <div className="border-b border-border">
+        <div className="px-6 py-4">
+          <h2 className="text-lg font-semibold">Installed Repositories</h2>
+          <p className="text-sm text-muted-foreground">Error loading repositories</p>
+        </div>
+        <div className="px-6 pb-4">
+          <div className="flex items-center gap-2 text-destructive mb-4">
             <AlertCircle className="h-4 w-4" />
             <span>{error}</span>
           </div>
-          <Button onClick={loadRepositories} className="mt-4">
+          <button onClick={loadRepositories} className="px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
             Try Again
-          </Button>
-        </CardContent>
-      </Card>
+          </button>
+        </div>
+      </div>
     )
   }
 
   if (repositories.length === 0) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Installed Repositories</CardTitle>
-          <CardDescription>No Bible repositories found</CardDescription>
-        </CardHeader>
-        <CardContent className="text-center py-8">
+      <div className="border-b border-border">
+        <div className="px-6 py-4">
+          <h2 className="text-lg font-semibold">Installed Repositories</h2>
+          <p className="text-sm text-muted-foreground">No Bible repositories found</p>
+        </div>
+        <div className="px-6 pb-8 text-center">
           <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
           <h3 className="text-lg font-medium mb-2">No Repositories Installed</h3>
           <p className="text-muted-foreground mb-4">
             Import your first Bible repository to get started with reading and studying.
           </p>
-          <Button onClick={onImportClick}>
-            <Download className="h-4 w-4 mr-2" />
+          <button onClick={onImportClick} className="px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 transition-colors inline-flex items-center gap-2">
+            <Download className="h-4 w-4" />
             Import Repository
-          </Button>
-        </CardContent>
-      </Card>
+          </button>
+        </div>
+      </div>
     )
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <span>Installed Repositories</span>
-          <Button onClick={onImportClick} size="sm">
-            <Download className="h-4 w-4 mr-2" />
+    <div className="border-b border-border">
+      <div className="px-6 py-4">
+        <div className="flex items-center justify-between mb-1">
+          <h2 className="text-lg font-semibold">Installed Repositories</h2>
+          <button onClick={onImportClick} className="px-3 py-1 text-sm bg-primary text-primary-foreground hover:bg-primary/90 transition-colors inline-flex items-center gap-2">
+            <Download className="h-4 w-4" />
             Import
-          </Button>
-        </CardTitle>
-        <CardDescription>
+          </button>
+        </div>
+        <p className="text-sm text-muted-foreground">
           {repositories.length} repository{repositories.length !== 1 ? 's' : ''} available
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
+        </p>
+      </div>
+      <div className="px-6 pb-4 space-y-3">
         
         {repositories.map((repo) => (
           <div key={repo.id} className="space-y-2">
             {/* Parent Repository or Standalone Translation */}
             <div
-              className={`p-4 rounded-lg border transition-all ${
-                repo.type === 'parent' ? 'cursor-default' : 'cursor-pointer hover:bg-accent/50'
+              className={`p-3 border-b border-border transition-all ${
+                repo.type === 'parent' ? 'cursor-default' : 'cursor-pointer hover:bg-accent/30'
               } ${
-                selectedRepository === repo.id ? 'border-primary bg-accent/20' : 'border-border'
+                selectedRepository === repo.id ? 'bg-accent/20' : ''
               }`}
               onClick={() => {
                 if (repo.type === 'parent') {
@@ -324,9 +322,9 @@ export function RepositoryList({ onImportClick, onRepositorySelect }: Repository
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <button className="h-8 w-8 inline-flex items-center justify-center hover:bg-accent transition-colors">
                       <MoreVertical className="h-4 w-4" />
-                    </Button>
+                    </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem>
@@ -351,12 +349,12 @@ export function RepositoryList({ onImportClick, onRepositorySelect }: Repository
 
             {/* Expanded Translations for Parent Repositories */}
             {repo.type === 'parent' && expandedParents.has(repo.id) && repo.translations && (
-              <div className="ml-8 space-y-2">
+              <div className="ml-6 pl-4 border-l-2 border-border space-y-0">
                 {repo.translations.map((translation) => (
                   <div
                     key={translation.id}
-                    className={`p-3 rounded-lg border cursor-pointer transition-all hover:bg-accent/50 ${
-                      selectedRepository === translation.id ? 'border-primary bg-accent/20' : 'border-dashed border-muted-foreground/30 bg-muted/20'
+                    className={`p-2 border-b border-border/50 cursor-pointer transition-all hover:bg-accent/30 ${
+                      selectedRepository === translation.id ? 'bg-accent/20' : ''
                     }`}
                     onClick={() => {
                       // Create a repository object for the translation
@@ -406,7 +404,7 @@ export function RepositoryList({ onImportClick, onRepositorySelect }: Repository
             )}
           </div>
         ))}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
