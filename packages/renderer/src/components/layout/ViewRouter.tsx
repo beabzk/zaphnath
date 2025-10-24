@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { RepositoryManagement } from '@/components/repository/RepositoryManagement'
 import { SettingsInterface } from '@/components/settings/SettingsInterface'
 import { ErrorReportingPanel } from '@/components/debug/ErrorReportingPanel'
+import { SearchInterface } from '@/components/search/SearchInterface'
 import { ArrowLeft } from 'lucide-react'
 import { Reader } from '@/components/reader/Reader'
 
@@ -17,21 +18,7 @@ function RepositoriesView() {
 }
 
 function SearchView() {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Search</CardTitle>
-        <CardDescription>
-          Search through verses, books, and topics
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <p className="text-muted-foreground">
-          Advanced search functionality coming soon.
-        </p>
-      </CardContent>
-    </Card>
-  )
+  return <SearchInterface />
 }
 
 function BookmarksView() {

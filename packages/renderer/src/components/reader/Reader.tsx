@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
-import { useRepositoryStore } from '@/stores'
+import { useInView } from 'react-intersection-observer'
+import { useRepositoryStore, useReadingStore } from '@/stores'
+import { ChevronRight } from 'lucide-react'
+import { VerseContextMenu } from './VerseContextMenu'
+import { ReadingControls, ReadingPreferences, PRESETS } from './ReadingControls'
+import { VerseComparison } from './VerseComparison'
 
 
 export function Reader() {
@@ -16,7 +21,73 @@ export function Reader() {
 
   const [chapterSelect, setChapterSelect] = useState<number | null>(null)
   const [progress, setProgress] = useState(0)
+  const [currentVerseNumber, setCurrentVerseNumber] = useState<number>(1)
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; verseId: string; verseNumber: number } | null>(null)
+  const [selectedVerses] = useState<Set<string>>(new Set())
+  const [readingPrefs, setReadingPrefs] = useState<ReadingPreferences>(PRESETS.reading)
+  const [comparisonVerse, setComparisonVerse] = useState<{ bookId: string; chapter: number; verse: number } | null>(null)
   const scrollRef = useRef<HTMLDivElement | null>(null)
+
+  const { highlights, addHighlight, removeHighlight } = useReadingStore()
+
+  // Context menu handlers
+  const handleVerseContextMenu = useCallback((e: React.MouseEvent, verseId: string, verseNumber: number) => {
+    e.preventDefault()
+    setContextMenu({ x: e.clientX, y: e.clientY, verseId, verseNumber })
+  }, [])
+
+  const handleCopyVerse = useCallback(() => {
+    if (!contextMenu || !currentBook) return
+    const verse = verses.find(v => v.id === contextMenu.verseId)
+    if (verse) {
+      const reference = `${currentBook.name} ${currentChapter?.number}:${verse.number}`
+      const text = `${reference} - ${verse.text}`
+      navigator.clipboard.writeText(text)
+    }
+  }, [contextMenu, verses, currentBook, currentChapter])
+
+  const handleHighlight = useCallback((color: string) => {
+    if (!contextMenu || !currentRepository || !currentBook || !currentChapter) return
+    
+    addHighlight({
+      repository_id: currentRepository.id,
+      book_id: currentBook.id,
+      chapter_number: currentChapter.number,
+      verse_number: contextMenu.verseNumber,
+      color
+    })
+  }, [contextMenu, currentRepository, currentBook, currentChapter, addHighlight])
+
+  const handleClearHighlight = useCallback(() => {
+    if (!contextMenu) return
+    const highlight = highlights.find(h => 
+      h.chapter_number === currentChapter?.number && 
+      h.verse_number === contextMenu.verseNumber
+    )
+    if (highlight) {
+      removeHighlight(highlight.id)
+    }
+  }, [contextMenu, highlights, currentChapter, removeHighlight])
+
+  const handleBookmark = useCallback(() => {
+    // TODO: Implement bookmark functionality
+    console.log('Bookmark verse:', contextMenu?.verseNumber)
+  }, [contextMenu])
+
+  const handleNote = useCallback(() => {
+    // TODO: Implement note functionality
+    console.log('Add note to verse:', contextMenu?.verseNumber)
+  }, [contextMenu])
+
+  const handleCompare = useCallback(() => {
+    if (!contextMenu || !currentBook || !currentChapter) return
+    
+    setComparisonVerse({
+      bookId: currentBook.id,
+      chapter: currentChapter.number,
+      verse: contextMenu.verseNumber
+    })
+  }, [contextMenu, currentBook, currentChapter])
 
   // When repository changes and books are empty, load books
   useEffect(() => {
@@ -167,21 +238,48 @@ export function Reader() {
 
       {/* Reading area - maximized */}
       <div className="flex-1 flex flex-col h-full">
-        {/* Minimal header bar */}
-        <div className="px-4 py-2 border-b border-border flex items-center justify-between min-h-[48px]">
-          <div className="flex items-center gap-3">
-            {currentBook && currentChapter ? (
-              <>
-                <h1 className="text-lg font-medium">{currentBook.name}</h1>
-                <span className="text-muted-foreground">Chapter {currentChapter.number}</span>
-              </>
-            ) : (
-              <span className="text-muted-foreground">Select a book to begin reading</span>
-            )}
-          </div>
-          
-          {currentBook && (
-            <div className="flex items-center gap-1">
+        {/* Header with breadcrumb navigation */}
+        <div className="px-4 py-3 border-b border-border min-h-[56px]">
+          {/* Breadcrumb */}
+          {currentBook && currentChapter && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+              <span className="hover:text-foreground cursor-pointer transition-colors">
+                {currentRepository?.name}
+              </span>
+              <ChevronRight className="w-3 h-3" />
+              <span className="hover:text-foreground cursor-pointer transition-colors">
+                {currentBook.name}
+              </span>
+              <ChevronRight className="w-3 h-3" />
+              <span className="text-foreground font-medium">
+                Chapter {currentChapter.number}
+              </span>
+              {currentVerseNumber > 0 && (
+                <>
+                  <ChevronRight className="w-3 h-3" />
+                  <span className="text-foreground font-medium">
+                    Verse {currentVerseNumber}
+                  </span>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Navigation controls */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {currentBook && currentChapter ? (
+                <>
+                  <h1 className="text-base font-medium">{currentBook.name} {currentChapter.number}</h1>
+                  <span className="text-xs text-muted-foreground">({verses.length} verses)</span>
+                </>
+              ) : (
+                <span className="text-muted-foreground">Select a book to begin reading</span>
+              )}
+            </div>
+            
+            {currentBook && (
+              <div className="flex items-center gap-1">
               <button
                 className="px-3 py-1 text-sm hover:bg-accent/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 onClick={() => handleChangeChapter(Math.max(1, (chapterSelect || 1) - 1))}
@@ -205,8 +303,9 @@ export function Reader() {
               >
                 →
               </button>
-            </div>
-          )}
+              </div>
+            )}
+          </div>
         </div>
         
         {/* Progress indicator - thin line */}
@@ -214,6 +313,11 @@ export function Reader() {
           <div className="h-0.5 bg-muted relative">
             <div className="h-full bg-primary/60 transition-all duration-300" style={{ width: `${percent}%` }} />
           </div>
+        )}
+
+        {/* Reading Controls */}
+        {currentBook && currentChapter && (
+          <ReadingControls preferences={readingPrefs} onChange={setReadingPrefs} />
         )}
         
         {/* Main reading content */}
@@ -223,23 +327,115 @@ export function Reader() {
           </div>
         ) : (
           <div ref={scrollRef} className="flex-1 overflow-y-auto px-8 py-6">
-            <div className="max-w-3xl mx-auto">
-              {verses.map(v => (
-                <div key={v.id} className="flex items-start gap-3 mb-4">
-                  <span className="text-xs text-muted-foreground/60 w-6 text-right select-none mt-1 flex-shrink-0">
-                    {v.number}
-                  </span>
-                  <p className="text-base leading-relaxed">{v.text}</p>
-                </div>
-              ))}
+            <div 
+              className="mx-auto"
+              style={{ 
+                maxWidth: `${readingPrefs.maxWidth}px`,
+                fontFamily: readingPrefs.fontFamily,
+                fontSize: `${readingPrefs.fontSize}px`,
+                lineHeight: readingPrefs.lineHeight,
+                textAlign: readingPrefs.textAlign,
+              }}
+            >
+              {verses.map((v) => {
+                const highlight = highlights.find(h => 
+                  h.chapter_number === currentChapter?.number && 
+                  h.verse_number === v.number
+                )
+                return (
+                  <VerseItem
+                    key={v.id}
+                    verse={v}
+                    highlight={highlight}
+                    isSelected={selectedVerses.has(v.id)}
+                    showNumber={readingPrefs.verseNumbers}
+                    spacing={readingPrefs.verseSpacing}
+                    onInView={(inView) => {
+                      if (inView) {
+                        setCurrentVerseNumber(v.number)
+                      }
+                    }}
+                    onContextMenu={(e) => handleVerseContextMenu(e, v.id, v.number)}
+                  />
+                )
+              })}
               {verses.length === 0 && (
                 <div className="text-sm text-muted-foreground">Loading verses...</div>
               )}
             </div>
           </div>
         )}
+        
+        {/* Context Menu */}
+        {contextMenu && (
+          <VerseContextMenu
+            x={contextMenu.x}
+            y={contextMenu.y}
+            onClose={() => setContextMenu(null)}
+            onCopy={handleCopyVerse}
+            onHighlight={handleHighlight}
+            onBookmark={handleBookmark}
+            onNote={handleNote}
+            onClearHighlight={handleClearHighlight}
+            onCompare={handleCompare}
+            hasHighlight={highlights.some(h => 
+              h.chapter_number === currentChapter?.number && 
+              h.verse_number === contextMenu.verseNumber
+            )}
+          />
+        )}
+
+        {/* Verse Comparison Modal */}
+        {comparisonVerse && (
+          <VerseComparison
+            bookId={comparisonVerse.bookId}
+            chapterNumber={comparisonVerse.chapter}
+            verseNumber={comparisonVerse.verse}
+            onClose={() => setComparisonVerse(null)}
+          />
+        )}
       </div>
     </div>
   )
 }
 
+// Individual verse component with intersection observer
+interface VerseItemProps {
+  verse: { id: string; number: number; text: string }
+  highlight?: { color: string }
+  isSelected: boolean
+  showNumber: boolean
+  spacing: number
+  onInView: (inView: boolean) => void
+  onContextMenu: (e: React.MouseEvent) => void
+}
+
+function VerseItem({ verse, highlight, isSelected, showNumber, spacing, onInView, onContextMenu }: VerseItemProps) {
+  const { ref, inView } = useInView({
+    threshold: 0.5,
+    trackVisibility: true,
+    delay: 100,
+  })
+
+  useEffect(() => {
+    onInView(inView)
+  }, [inView, onInView])
+
+  return (
+    <div
+      ref={ref}
+      className={`flex items-start gap-3 px-2 py-1 -mx-2 rounded transition-colors ${
+        highlight ? highlight.color : ''
+      } ${isSelected ? 'ring-1 ring-primary' : ''} cursor-pointer hover:bg-accent/30`}
+      style={{ marginBottom: `${spacing * 4}px` }}
+      onContextMenu={onContextMenu}
+    >
+      {showNumber && (
+        <span className="text-xs text-muted-foreground/60 w-6 text-right select-none mt-1 flex-shrink-0">
+          {verse.number}
+        </span>
+      )}
+      <p className={showNumber ? '' : 'flex-1'}>{verse.text}</p>
+    </div>
+  )
+}

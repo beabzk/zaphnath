@@ -4,13 +4,15 @@ import {
   ReadingState, 
   ReadingLocation, 
   ReadingHistory, 
-  Bookmark 
+  Bookmark,
+  Highlight
 } from '@/types/store'
 
 const initialState = {
   currentLocation: null,
   history: [],
   bookmarks: [],
+  highlights: [],
   
   // Reading preferences (synced with settings)
   readingMode: 'verse' as const,
@@ -109,6 +111,57 @@ export const useReadingStore = create<ReadingState>()(
           }
         },
 
+        // Highlight Actions
+        addHighlight: (highlight: Omit<Highlight, 'id' | 'created_at'>) => {
+          const newHighlight: Highlight = {
+            ...highlight,
+            id: `highlight-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            created_at: new Date().toISOString()
+          }
+          
+          set((state) => ({
+            highlights: [...state.highlights, newHighlight]
+          }), false, 'addHighlight')
+        },
+
+        removeHighlight: (highlightId: string) => {
+          set((state) => ({
+            highlights: state.highlights.filter(h => h.id !== highlightId)
+          }), false, 'removeHighlight')
+        },
+
+        updateHighlight: (highlightId: string, updates: Partial<Highlight>) => {
+          set((state) => ({
+            highlights: state.highlights.map(h => 
+              h.id === highlightId ? { ...h, ...updates } : h
+            )
+          }), false, 'updateHighlight')
+        },
+
+        loadHighlights: async () => {
+          try {
+            // @ts-ignore - APIs will be available at runtime
+            const highlights = await window.reading?.getHighlights?.()
+            set({ highlights: highlights || [] }, false, 'loadHighlights')
+          } catch (error) {
+            console.error('Failed to load highlights:', error)
+          }
+        },
+
+        getVerseHighlight: (verseId: string): Highlight | undefined => {
+          const state = get()
+          return state.highlights.find(h => {
+            // Parse verse ID format: repository_id-book_id-chapter-verse
+            const parts = verseId.split('-')
+            if (parts.length < 4) return false
+            
+            const verseNum = parseInt(parts[parts.length - 1])
+            const chapterNum = parseInt(parts[parts.length - 2])
+            
+            return h.verse_number === verseNum && h.chapter_number === chapterNum
+          })
+        },
+
         // Reading Preference Actions
         setReadingMode: (mode: 'verse' | 'paragraph' | 'chapter') => {
           set({ readingMode: mode }, false, 'setReadingMode')
@@ -171,6 +224,7 @@ export const useReadingStore = create<ReadingState>()(
           currentLocation: state.currentLocation,
           history: state.history.slice(-50), // Keep only last 50 history entries
           bookmarks: state.bookmarks,
+          highlights: state.highlights,
           readingMode: state.readingMode,
           autoScroll: state.autoScroll,
           scrollSpeed: state.scrollSpeed,

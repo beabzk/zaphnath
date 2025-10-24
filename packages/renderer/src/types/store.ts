@@ -69,6 +69,16 @@ export interface Bookmark {
   tags?: string[];
 }
 
+export interface Highlight {
+  id: string;
+  repository_id: string;
+  book_id: string;
+  chapter_number: number;
+  verse_number: number;
+  color: string; // CSS class for highlight color
+  created_at: string;
+}
+
 export interface ReadingHistory {
   id: string;
   repository_id: string;
@@ -252,6 +262,9 @@ export interface ReadingState {
   // Bookmarks
   bookmarks: Bookmark[];
 
+  // Highlights
+  highlights: Highlight[];
+
   // Reading Preferences (from settings but cached here)
   readingMode: "verse" | "paragraph" | "chapter";
   autoScroll: boolean;
@@ -268,6 +281,12 @@ export interface ReadingState {
   removeBookmark: (bookmarkId: string) => void;
   updateBookmark: (bookmarkId: string, updates: Partial<Bookmark>) => void;
   loadBookmarks: () => Promise<void>;
+
+  addHighlight: (highlight: Omit<Highlight, "id" | "created_at">) => void;
+  removeHighlight: (highlightId: string) => void;
+  updateHighlight: (highlightId: string, updates: Partial<Highlight>) => void;
+  loadHighlights: () => Promise<void>;
+  getVerseHighlight: (verseId: string) => Highlight | undefined;
 
   setReadingMode: (mode: "verse" | "paragraph" | "chapter") => void;
   setAutoScroll: (enabled: boolean) => void;
