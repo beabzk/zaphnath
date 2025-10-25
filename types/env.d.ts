@@ -34,6 +34,9 @@ declare namespace Zaphnath {
     chapter: number;
     verse: number;
     text: string;
+    book_name?: string;
+    book_abbreviation?: string;
+    testament?: "OT" | "NT";
   }
 
   interface BibleBook {
@@ -66,6 +69,7 @@ declare namespace Zaphnath {
     execute: (sql: string, params?: any[]) => Promise<void>;
     getBooks: () => Promise<BibleBook[]>;
     getVerses: (bookId: number, chapter: number) => Promise<BibleVerse[]>;
+    searchVerses: (query: string, repositoryId?: string) => Promise<BibleVerse[]>;
     getStats: () => Promise<{
       repositories: number;
       books: number;
@@ -229,4 +233,11 @@ declare namespace Zaphnath {
     };
     extensions?: Record<string, any>;
   }
+}
+
+// Extend Window interface to include Zaphnath APIs
+interface Window {
+  database: Zaphnath.DatabaseAPI;
+  repository: Zaphnath.RepositoryAPI;
+  filesystem: Zaphnath.FileSystemAPI;
 }

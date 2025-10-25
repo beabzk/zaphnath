@@ -117,8 +117,11 @@ export class IpcHandlers implements AppModule {
       "database:searchVerses",
       async (event, query: string, repositoryId?: string) => {
         try {
+          console.log(`[IPC] searchVerses called with query: "${query}", repositoryId: ${repositoryId}`);
           // TODO: Add origin validation for security
-          return this.databaseService.searchVerses(query, repositoryId);
+          const results = this.databaseService.searchVerses(query, repositoryId);
+          console.log(`[IPC] searchVerses returned ${results.length} results`);
+          return results;
         } catch (error) {
           console.error("Search verses error:", error);
           throw error;

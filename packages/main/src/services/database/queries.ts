@@ -244,9 +244,41 @@ export class DatabaseQueries {
     query: string,
     repositoryId?: string
   ): Zaphnath.BibleVerse[] {
+    console.log(`[DB] searchVerses called with query: "${query}", repositoryId: ${repositoryId}`);
+    
+    // If query is empty, return all verses for search indexing
+    if (!query || query.trim() === '') {
+      console.log('[DB] Empty query, loading all verses for indexing');
+      let sql = `
+        SELECT v.id, v.book_id, v.chapter, v.verse, v.text,
+               b.name as book_name, b.abbreviation as book_abbreviation,
+               b.testament, v.repository_id
+        FROM verses v
+        JOIN books b ON v.book_id = b.id
+      `;
+      let params: any[] = [];
+
+      if (repositoryId) {
+        sql += " WHERE v.repository_id = ?";
+        params.push(repositoryId);
+      }
+
+      sql += " ORDER BY b.book_order, v.chapter, v.verse";
+
+      console.log('[DB] Executing SQL:', sql);
+      console.log('[DB] With params:', params);
+      
+      const stmt = this.db.prepare(sql);
+      const results = stmt.all(...params) as Zaphnath.BibleVerse[];
+      console.log(`[DB] Query returned ${results.length} verses`);
+      return results;
+    }
+
+    // Search query
     let sql = `
       SELECT v.id, v.book_id, v.chapter, v.verse, v.text,
-             b.name as book_name, b.abbreviation as book_abbreviation
+             b.name as book_name, b.abbreviation as book_abbreviation,
+             b.testament, v.repository_id
       FROM verses v
       JOIN books b ON v.book_id = b.id
       WHERE v.text LIKE ?

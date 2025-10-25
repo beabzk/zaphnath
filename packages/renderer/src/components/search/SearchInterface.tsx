@@ -20,15 +20,28 @@ export function SearchInterface() {
   })
   const [showFilters, setShowFilters] = useState(false)
   const [searchHistory, setSearchHistory] = useState<string[]>([])
-  const [fuse, setFuse] = useState<Fuse<any> | null>(null)
+  const [fuse, setFuse] = useState<Fuse<Zaphnath.BibleVerse> | null>(null)
 
   // Initialize Fuse.js index
   useEffect(() => {
     const initializeSearch = async () => {
       try {
+        console.log('[SearchInterface] Initializing search index...')
         setLoading(true)
-        // @ts-ignore - APIs will be available at runtime
-        const allVerses = await window.repository?.searchVerses?.() || []
+        
+        if (!window.database?.searchVerses) {
+          console.error('[SearchInterface] window.database.searchVerses is not available')
+          setLoading(false)
+          return
+        }
+        
+        console.log('[SearchInterface] Calling window.database.searchVerses("")...')
+        const allVerses = await window.database.searchVerses('') || []
+        console.log(`[SearchInterface] Loaded ${allVerses.length} verses for indexing`)
+        
+        if (allVerses.length > 0) {
+          console.log('[SearchInterface] Sample verse:', allVerses[0])
+        }
         
         const fuseInstance = new Fuse(allVerses, {
           keys: ['text', 'book_name'],
@@ -37,10 +50,11 @@ export function SearchInterface() {
           includeMatches: true,
         })
         
+        console.log('[SearchInterface] Fuse.js index created successfully')
         setFuse(fuseInstance)
         setLoading(false)
       } catch (error) {
-        console.error('Failed to initialize search:', error)
+        console.error('[SearchInterface] Failed to initialize search:', error)
         setLoading(false)
       }
     }
@@ -50,15 +64,26 @@ export function SearchInterface() {
 
   // Perform search
   const performSearch = useCallback((searchQuery: string) => {
-    if (!fuse || !searchQuery.trim()) {
+    console.log(`[SearchInterface] performSearch called with query: "${searchQuery}"`)
+    
+    if (!fuse) {
+      console.error('[SearchInterface] Fuse instance is null, cannot search')
+      setResults([])
+      return
+    }
+    
+    if (!searchQuery.trim()) {
+      console.log('[SearchInterface] Empty query, clearing results')
       setResults([])
       return
     }
 
+    console.log('[SearchInterface] Starting Fuse.js search...')
     setLoading(true)
     
     // Search with Fuse.js
     let fuseResults = fuse.search(searchQuery)
+    console.log(`[SearchInterface] Fuse.js found ${fuseResults.length} results`)
     
     // Apply filters
     if (filters.repositories.length > 0) {
@@ -68,25 +93,27 @@ export function SearchInterface() {
     }
     
     if (filters.testament !== 'all') {
+      const testamentMap = { old: 'OT', new: 'NT' } as const
+      const targetTestament = testamentMap[filters.testament as 'old' | 'new']
       fuseResults = fuseResults.filter(r => 
-        r.item.testament === filters.testament
+        r.item.testament === targetTestament
       )
     }
     
     if (filters.books.length > 0) {
       fuseResults = fuseResults.filter(r => 
-        filters.books.includes(r.item.book_id)
+        filters.books.includes(r.item.book_id.toString())
       )
     }
     
     // Convert to SearchResult format
     const searchResults = fuseResults.map(r => ({
-      id: r.item.id,
+      id: r.item.id.toString(),
       repository_id: r.item.repository_id,
-      book_id: r.item.book_id,
-      book_name: r.item.book_name,
-      chapter_number: r.item.chapter_number,
-      verse_number: r.item.verse_number,
+      book_id: r.item.book_id.toString(),
+      book_name: r.item.book_name || 'Unknown',
+      chapter_number: r.item.chapter,
+      verse_number: r.item.verse,
       verse_text: r.item.text,
       highlight_start: r.matches?.[0]?.indices?.[0]?.[0],
       highlight_end: r.matches?.[0]?.indices?.[0]?.[1],
