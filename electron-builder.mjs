@@ -29,7 +29,7 @@ export default /** @type import('electron-builder').Configuration */
     },
     win: {
       target: ['nsis', 'portable'],
-      icon: 'buildResources/icon.ico',
+      icon: 'buildResources/icon.png',
       verifyUpdateCodeSignature: false,
     },
     nsis: {

@@ -42,7 +42,7 @@
     "typescript": "^5.9.3",
     "vite": "^7.1.11"
   },
-  "main": "./dist/index.html",
+  "main": "dist/index.html",
   "exports": {
     ".": {
       "default": "./dist/index.html"
