@@ -62,14 +62,15 @@ export default /** @type import('electron-builder').Configuration */
     artifactName: '${productName}-${version}-${os}-${arch}.${ext}',
     files: [
       'LICENSE*',
-      pkg.main,
+      'packages/entry-point.mjs',
+      // Include all node_modules except @app workspace packages
+      'node_modules/**/*',
       '!node_modules/@app/**',
       // Include ZBRS documentation and schemas
       'docs/schemas/**',
       'docs/standards/**',
       // Exclude development files
       '!**/*.{ts,tsx,map}',
-      '!**/src/**',
       '!**/tests/**',
       '!**/test/**',
       '!**/*.test.*',
@@ -78,7 +79,6 @@ export default /** @type import('electron-builder').Configuration */
       '!**/tsconfig.*',
       '!**/eslint.*',
       '!**/.env*',
-      '!**/README.md',
       ...await getListOfFilesFromEachWorkspace(),
     ],
   });
