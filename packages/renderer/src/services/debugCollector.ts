@@ -31,11 +31,11 @@ class DebugCollectorService implements DebugCollector {
       if (mainProcessInfo) {
         Object.assign(systemInfo, mainProcessInfo);
       }
-    } catch (error) {
+    } catch (_error) {
       logger.warn(
         "Failed to get system info from main process",
         {
-          error: error instanceof Error ? error.message : String(error),
+          error: _error instanceof Error ? _error.message : String(_error),
         },
         "debug"
       );
@@ -95,11 +95,11 @@ class DebugCollectorService implements DebugCollector {
       if (settingsData) {
         settings = JSON.parse(settingsData);
       }
-    } catch (error) {
+    } catch (_error) {
       logger.warn(
         "Failed to parse settings for debug collection",
         {
-          error: error instanceof Error ? error.message : String(error),
+          error: _error instanceof Error ? _error.message : String(_error),
         },
         "debug"
       );

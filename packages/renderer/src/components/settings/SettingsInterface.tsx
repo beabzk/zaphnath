@@ -6,10 +6,10 @@ import { ReadingSettings } from './ReadingSettings'
 import { AudioSettings } from './AudioSettings'
 import { AdvancedSettings } from './AdvancedSettings'
 import { settingsCategories, SettingsCategory } from '@/types/settings'
-import { 
-  Palette, 
-  BookOpen, 
-  Volume2, 
+import {
+  Palette,
+  BookOpen,
+  Volume2,
   Settings as SettingsIcon,
   Save,
   RotateCcw,
@@ -29,11 +29,11 @@ const iconMap = {
 export function SettingsInterface() {
   const [activeCategory, setActiveCategory] = useState<SettingsCategory>('appearance')
   const [showImportExport, setShowImportExport] = useState(false)
-  const { 
-    settings, 
-    resetSettings, 
-    resetCategory, 
-    exportSettings, 
+  const {
+    settings,
+    resetSettings,
+    resetCategory,
+    exportSettings,
     importSettings,
     hasUnsavedChanges,
     saveSettings,
@@ -65,10 +65,10 @@ export function SettingsInterface() {
       } else {
         alert('Failed to import settings. Please check the file format.')
       }
-    } catch (error) {
+    } catch (_error) {
       alert('Failed to read settings file.')
     }
-    
+
     // Reset the input
     event.target.value = ''
   }
@@ -123,7 +123,7 @@ export function SettingsInterface() {
                 Configure your Bible reading experience and application preferences
               </p>
             </div>
-            
+
             <div className="flex items-center gap-2">
               <button
                 className="px-3 py-1 text-sm border border-border hover:bg-accent transition-colors inline-flex items-center gap-2"
@@ -132,7 +132,7 @@ export function SettingsInterface() {
                 <Download className="h-4 w-4" />
                 Import/Export
               </button>
-              
+
               {hasUnsavedChanges && (
                 <button onClick={saveSettings} className="px-3 py-1 text-sm bg-primary text-primary-foreground hover:bg-primary/90 transition-colors inline-flex items-center gap-2">
                   <Save className="h-4 w-4" />
@@ -142,7 +142,7 @@ export function SettingsInterface() {
             </div>
           </div>
         </div>
-        
+
         {showImportExport && (
           <div className="px-6 pb-4">
             <div className="flex items-center gap-2 p-3 bg-muted/30 border border-border">
@@ -150,7 +150,7 @@ export function SettingsInterface() {
                 <Download className="h-4 w-4" />
                 Export Settings
               </button>
-              
+
               <div className="relative">
                 <input
                   type="file"
@@ -163,11 +163,11 @@ export function SettingsInterface() {
                   Import Settings
                 </button>
               </div>
-              
+
               <div className="h-6 w-px bg-border" />
-              
-              <button 
-                onClick={resetSettings} 
+
+              <button
+                onClick={resetSettings}
                 className="px-3 py-1 text-sm border border-border hover:bg-destructive/10 text-destructive transition-colors inline-flex items-center gap-2"
               >
                 <RotateCcw className="h-4 w-4" />
@@ -193,9 +193,8 @@ export function SettingsInterface() {
               return (
                 <button
                   key={category.id}
-                  className={`w-full text-left px-4 py-2 inline-flex items-center gap-3 text-sm transition-colors ${
-                    isActive ? 'bg-accent text-accent-foreground' : 'hover:bg-accent/50'
-                  }`}
+                  className={`w-full text-left px-4 py-2 inline-flex items-center gap-3 text-sm transition-colors ${isActive ? 'bg-accent text-accent-foreground' : 'hover:bg-accent/50'
+                    }`}
                   onClick={() => setActiveCategory(category.id)}
                 >
                   <Icon className="h-4 w-4" />
@@ -227,7 +226,7 @@ export function SettingsInterface() {
                   {settingsCategories.find(c => c.id === activeCategory)?.description}
                 </p>
               </div>
-              
+
               <button
                 onClick={() => resetCategory(activeCategory)}
                 className="px-3 py-1 text-sm border border-border hover:bg-destructive/10 text-destructive transition-colors inline-flex items-center gap-2"
@@ -255,7 +254,7 @@ export function SettingsInterface() {
               Last Modified: {new Date(settings.lastModified).toLocaleString()}
             </div>
           </div>
-          
+
           {hasUnsavedChanges && (
             <div className="flex items-center gap-1 text-amber-600">
               <AlertCircle className="h-4 w-4" />

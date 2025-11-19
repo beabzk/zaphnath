@@ -173,7 +173,7 @@ export class RepositoryImporter {
     manifest: ZBRSTranslationManifest,
     options: ImportOptions,
     parentId: string | null,
-    directoryName: string | null
+    _directoryName: string | null
   ): Promise<[ValidationResult, RepositoryDbRecord | null]> {
     const validation = await this.validateRepositoryChecksums(
       manifest,
@@ -206,7 +206,7 @@ export class RepositoryImporter {
     manifest: ZBRSTranslationManifest,
     options: ImportOptions,
     parentId: string | null = null,
-    directoryName: string | null = null
+    _directoryName: string | null = null
   ): Promise<ImportResult> {
     const startTime = Date.now();
     const result: ImportResult = {
@@ -223,7 +223,7 @@ export class RepositoryImporter {
         manifest,
         options,
         parentId,
-        directoryName
+        _directoryName
       );
 
       result.warnings.push(...validation.warnings);
@@ -503,8 +503,7 @@ export class RepositoryImporter {
             result.errors.push(
               createValidationError(
                 "translation-import-failed",
-                `Failed to import translation ${
-                  translation.name
+                `Failed to import translation ${translation.name
                 }: ${toErrorMessage(error)}`
               )
             );

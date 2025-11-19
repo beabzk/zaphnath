@@ -2,12 +2,10 @@
 // import addFormats from "ajv-formats";
 import { createHash } from "crypto";
 import { readFileSync } from "fs";
-import { join } from "path";
+
 import type {
-  ZBRSManifest,
   ZBRSParentManifest,
   ZBRSTranslationManifest,
-  ZBRSBook,
   ValidationResult,
   ValidationError,
   ValidationWarning,
@@ -155,7 +153,6 @@ export class ZBRSValidator {
 
   public validateManifest(manifest: any): ValidationResult {
     const errors: ValidationError[] = [];
-    const warnings: ValidationWarning[] = [];
 
     try {
       // Determine manifest type and route to appropriate validator
@@ -184,7 +181,7 @@ export class ZBRSValidator {
     return {
       valid: errors.length === 0,
       errors,
-      warnings,
+      warnings: [],
     };
   }
 
@@ -447,9 +444,8 @@ export class ZBRSValidator {
           if (verse.number !== j + 1) {
             errors.push({
               code: "INCORRECT_VERSE_NUMBER",
-              message: `Chapter ${chapter.number}, verse ${
-                j + 1
-              } has incorrect number ${verse.number}`,
+              message: `Chapter ${chapter.number}, verse ${j + 1
+                } has incorrect number ${verse.number}`,
               path: `/chapters/${i}/verses/${j}/number`,
               severity: "error",
               name: "ValidationError",

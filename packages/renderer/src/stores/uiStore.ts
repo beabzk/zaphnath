@@ -1,31 +1,31 @@
 import { create } from 'zustand'
 import { devtools, persist } from 'zustand/middleware'
-import { 
-  UIState, 
-  LoadingState, 
-  ErrorState, 
-  NotificationState, 
-  SearchResult 
+import {
+  UIState,
+  LoadingState,
+  ErrorState,
+  NotificationState,
+  SearchResult
 } from '@/types/store'
 
 const initialState = {
   currentView: 'reader',
   previousView: null,
   viewHistory: ['reader'],
-  
+
   globalLoading: { isLoading: false },
   componentLoading: {},
-  
+
   globalError: null,
   componentErrors: {},
-  
+
   notifications: [],
-  
+
   modals: {},
-  
+
   sidebarOpen: true,
   sidebarWidth: 280,
-  
+
   searchQuery: '',
   searchResults: [],
   searchLoading: false,
@@ -40,10 +40,10 @@ export const useUIStore = create<UIState>()(
         // View Navigation Actions
         setCurrentView: (view: string) => {
           set((state) => {
-            const newHistory = state.currentView !== view 
+            const newHistory = state.currentView !== view
               ? [...state.viewHistory, view]
               : state.viewHistory
-            
+
             return {
               previousView: state.currentView,
               currentView: view,
@@ -55,10 +55,10 @@ export const useUIStore = create<UIState>()(
         goBack: () => {
           set((state) => {
             if (state.viewHistory.length <= 1) return state
-            
+
             const newHistory = state.viewHistory.slice(0, -1)
             const previousView = newHistory[newHistory.length - 1]
-            
+
             return {
               currentView: previousView,
               previousView: state.currentView,
@@ -90,7 +90,7 @@ export const useUIStore = create<UIState>()(
 
         clearComponentLoading: (component: string) => {
           set((state) => {
-            const { [component]: removed, ...rest } = state.componentLoading
+            const { [component]: _removed, ...rest } = state.componentLoading
             return { componentLoading: rest }
           }, false, 'clearComponentLoading')
         },
@@ -111,7 +111,7 @@ export const useUIStore = create<UIState>()(
 
         clearComponentError: (component: string) => {
           set((state) => {
-            const { [component]: removed, ...rest } = state.componentErrors
+            const { [component]: _removed, ...rest } = state.componentErrors
             return { componentErrors: rest }
           }, false, 'clearComponentError')
         },
@@ -127,17 +127,17 @@ export const useUIStore = create<UIState>()(
         addNotification: (notification: Omit<NotificationState, 'id' | 'timestamp'>) => {
           const id = `notification-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
           const timestamp = new Date().toISOString()
-          
+
           const newNotification: NotificationState = {
             ...notification,
             id,
             timestamp
           }
-          
+
           set((state) => ({
             notifications: [...state.notifications, newNotification]
           }), false, 'addNotification')
-          
+
           // Auto-remove notification after duration
           if (notification.duration && notification.duration > 0) {
             setTimeout(() => {

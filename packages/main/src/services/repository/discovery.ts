@@ -1,7 +1,7 @@
 import { net } from "electron";
 import { createHash } from "crypto";
 import { readFile, access, readdir, stat } from "fs/promises";
-import { join, resolve } from "path";
+import { join } from "path";
 import { fileURLToPath } from "url";
 import type {
   RepositoryIndex,
@@ -454,10 +454,10 @@ export class RepositoryDiscoveryService {
     const errors: string[] = [];
     let parentRepository:
       | {
-          path: string;
-          manifest: ZBRSParentManifest;
-          validation: ValidationResult;
-        }
+        path: string;
+        manifest: ZBRSParentManifest;
+        validation: ValidationResult;
+      }
       | undefined;
 
     try {

@@ -57,7 +57,7 @@ export class IpcHandlers implements AppModule {
     // Raw database query handler (for advanced usage)
     ipcMain.handle(
       "database:query",
-      async (event, sql: string, params?: any[]) => {
+      async (_event, sql: string, params?: any[]) => {
         try {
           // TODO: Add origin validation for security
           const queries = this.databaseService.getQueries();
@@ -72,7 +72,7 @@ export class IpcHandlers implements AppModule {
     // Raw database execute handler (for advanced usage)
     ipcMain.handle(
       "database:execute",
-      async (event, sql: string, params?: any[]) => {
+      async (_event, sql: string, params?: any[]) => {
         try {
           // TODO: Add origin validation for security
           const queries = this.databaseService.getQueries();
@@ -87,7 +87,7 @@ export class IpcHandlers implements AppModule {
     // Get all books
     ipcMain.handle(
       "database:getBooks",
-      async (event, repositoryId?: string) => {
+      async (_event, repositoryId?: string) => {
         try {
           // TODO: Add origin validation for security
           return this.databaseService.getBooks(repositoryId);
@@ -101,7 +101,7 @@ export class IpcHandlers implements AppModule {
     // Get verses for a specific book and chapter
     ipcMain.handle(
       "database:getVerses",
-      async (event, bookId: number, chapter: number) => {
+      async (_event, bookId: number, chapter: number) => {
         try {
           // TODO: Add origin validation for security
           return this.databaseService.getVerses(bookId, chapter);
@@ -115,7 +115,7 @@ export class IpcHandlers implements AppModule {
     // Search verses
     ipcMain.handle(
       "database:searchVerses",
-      async (event, query: string, repositoryId?: string) => {
+      async (_event, query: string, repositoryId?: string) => {
         try {
           console.log(`[IPC] searchVerses called with query: "${query}", repositoryId: ${repositoryId}`);
           // TODO: Add origin validation for security
@@ -130,7 +130,7 @@ export class IpcHandlers implements AppModule {
     );
 
     // Get user setting
-    ipcMain.handle("database:getSetting", async (event, key: string) => {
+    ipcMain.handle("database:getSetting", async (_event, key: string) => {
       try {
         // TODO: Add origin validation for security
         return this.databaseService.getSetting(key);
@@ -143,7 +143,7 @@ export class IpcHandlers implements AppModule {
     // Set user setting
     ipcMain.handle(
       "database:setSetting",
-      async (event, key: string, value: string) => {
+      async (_event, key: string, value: string) => {
         try {
           // TODO: Add origin validation for security
           this.databaseService.setSetting(key, value);
@@ -156,7 +156,7 @@ export class IpcHandlers implements AppModule {
     );
 
     // Get database statistics
-    ipcMain.handle("database:getStats", async (event) => {
+    ipcMain.handle("database:getStats", async (_event) => {
       try {
         // TODO: Add origin validation for security
         return this.databaseService.getStats();
@@ -169,7 +169,7 @@ export class IpcHandlers implements AppModule {
     // Get chapter data (verses for a specific book and chapter)
     ipcMain.handle(
       "database:getChapter",
-      async (event, bookId: string, chapterNumber: number) => {
+      async (_event, bookId: string, chapterNumber: number) => {
         try {
           // TODO: Add origin validation for security
           const verses = this.databaseService.getVerses(
@@ -190,7 +190,7 @@ export class IpcHandlers implements AppModule {
 
   private registerRepositoryHandlers(): void {
     // List all repositories from database
-    ipcMain.handle("repository:list", async (event) => {
+    ipcMain.handle("repository:list", async (_event) => {
       try {
         // TODO: Add origin validation for security
         return this.databaseService.getRepositories();
@@ -201,7 +201,7 @@ export class IpcHandlers implements AppModule {
     });
 
     // Discover available repositories
-    ipcMain.handle("repository:discover", async (event) => {
+    ipcMain.handle("repository:discover", async (_event) => {
       try {
         // TODO: Add origin validation for security
         return await this.repositoryService.discoverRepositories();
@@ -214,7 +214,7 @@ export class IpcHandlers implements AppModule {
     // Import repository
     ipcMain.handle(
       "repository:import",
-      async (event, repositoryUrl: string, options?: any) => {
+      async (_event, repositoryUrl: string, options?: any) => {
         try {
           // TODO: Add origin validation for security
           const importOptions = {
@@ -233,7 +233,7 @@ export class IpcHandlers implements AppModule {
     );
 
     // Validate repository URL
-    ipcMain.handle("repository:validate", async (event, url: string) => {
+    ipcMain.handle("repository:validate", async (_event, url: string) => {
       try {
         // TODO: Add origin validation for security
         return await this.repositoryService.validateRepositoryUrl(url);
@@ -244,7 +244,7 @@ export class IpcHandlers implements AppModule {
     });
 
     // Get repository manifest
-    ipcMain.handle("repository:getManifest", async (event, url: string) => {
+    ipcMain.handle("repository:getManifest", async (_event, url: string) => {
       try {
         // TODO: Add origin validation for security
         return await this.repositoryService.getRepositoryManifest(url);
@@ -255,7 +255,7 @@ export class IpcHandlers implements AppModule {
     });
 
     // Get repository sources
-    ipcMain.handle("repository:getSources", async (event) => {
+    ipcMain.handle("repository:getSources", async (_event) => {
       try {
         // TODO: Add origin validation for security
         return this.repositoryService.getRepositorySources();
@@ -266,7 +266,7 @@ export class IpcHandlers implements AppModule {
     });
 
     // Add repository source
-    ipcMain.handle("repository:addSource", async (event, source: any) => {
+    ipcMain.handle("repository:addSource", async (_event, source: any) => {
       try {
         // TODO: Add origin validation for security
         this.repositoryService.addRepositorySource(source);
@@ -280,7 +280,7 @@ export class IpcHandlers implements AppModule {
     // Scan directory for repositories
     ipcMain.handle(
       "repository:scanDirectory",
-      async (event, directoryPath: string) => {
+      async (_event, directoryPath: string) => {
         try {
           // TODO: Add origin validation for security
           return await this.repositoryService.scanDirectoryForRepositories(
@@ -294,7 +294,7 @@ export class IpcHandlers implements AppModule {
     );
 
     // Get parent repositories
-    ipcMain.handle("repository:getParentRepositories", async (event) => {
+    ipcMain.handle("repository:getParentRepositories", async (_event) => {
       try {
         // TODO: Add origin validation for security
         return this.databaseService.getQueries().getParentRepositories();
@@ -307,7 +307,7 @@ export class IpcHandlers implements AppModule {
     // Get translations for a parent repository
     ipcMain.handle(
       "repository:getTranslations",
-      async (event, parentId: string) => {
+      async (_event, parentId: string) => {
         try {
           // TODO: Add origin validation for security
           return this.databaseService
@@ -323,7 +323,7 @@ export class IpcHandlers implements AppModule {
 
   private registerFileSystemHandlers(): void {
     // Show open dialog for directory selection
-    ipcMain.handle("filesystem:showOpenDialog", async (event, options: any) => {
+    ipcMain.handle("filesystem:showOpenDialog", async (_event, options: any) => {
       try {
         // TODO: Add origin validation for security
         const focusedWindow = BrowserWindow.getFocusedWindow();
