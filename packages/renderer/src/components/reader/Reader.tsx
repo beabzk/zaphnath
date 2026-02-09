@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { useInView } from 'react-intersection-observer'
 import { useRepositoryStore, useReadingStore } from '@/stores'
-import { ChevronRight, Bookmark as BookmarkIcon } from 'lucide-react'
+import { ChevronRight, Bookmark as BookmarkIcon, StickyNote } from 'lucide-react'
 import { VerseContextMenu } from './VerseContextMenu'
 import { ReadingControls, ReadingPreferences, PRESETS } from './ReadingControls'
 import { VerseComparison } from './VerseComparison'
 import { BookmarkDialog } from './BookmarkDialog'
+import { NoteDialog } from './NoteDialog'
 
 
 export function Reader() {
@@ -35,9 +36,17 @@ export function Reader() {
     verseNumber: number
     verseText: string
   } | null>(null)
+  const [noteDialogVerse, setNoteDialogVerse] = useState<{
+    repositoryId: string
+    bookId: string
+    bookName: string
+    chapterNumber: number
+    verseNumber: number
+    verseText: string
+  } | null>(null)
   const scrollRef = useRef<HTMLDivElement | null>(null)
 
-  const { highlights, addHighlight, removeHighlight, bookmarks, removeBookmark } = useReadingStore()
+  const { highlights, addHighlight, removeHighlight, bookmarks, removeBookmark, notes } = useReadingStore()
 
   // Context menu handlers
   const handleVerseContextMenu = useCallback((e: React.MouseEvent, verseId: string, verseNumber: number) => {
@@ -104,9 +113,18 @@ export function Reader() {
   }, [contextMenu, currentRepository, currentBook, currentChapter, bookmarks, removeBookmark, verses])
 
   const handleNote = useCallback(() => {
-    // TODO: Implement note functionality
-    console.log('Add note to verse:', contextMenu?.verseNumber)
-  }, [contextMenu])
+    if (!contextMenu || !currentRepository || !currentBook || !currentChapter) return
+
+    const verse = verses.find(v => v.id === contextMenu.verseId)
+    setNoteDialogVerse({
+      repositoryId: currentRepository.id,
+      bookId: currentBook.id,
+      bookName: currentBook.name,
+      chapterNumber: currentChapter.number,
+      verseNumber: contextMenu.verseNumber,
+      verseText: verse?.text ?? '',
+    })
+  }, [contextMenu, currentRepository, currentBook, currentChapter, verses])
 
   const handleCompare = useCallback(() => {
     if (!contextMenu || !currentBook || !currentChapter) return
@@ -376,6 +394,11 @@ export function Reader() {
                        b.chapter_number === currentChapter?.number &&
                        b.verse_number === v.number
                 )
+                const hasNote = notes.some(
+                  n => n.book_id === currentBook?.id &&
+                       n.chapter_number === currentChapter?.number &&
+                       n.verse_number === v.number
+                )
                 return (
                   <VerseItem
                     key={v.id}
@@ -383,6 +406,7 @@ export function Reader() {
                     highlight={highlight}
                     isSelected={selectedVerses.has(v.id)}
                     isBookmarked={isBookmarked}
+                    hasNote={hasNote}
                     showNumber={readingPrefs.verseNumbers}
                     spacing={readingPrefs.verseSpacing}
                     onInView={(inView) => {
@@ -431,6 +455,12 @@ export function Reader() {
           onClose={() => setBookmarkDialogVerse(null)}
         />
 
+        {/* Note Dialog */}
+        <NoteDialog
+          verse={noteDialogVerse}
+          onClose={() => setNoteDialogVerse(null)}
+        />
+
         {/* Verse Comparison Modal */}
         {comparisonVerse && (
           <VerseComparison
@@ -451,13 +481,14 @@ interface VerseItemProps {
   highlight?: { color: string }
   isSelected: boolean
   isBookmarked: boolean
+  hasNote: boolean
   showNumber: boolean
   spacing: number
   onInView: (inView: boolean) => void
   onContextMenu: (e: React.MouseEvent) => void
 }
 
-function VerseItem({ verse, highlight, isSelected, isBookmarked, showNumber, spacing, onInView, onContextMenu }: VerseItemProps) {
+function VerseItem({ verse, highlight, isSelected, isBookmarked, hasNote, showNumber, spacing, onInView, onContextMenu }: VerseItemProps) {
   const { ref, inView } = useInView({
     threshold: 0.5,
     trackVisibility: true,
@@ -483,6 +514,9 @@ function VerseItem({ verse, highlight, isSelected, isBookmarked, showNumber, spa
         </span>
       )}
       <p className={showNumber ? 'flex-1' : 'flex-1'}>{verse.text}</p>
+      {hasNote && (
+        <StickyNote className="w-3.5 h-3.5 text-amber-500 flex-shrink-0 mt-1" />
+      )}
       {isBookmarked && (
         <BookmarkIcon className="w-3.5 h-3.5 text-primary flex-shrink-0 mt-1 fill-primary" />
       )}

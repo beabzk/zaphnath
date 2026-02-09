@@ -12,6 +12,7 @@ export type {
   Verse,
   ReadingLocation,
   Bookmark,
+  Note,
   ReadingHistory,
   SearchResult,
   ImportProgress,
@@ -96,6 +97,22 @@ export const useBookmarks = () => {
     removeBookmark,
     updateBookmark,
     loadBookmarks,
+  }
+}
+
+export const useNotes = () => {
+  const notes = useReadingStore(state => state.notes)
+  const addNote = useReadingStore(state => state.addNote)
+  const removeNote = useReadingStore(state => state.removeNote)
+  const updateNote = useReadingStore(state => state.updateNote)
+  const loadNotes = useReadingStore(state => state.loadNotes)
+
+  return {
+    notes,
+    addNote,
+    removeNote,
+    updateNote,
+    loadNotes,
   }
 }
 

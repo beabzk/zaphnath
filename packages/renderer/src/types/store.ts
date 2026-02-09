@@ -79,6 +79,19 @@ export interface Highlight {
   created_at: string;
 }
 
+export interface Note {
+  id: string;
+  repository_id: string;
+  book_id: string;
+  chapter_number: number;
+  verse_number: number;
+  title?: string;
+  content: string;
+  tags?: string[];
+  created_at: string;
+  updated_at: string;
+}
+
 export interface ReadingHistory {
   id: string;
   repository_id: string;
@@ -262,6 +275,9 @@ export interface ReadingState {
   // Bookmarks
   bookmarks: Bookmark[];
 
+  // Notes
+  notes: Note[];
+
   // Highlights
   highlights: Highlight[];
 
@@ -281,6 +297,11 @@ export interface ReadingState {
   removeBookmark: (bookmarkId: string) => void;
   updateBookmark: (bookmarkId: string, updates: Partial<Bookmark>) => void;
   loadBookmarks: () => Promise<void>;
+
+  addNote: (note: Omit<Note, "id" | "created_at" | "updated_at">) => void;
+  removeNote: (noteId: string) => void;
+  updateNote: (noteId: string, updates: Partial<Note>) => void;
+  loadNotes: () => Promise<void>;
 
   addHighlight: (highlight: Omit<Highlight, "id" | "created_at">) => void;
   removeHighlight: (highlightId: string) => void;

@@ -5,6 +5,7 @@ import {
   ReadingLocation, 
   ReadingHistory, 
   Bookmark,
+  Note,
   Highlight
 } from '@/types/store'
 
@@ -12,6 +13,7 @@ const initialState = {
   currentLocation: null,
   history: [],
   bookmarks: [],
+  notes: [],
   highlights: [],
   
   // Reading preferences (synced with settings)
@@ -108,6 +110,45 @@ export const useReadingStore = create<ReadingState>()(
             set({ bookmarks: bookmarks || [] }, false, 'loadBookmarks')
           } catch (error) {
             console.error('Failed to load bookmarks:', error)
+          }
+        },
+
+        // Note Actions
+        addNote: (note: Omit<Note, 'id' | 'created_at' | 'updated_at'>) => {
+          const now = new Date().toISOString()
+          const newNote: Note = {
+            ...note,
+            id: `note-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            created_at: now,
+            updated_at: now,
+          }
+
+          set((state) => ({
+            notes: [...state.notes, newNote]
+          }), false, 'addNote')
+        },
+
+        removeNote: (noteId: string) => {
+          set((state) => ({
+            notes: state.notes.filter(n => n.id !== noteId)
+          }), false, 'removeNote')
+        },
+
+        updateNote: (noteId: string, updates: Partial<Note>) => {
+          set((state) => ({
+            notes: state.notes.map(n =>
+              n.id === noteId ? { ...n, ...updates, updated_at: new Date().toISOString() } : n
+            )
+          }), false, 'updateNote')
+        },
+
+        loadNotes: async () => {
+          try {
+            // @ts-ignore - APIs will be available at runtime
+            const notes = await window.reading?.getNotes?.()
+            set({ notes: notes || [] }, false, 'loadNotes')
+          } catch (error) {
+            console.error('Failed to load notes:', error)
           }
         },
 
@@ -224,6 +265,7 @@ export const useReadingStore = create<ReadingState>()(
           currentLocation: state.currentLocation,
           history: state.history.slice(-50), // Keep only last 50 history entries
           bookmarks: state.bookmarks,
+          notes: state.notes,
           highlights: state.highlights,
           readingMode: state.readingMode,
           autoScroll: state.autoScroll,
