@@ -22,6 +22,7 @@ export function Reader() {
   } = useRepositoryStore()
 
   const [chapterSelect, setChapterSelect] = useState<number | null>(null)
+  const [testament, setTestament] = useState<'old' | 'new'>('old')
   const [progress, setProgress] = useState(0)
   const [currentVerseNumber, setCurrentVerseNumber] = useState<number>(1)
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; verseId: string; verseNumber: number } | null>(null)
@@ -166,9 +167,14 @@ export function Reader() {
     return currentBook ? Array.from({ length: currentBook.chapter_count }, (_, i) => i + 1) : []
   }, [currentBook])
 
+  const filteredBooks = useMemo(() => {
+    return books.filter(b => b.testament === testament)
+  }, [books, testament])
+
   const handleSelectBook = (bookId: string) => {
     const book = books.find(b => b.id === bookId)
     if (book) {
+      setTestament(book.testament)
       setCurrentBook(book)
       loadChapter(book.id, 1)
       setChapterSelect(1)
@@ -264,10 +270,28 @@ export function Reader() {
       {/* Books list - minimal sidebar */}
       <div className="w-52 border-r border-border flex flex-col h-full">
         <div className="px-3 py-2 border-b border-border">
-          <h3 className="text-sm font-medium">{currentRepository.name}</h3>
+          <h3 className="text-sm font-medium mb-2">{currentRepository.name}</h3>
+          <div className="flex gap-1">
+            <button
+              className={`flex-1 px-2 py-1 text-xs rounded transition-colors ${
+                testament === 'old' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent/50'
+              }`}
+              onClick={() => setTestament('old')}
+            >
+              Old Testament
+            </button>
+            <button
+              className={`flex-1 px-2 py-1 text-xs rounded transition-colors ${
+                testament === 'new' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent/50'
+              }`}
+              onClick={() => setTestament('new')}
+            >
+              New Testament
+            </button>
+          </div>
         </div>
         <div className="flex-1 overflow-y-auto">
-          {books.map(b => (
+          {filteredBooks.map(b => (
             <button
               key={b.id}
               className={`w-full text-left px-3 py-1.5 hover:bg-accent/50 transition-colors flex items-center gap-2 text-sm ${
