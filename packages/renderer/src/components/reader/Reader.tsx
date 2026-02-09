@@ -361,12 +361,12 @@ export function Reader() {
                 ←
               </button>
               <select
-                className="bg-transparent border-0 px-2 py-1 text-sm focus:outline-none cursor-pointer"
+                className="bg-background text-foreground border border-border rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"
                 value={chapterSelect ?? ''}
                 onChange={(e) => handleChangeChapter(Number(e.target.value))}
               >
                 {chaptersForCurrentBook.map(n => (
-                  <option key={n} value={n}>{n}</option>
+                  <option key={n} value={n} className="bg-background text-foreground">{n}</option>
                 ))}
               </select>
               <button
