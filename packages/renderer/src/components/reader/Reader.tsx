@@ -77,15 +77,17 @@ export function Reader() {
   }, [contextMenu, currentRepository, currentBook, currentChapter, addHighlight])
 
   const handleClearHighlight = useCallback(() => {
-    if (!contextMenu) return
+    if (!contextMenu || !currentRepository || !currentBook) return
     const highlight = highlights.find(h => 
+      h.repository_id === currentRepository.id &&
+      h.book_id === currentBook.id &&
       h.chapter_number === currentChapter?.number && 
       h.verse_number === contextMenu.verseNumber
     )
     if (highlight) {
       removeHighlight(highlight.id)
     }
-  }, [contextMenu, highlights, currentChapter, removeHighlight])
+  }, [contextMenu, highlights, currentRepository, currentBook, currentChapter, removeHighlight])
 
   const handleBookmark = useCallback(() => {
     if (!contextMenu || !currentRepository || !currentBook || !currentChapter) return
@@ -386,6 +388,8 @@ export function Reader() {
             >
             {verses.map((v) => {
                 const highlight = highlights.find(h => 
+                  h.repository_id === currentRepository?.id &&
+                  h.book_id === currentBook?.id &&
                   h.chapter_number === currentChapter?.number && 
                   h.verse_number === v.number
                 )
@@ -438,6 +442,8 @@ export function Reader() {
             onClearHighlight={handleClearHighlight}
             onCompare={handleCompare}
             hasHighlight={highlights.some(h => 
+              h.repository_id === currentRepository?.id &&
+              h.book_id === currentBook?.id &&
               h.chapter_number === currentChapter?.number && 
               h.verse_number === contextMenu.verseNumber
             )}

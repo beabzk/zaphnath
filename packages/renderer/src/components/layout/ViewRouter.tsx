@@ -7,6 +7,7 @@ import { ErrorReportingPanel } from '@/components/debug/ErrorReportingPanel'
 import { SearchInterface } from '@/components/search/SearchInterface'
 import { BookmarksView as BookmarksViewComponent } from '@/components/bookmarks/BookmarksView'
 import { NotesView as NotesViewComponent } from '@/components/notes/NotesView'
+import { HighlightsView as HighlightsViewComponent } from '@/components/highlights/HighlightsView'
 import { ArrowLeft } from 'lucide-react'
 import { Reader } from '@/components/reader/Reader'
 
@@ -29,6 +30,10 @@ function BookmarksView() {
 
 function NotesView() {
   return <NotesViewComponent />
+}
+
+function HighlightsView() {
+  return <HighlightsViewComponent />
 }
 
 function ReadingPlansView() {
@@ -90,6 +95,8 @@ export function ViewRouter() {
         return <BookmarksView />
       case 'notes':
         return <NotesView />
+      case 'highlights':
+        return <HighlightsView />
       case 'reading-plans':
         return <ReadingPlansView />
       case 'downloads':

@@ -10,6 +10,7 @@ import {
   Library,
   Bookmark,
   StickyNote,
+  Highlighter,
   Calendar,
   Search,
   Settings,
@@ -34,6 +35,7 @@ const navigationItems: NavItem[] = [
 const studyItems: NavItem[] = [
   { icon: Bookmark, label: 'Bookmarks', view: 'bookmarks' },
   { icon: StickyNote, label: 'Notes', view: 'notes' },
+  { icon: Highlighter, label: 'Highlights', view: 'highlights' },
   { icon: Calendar, label: 'Reading Plans', view: 'reading-plans' },
 ]
 
