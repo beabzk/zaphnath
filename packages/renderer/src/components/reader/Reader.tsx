@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { useInView } from 'react-intersection-observer'
 import { useRepositoryStore, useReadingStore } from '@/stores'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, Bookmark as BookmarkIcon } from 'lucide-react'
 import { VerseContextMenu } from './VerseContextMenu'
 import { ReadingControls, ReadingPreferences, PRESETS } from './ReadingControls'
 import { VerseComparison } from './VerseComparison'
+import { BookmarkDialog } from './BookmarkDialog'
 
 
 export function Reader() {
@@ -26,9 +27,17 @@ export function Reader() {
   const [selectedVerses] = useState<Set<string>>(new Set())
   const [readingPrefs, setReadingPrefs] = useState<ReadingPreferences>(PRESETS.reading)
   const [comparisonVerse, setComparisonVerse] = useState<{ bookId: string; chapter: number; verse: number } | null>(null)
+  const [bookmarkDialogVerse, setBookmarkDialogVerse] = useState<{
+    repositoryId: string
+    bookId: string
+    bookName: string
+    chapterNumber: number
+    verseNumber: number
+    verseText: string
+  } | null>(null)
   const scrollRef = useRef<HTMLDivElement | null>(null)
 
-  const { highlights, addHighlight, removeHighlight } = useReadingStore()
+  const { highlights, addHighlight, removeHighlight, bookmarks, removeBookmark } = useReadingStore()
 
   // Context menu handlers
   const handleVerseContextMenu = useCallback((e: React.MouseEvent, verseId: string, verseNumber: number) => {
@@ -70,9 +79,29 @@ export function Reader() {
   }, [contextMenu, highlights, currentChapter, removeHighlight])
 
   const handleBookmark = useCallback(() => {
-    // TODO: Implement bookmark functionality
-    console.log('Bookmark verse:', contextMenu?.verseNumber)
-  }, [contextMenu])
+    if (!contextMenu || !currentRepository || !currentBook || !currentChapter) return
+
+    const existingBookmark = bookmarks.find(
+      b => b.repository_id === currentRepository.id &&
+           b.book_id === currentBook.id &&
+           b.chapter_number === currentChapter.number &&
+           b.verse_number === contextMenu.verseNumber
+    )
+
+    if (existingBookmark) {
+      removeBookmark(existingBookmark.id)
+    } else {
+      const verse = verses.find(v => v.id === contextMenu.verseId)
+      setBookmarkDialogVerse({
+        repositoryId: currentRepository.id,
+        bookId: currentBook.id,
+        bookName: currentBook.name,
+        chapterNumber: currentChapter.number,
+        verseNumber: contextMenu.verseNumber,
+        verseText: verse?.text ?? '',
+      })
+    }
+  }, [contextMenu, currentRepository, currentBook, currentChapter, bookmarks, removeBookmark, verses])
 
   const handleNote = useCallback(() => {
     // TODO: Implement note functionality
@@ -337,10 +366,15 @@ export function Reader() {
                 textAlign: readingPrefs.textAlign,
               }}
             >
-              {verses.map((v) => {
+            {verses.map((v) => {
                 const highlight = highlights.find(h => 
                   h.chapter_number === currentChapter?.number && 
                   h.verse_number === v.number
+                )
+                const isBookmarked = bookmarks.some(
+                  b => b.book_id === currentBook?.id &&
+                       b.chapter_number === currentChapter?.number &&
+                       b.verse_number === v.number
                 )
                 return (
                   <VerseItem
@@ -348,6 +382,7 @@ export function Reader() {
                     verse={v}
                     highlight={highlight}
                     isSelected={selectedVerses.has(v.id)}
+                    isBookmarked={isBookmarked}
                     showNumber={readingPrefs.verseNumbers}
                     spacing={readingPrefs.verseSpacing}
                     onInView={(inView) => {
@@ -382,8 +417,19 @@ export function Reader() {
               h.chapter_number === currentChapter?.number && 
               h.verse_number === contextMenu.verseNumber
             )}
+            hasBookmark={bookmarks.some(
+              b => b.book_id === currentBook?.id &&
+                   b.chapter_number === currentChapter?.number &&
+                   b.verse_number === contextMenu.verseNumber
+            )}
           />
         )}
+
+        {/* Bookmark Dialog */}
+        <BookmarkDialog
+          verse={bookmarkDialogVerse}
+          onClose={() => setBookmarkDialogVerse(null)}
+        />
 
         {/* Verse Comparison Modal */}
         {comparisonVerse && (
@@ -404,13 +450,14 @@ interface VerseItemProps {
   verse: { id: string; number: number; text: string }
   highlight?: { color: string }
   isSelected: boolean
+  isBookmarked: boolean
   showNumber: boolean
   spacing: number
   onInView: (inView: boolean) => void
   onContextMenu: (e: React.MouseEvent) => void
 }
 
-function VerseItem({ verse, highlight, isSelected, showNumber, spacing, onInView, onContextMenu }: VerseItemProps) {
+function VerseItem({ verse, highlight, isSelected, isBookmarked, showNumber, spacing, onInView, onContextMenu }: VerseItemProps) {
   const { ref, inView } = useInView({
     threshold: 0.5,
     trackVisibility: true,
@@ -435,7 +482,10 @@ function VerseItem({ verse, highlight, isSelected, showNumber, spacing, onInView
           {verse.number}
         </span>
       )}
-      <p className={showNumber ? '' : 'flex-1'}>{verse.text}</p>
+      <p className={showNumber ? 'flex-1' : 'flex-1'}>{verse.text}</p>
+      {isBookmarked && (
+        <BookmarkIcon className="w-3.5 h-3.5 text-primary flex-shrink-0 mt-1 fill-primary" />
+      )}
     </div>
   )
 }

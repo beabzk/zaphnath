@@ -5,6 +5,7 @@ import { RepositoryManagement } from '@/components/repository/RepositoryManageme
 import { SettingsInterface } from '@/components/settings/SettingsInterface'
 import { ErrorReportingPanel } from '@/components/debug/ErrorReportingPanel'
 import { SearchInterface } from '@/components/search/SearchInterface'
+import { BookmarksView as BookmarksViewComponent } from '@/components/bookmarks/BookmarksView'
 import { ArrowLeft } from 'lucide-react'
 import { Reader } from '@/components/reader/Reader'
 
@@ -22,21 +23,7 @@ function SearchView() {
 }
 
 function BookmarksView() {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Bookmarks</CardTitle>
-        <CardDescription>
-          Manage your saved verses and passages
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <p className="text-muted-foreground">
-          Bookmarks feature will be implemented in future sprints.
-        </p>
-      </CardContent>
-    </Card>
-  )
+  return <BookmarksViewComponent />
 }
 
 function NotesView() {
