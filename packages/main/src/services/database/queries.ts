@@ -74,8 +74,18 @@ export class DatabaseQueries {
   }
 
   public deleteRepository(id: string): void {
-    const stmt = this.db.prepare("DELETE FROM repositories WHERE id = ?");
-    stmt.run(id);
+    const deleteAll = this.db.transaction(() => {
+      // For parent repositories, delete child translations first
+      const children = this.db
+        .prepare("SELECT id FROM repositories WHERE parent_id = ?")
+        .all(id) as { id: string }[];
+      for (const child of children) {
+        this.db.prepare("DELETE FROM repositories WHERE id = ?").run(child.id);
+      }
+      // Delete the repository itself (cascades to books, verses, repository_translations)
+      this.db.prepare("DELETE FROM repositories WHERE id = ?").run(id);
+    });
+    deleteAll();
   }
 
   public upsertRepository(record: RepositoryDbRecord): void {

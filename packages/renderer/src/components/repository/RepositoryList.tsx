@@ -52,9 +52,10 @@ interface TranslationInfo {
 interface RepositoryListProps {
   onImportClick: () => void
   onRepositorySelect?: (repository: Repository) => void
+  onRepositoryDelete?: (repositoryId: string) => void
 }
 
-export function RepositoryList({ onImportClick, onRepositorySelect }: RepositoryListProps) {
+export function RepositoryList({ onImportClick, onRepositorySelect, onRepositoryDelete }: RepositoryListProps) {
   const [repositories, setRepositories] = useState<Repository[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -144,9 +145,12 @@ export function RepositoryList({ onImportClick, onRepositorySelect }: Repository
     }
 
     try {
-      // TODO: Implement repository deletion API
-      console.log('Delete repository:', repositoryId)
-      await loadRepositories() // Refresh list
+      await repository.delete(repositoryId)
+      if (selectedRepository === repositoryId) {
+        setSelectedRepository(null)
+      }
+      onRepositoryDelete?.(repositoryId)
+      await loadRepositories()
     } catch (err) {
       console.error('Failed to delete repository:', err)
     }
