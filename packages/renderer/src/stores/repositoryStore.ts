@@ -234,6 +234,17 @@ export const useRepositoryStore = create<RepositoryState>()(
             // @ts-ignore - APIs will be available at runtime
             const repositories = await repository.list();
             setRepositories(repositories || []);
+
+            // Validate currentRepository still exists
+            const { currentRepository, setCurrentRepository } = get();
+            if (currentRepository && repositories) {
+              const exists = repositories.some(
+                (r: Repository) => r.id === currentRepository.id
+              );
+              if (!exists) {
+                setCurrentRepository(null);
+              }
+            }
           } catch (error) {
             setError({
               hasError: true,
