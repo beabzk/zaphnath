@@ -6,7 +6,7 @@ export interface ZBRSParentManifest {
   repository: ParentRepositoryInfo;
   publisher: PublisherInfo;
   translations: TranslationReference[];
-  technical: TechnicalInfo;
+  technical: ParentTechnicalInfo;
   extensions?: Record<string, ExtensionInfo>;
 }
 
@@ -15,7 +15,7 @@ export interface ZBRSTranslationManifest {
   zbrs_version: string;
   repository: RepositoryInfo;
   content: ContentInfo;
-  technical: TechnicalInfo;
+  technical: TranslationTechnicalInfo;
   extensions?: Record<string, ExtensionInfo>;
 }
 
@@ -41,6 +41,7 @@ export interface RepositoryInfo {
   version: string;
   language: LanguageInfo;
   translation: TranslationInfo;
+  publisher?: PublisherInfo;
   created_at: string;
   updated_at: string;
 }
@@ -52,6 +53,8 @@ export interface TranslationReference {
   directory: string;
   language: LanguageInfo;
   status: "active" | "inactive" | "deprecated";
+  checksum: string;
+  size_bytes: number;
 }
 
 export interface LanguageInfo {
@@ -91,9 +94,12 @@ export interface ContentInfo {
   books?: ContentBookReference[];
 }
 
-export interface TechnicalInfo {
+export interface ParentTechnicalInfo {
   encoding: "UTF-8";
   compression: "none" | "gzip" | "brotli";
+}
+
+export interface TranslationTechnicalInfo extends ParentTechnicalInfo {
   checksum: string;
   size_bytes: number;
 }

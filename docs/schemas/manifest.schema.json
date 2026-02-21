@@ -1,10 +1,13 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.zaphnath.org/zbrs/v1.0/manifest.json",
+  "$id": "https://schemas.zaphnath.org/zbrs/v1.1/manifest.json",
   "title": "ZBRS Manifest Schema",
   "description": "Schema for Zaphnath Bible Repository Standard manifest files (supports both repository coordination and translation manifests)",
   "type": "object",
-  "required": ["zbrs_version", "repository"],
+  "required": [
+    "zbrs_version",
+    "repository"
+  ],
   "anyOf": [
     {
       "description": "Parent repository manifest",
@@ -22,21 +25,23 @@
               "const": "parent"
             }
           }
+        },
+        "technical": {
+          "$ref": "#/$defs/parent_technical"
         }
       }
     },
     {
       "description": "Translation manifest",
-      "required": ["zbrs_version", "repository", "content", "technical"],
+      "required": [
+        "zbrs_version",
+        "repository",
+        "content",
+        "technical"
+      ],
       "properties": {
-        "repository": {
-          "not": {
-            "properties": {
-              "type": {
-                "const": "parent"
-              }
-            }
-          }
+        "technical": {
+          "$ref": "#/$defs/translation_technical"
         }
       }
     }
@@ -49,7 +54,12 @@
     },
     "repository": {
       "type": "object",
-      "required": ["id", "name", "description", "version"],
+      "required": [
+        "id",
+        "name",
+        "description",
+        "version"
+      ],
       "properties": {
         "id": {
           "type": "string",
@@ -77,7 +87,9 @@
         },
         "type": {
           "type": "string",
-          "enum": ["parent"],
+          "enum": [
+            "parent"
+          ],
           "description": "Repository type - must be 'parent' for repository coordination manifests"
         },
         "language": {
@@ -85,6 +97,9 @@
         },
         "translation": {
           "$ref": "#/$defs/translation"
+        },
+        "publisher": {
+          "$ref": "#/$defs/publisher"
         },
         "created_at": {
           "type": "string",
@@ -110,7 +125,11 @@
     },
     "content": {
       "type": "object",
-      "required": ["books_count", "testament", "features"],
+      "required": [
+        "books_count",
+        "testament",
+        "features"
+      ],
       "properties": {
         "books_count": {
           "type": "integer",
@@ -120,7 +139,10 @@
         },
         "testament": {
           "type": "object",
-          "required": ["old", "new"],
+          "required": [
+            "old",
+            "new"
+          ],
           "properties": {
             "old": {
               "type": "integer",
@@ -158,31 +180,14 @@
       }
     },
     "technical": {
-      "type": "object",
-      "required": ["encoding", "compression", "checksum", "size_bytes"],
-      "properties": {
-        "encoding": {
-          "type": "string",
-          "enum": ["UTF-8"],
-          "description": "Text encoding"
+      "oneOf": [
+        {
+          "$ref": "#/$defs/parent_technical"
         },
-        "compression": {
-          "type": "string",
-          "enum": ["none", "gzip", "brotli"],
-          "description": "Compression method"
-        },
-        "checksum": {
-          "type": "string",
-          "pattern": "^sha256:[a-f0-9]{64}$",
-          "description": "SHA-256 checksum of repository content"
-        },
-        "size_bytes": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 1073741824,
-          "description": "Total repository size in bytes (max 1GB)"
+        {
+          "$ref": "#/$defs/translation_technical"
         }
-      }
+      ]
     },
     "extensions": {
       "type": "object",
@@ -190,7 +195,9 @@
       "patternProperties": {
         "^[a-z0-9-]+:[a-z0-9-_]+$": {
           "type": "object",
-          "required": ["version"],
+          "required": [
+            "version"
+          ],
           "properties": {
             "version": {
               "type": "string",
@@ -204,7 +211,11 @@
   "$defs": {
     "language": {
       "type": "object",
-      "required": ["code", "name", "direction"],
+      "required": [
+        "code",
+        "name",
+        "direction"
+      ],
       "properties": {
         "code": {
           "type": "string",
@@ -219,7 +230,10 @@
         },
         "direction": {
           "type": "string",
-          "enum": ["ltr", "rtl"],
+          "enum": [
+            "ltr",
+            "rtl"
+          ],
           "description": "Text direction"
         },
         "script": {
@@ -231,11 +245,22 @@
     },
     "translation": {
       "type": "object",
-      "required": ["type", "year", "copyright", "license", "source"],
+      "required": [
+        "type",
+        "year",
+        "copyright",
+        "license",
+        "source"
+      ],
       "properties": {
         "type": {
           "type": "string",
-          "enum": ["formal", "dynamic", "paraphrase", "interlinear"],
+          "enum": [
+            "formal",
+            "dynamic",
+            "paraphrase",
+            "interlinear"
+          ],
           "description": "Translation methodology"
         },
         "year": {
@@ -275,7 +300,9 @@
     },
     "publisher": {
       "type": "object",
-      "required": ["name"],
+      "required": [
+        "name"
+      ],
       "properties": {
         "name": {
           "type": "string",
@@ -297,7 +324,15 @@
     },
     "translation_reference": {
       "type": "object",
-      "required": ["id", "name", "directory", "language", "status"],
+      "required": [
+        "id",
+        "name",
+        "directory",
+        "language",
+        "status",
+        "checksum",
+        "size_bytes"
+      ],
       "properties": {
         "id": {
           "type": "string",
@@ -320,10 +355,100 @@
         },
         "status": {
           "type": "string",
-          "enum": ["active", "inactive", "deprecated"],
+          "enum": [
+            "active",
+            "inactive",
+            "deprecated"
+          ],
           "description": "Translation status"
+        },
+        "checksum": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$",
+          "description": "SHA-256 checksum of the translation payload"
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1073741824,
+          "description": "Translation payload size in bytes (max 1GB)"
         }
       }
+    },
+    "base_technical": {
+      "type": "object",
+      "required": [
+        "encoding",
+        "compression"
+      ],
+      "properties": {
+        "encoding": {
+          "type": "string",
+          "enum": [
+            "UTF-8"
+          ],
+          "description": "Text encoding"
+        },
+        "compression": {
+          "type": "string",
+          "enum": [
+            "none",
+            "gzip",
+            "brotli"
+          ],
+          "description": "Compression method"
+        }
+      }
+    },
+    "parent_technical": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/base_technical"
+        },
+        {
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "checksum"
+                ]
+              },
+              {
+                "required": [
+                  "size_bytes"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "translation_technical": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/base_technical"
+        },
+        {
+          "type": "object",
+          "required": [
+            "checksum",
+            "size_bytes"
+          ],
+          "properties": {
+            "checksum": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$",
+              "description": "SHA-256 checksum of repository content"
+            },
+            "size_bytes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1073741824,
+              "description": "Total repository size in bytes (max 1GB)"
+            }
+          }
+        }
+      ]
     }
   }
 }

@@ -19,6 +19,8 @@
   "dependencies": {
     "@app/preload": "*",
     "@app/renderer": "*",
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
     "better-sqlite3": "^12.4.1",
     "electron-updater": "6.6.2"
   },

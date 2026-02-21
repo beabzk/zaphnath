@@ -620,7 +620,7 @@ export class RepositoryImporter {
     return this.discoveryService;
   }
 
-  // New hierarchical import method for ZBRS v1.0 with translation selection
+  // New hierarchical import method for ZBRS v1.1 with translation selection
   public async importRepositoryHierarchical(
     repositoryUrl: string,
     selectedTranslations: string[]

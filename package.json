@@ -46,6 +46,8 @@
     "version:set": "node tools/version-manager.js set",
     "version:tag": "node tools/version-manager.js tag",
     "version:help": "node tools/version-manager.js help",
+    "zbrs:version:show": "node tools/zbrs-version-manager.js show",
+    "zbrs:version:set": "node tools/zbrs-version-manager.js set",
     "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
     "lint:fix": "eslint . --ext .ts,.tsx,.js,.jsx --fix"
   },

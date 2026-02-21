@@ -1,7 +1,9 @@
-// import Ajv from 'ajv';
-// import addFormats from "ajv-formats";
+import addFormats from "ajv-formats";
 import { createHash } from "crypto";
-import { readFileSync } from "fs";
+import { existsSync, readFileSync } from "fs";
+import { createRequire } from "module";
+import path from "path";
+import { fileURLToPath } from "url";
 
 import type {
   ZBRSParentManifest,
@@ -14,161 +16,174 @@ import type {
 } from "./types.js";
 import { isParentManifest, isTranslationManifest } from "./types.js";
 
+type SchemaError = {
+  instancePath?: string;
+  message?: string;
+};
+
+type ValidateFunction = ((data: unknown) => boolean) & {
+  errors?: SchemaError[] | null;
+};
+
+const require = createRequire(import.meta.url);
+const Ajv2020 = require("ajv/dist/2020.js");
+
 export class ZBRSValidator {
-  // private ajv: Ajv;
-  private manifestSchema: any;
-  private bookSchema: any;
+  private manifestSchema: unknown;
+  private bookSchema: unknown;
   private securityPolicy: SecurityPolicy;
-  private ajv: any; // Placeholder for now
+  private ajv: any;
+  private manifestValidator: ValidateFunction | null;
+  private bookValidator: ValidateFunction | null;
 
   constructor(securityPolicy?: Partial<SecurityPolicy>) {
-    // this.ajv = new Ajv({ allErrors: true, verbose: true });
-    // addFormats(this.ajv);
-    this.ajv = null; // Placeholder for now
+    this.ajv = new Ajv2020({
+      allErrors: true,
+      strict: false,
+      validateFormats: true,
+      allowUnionTypes: true,
+    });
+    const addFormatsFn =
+      typeof addFormats === "function"
+        ? addFormats
+        : (addFormats as unknown as { default?: (ajv: any) => void }).default;
+    if (addFormatsFn) {
+      addFormatsFn(this.ajv);
+    }
 
     this.securityPolicy = {
       allow_http: false,
-      max_repository_size: 1024 * 1024 * 1024, // 1GB
-      max_file_size: 100 * 1024 * 1024, // 100MB
+      max_repository_size: 1024 * 1024 * 1024,
+      max_file_size: 100 * 1024 * 1024,
       allowed_domains: [],
       blocked_domains: [],
       require_checksums: true,
       ...securityPolicy,
     };
 
+    this.manifestValidator = null;
+    this.bookValidator = null;
     this.loadSchemas();
+  }
+
+  private resolveSchemasDirectory(): string {
+    const currentDir = path.dirname(fileURLToPath(import.meta.url));
+    const searchRoots = [process.cwd(), currentDir];
+
+    for (const root of searchRoots) {
+      let probe = root;
+      while (true) {
+        const candidate = path.join(probe, "docs", "schemas");
+        const manifestPath = path.join(candidate, "manifest.schema.json");
+        const bookPath = path.join(candidate, "book.schema.json");
+        if (existsSync(manifestPath) && existsSync(bookPath)) {
+          return candidate;
+        }
+
+        const parent = path.dirname(probe);
+        if (parent === probe) {
+          break;
+        }
+        probe = parent;
+      }
+    }
+
+    throw new Error("Unable to locate docs/schemas directory");
+  }
+
+  private readJsonFile(filePath: string): unknown {
+    const raw = readFileSync(filePath, "utf-8");
+    return JSON.parse(raw.replace(/^\uFEFF/, ""));
   }
 
   private loadSchemas(): void {
     try {
-      // In production, these would be loaded from the schemas directory
-      this.manifestSchema = {
-        $schema: "https://json-schema.org/draft/2020-12/schema",
-        type: "object",
-        required: ["zbrs_version", "repository", "content", "technical"],
-        properties: {
-          zbrs_version: { type: "string", pattern: "^1\\.[0-9]+$" },
-          repository: {
-            type: "object",
-            required: [
-              "id",
-              "name",
-              "description",
-              "version",
-              "language",
-              "translation",
-              "publisher",
-            ],
-            properties: {
-              id: {
-                type: "string",
-                pattern: "^[a-z0-9-]+$",
-                minLength: 3,
-                maxLength: 50,
-              },
-              name: { type: "string", minLength: 1, maxLength: 200 },
-              description: { type: "string", minLength: 1, maxLength: 1000 },
-              version: {
-                type: "string",
-                pattern: "^[0-9]+\\.[0-9]+\\.[0-9]+$",
-              },
-            },
-          },
-          content: {
-            type: "object",
-            required: ["books_count", "testament", "features"],
-            properties: {
-              books_count: { type: "integer", minimum: 1, maximum: 100 },
-            },
-          },
-          technical: {
-            type: "object",
-            required: ["encoding", "compression", "checksum", "size_bytes"],
-            properties: {
-              encoding: { type: "string", enum: ["UTF-8"] },
-              checksum: { type: "string", pattern: "^sha256:[a-f0-9]{64}$" },
-              size_bytes: { type: "integer", minimum: 1, maximum: 1073741824 },
-            },
-          },
-        },
-      };
+      const schemasDir = this.resolveSchemasDirectory();
+      const manifestSchemaPath = path.join(schemasDir, "manifest.schema.json");
+      const bookSchemaPath = path.join(schemasDir, "book.schema.json");
 
-      this.bookSchema = {
-        $schema: "https://json-schema.org/draft/2020-12/schema",
-        type: "object",
-        required: ["book", "chapters"],
-        properties: {
-          book: {
-            type: "object",
-            required: [
-              "id",
-              "name",
-              "abbreviation",
-              "order",
-              "testament",
-              "chapters_count",
-              "verses_count",
-            ],
-            properties: {
-              id: {
-                type: "string",
-                pattern: "^[a-z0-9-]+$",
-                minLength: 2,
-                maxLength: 20,
-              },
-              name: { type: "string", minLength: 1, maxLength: 100 },
-              order: { type: "integer", minimum: 1, maximum: 100 },
-              testament: { type: "string", enum: ["old", "new"] },
-            },
-          },
-          chapters: {
-            type: "array",
-            minItems: 1,
-            items: {
-              type: "object",
-              required: ["number", "verses"],
-              properties: {
-                number: { type: "integer", minimum: 1 },
-                verses: {
-                  type: "array",
-                  minItems: 1,
-                  items: {
-                    type: "object",
-                    required: ["number", "text"],
-                    properties: {
-                      number: { type: "integer", minimum: 1 },
-                      text: { type: "string", minLength: 1, maxLength: 5000 },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      };
+      this.manifestSchema = this.readJsonFile(manifestSchemaPath);
+      this.bookSchema = this.readJsonFile(bookSchemaPath);
+      this.manifestValidator = this.ajv.compile(this.manifestSchema);
+      this.bookValidator = this.ajv.compile(this.bookSchema);
     } catch (error) {
       throw new Error(`Failed to load validation schemas: ${error}`);
     }
   }
 
-  public validateManifest(manifest: any): ValidationResult {
+  private pushSchemaErrors(
+    target: ValidationError[],
+    ajvErrors: SchemaError[] | null | undefined,
+    prefix: string
+  ): void {
+    if (!ajvErrors) {
+      return;
+    }
+
+    for (const err of ajvErrors) {
+      const pointer = err.instancePath || "/";
+      target.push({
+        code: "SCHEMA_VALIDATION",
+        message: `${prefix}${pointer}: ${err.message ?? "schema validation failed"}`,
+        path: err.instancePath || undefined,
+        severity: "error",
+        name: "ValidationError",
+      });
+    }
+  }
+
+  private validateAgainstSchema(
+    validator: ValidateFunction | null,
+    payload: unknown,
+    errors: ValidationError[],
+    label: string
+  ): void {
+    if (!validator) {
+      errors.push({
+        code: "SCHEMA_NOT_LOADED",
+        message: "Schema validator is not initialized",
+        severity: "error",
+        name: "ValidationError",
+      });
+      return;
+    }
+
+    const valid = validator(payload);
+    if (!valid) {
+      this.pushSchemaErrors(errors, validator.errors, `${label} `);
+    }
+  }
+
+  public validateManifest(manifest: unknown): ValidationResult {
     const errors: ValidationError[] = [];
 
     try {
-      // Determine manifest type and route to appropriate validator
-      if (isParentManifest(manifest)) {
-        return this.validateParentManifest(manifest);
-      } else if (isTranslationManifest(manifest)) {
-        return this.validateTranslationManifest(manifest);
-      } else {
-        errors.push({
-          code: "UNKNOWN_MANIFEST_TYPE",
-          message:
-            "Manifest is neither a parent repository nor a translation manifest",
-          severity: "error",
-          name: "ValidationError",
-        });
+      this.validateAgainstSchema(
+        this.manifestValidator,
+        manifest,
+        errors,
+        "manifest"
+      );
+
+      if (errors.length > 0) {
+        return { valid: false, errors, warnings: [] };
       }
+
+      if (isParentManifest(manifest as any)) {
+        return this.validateParentManifest(manifest as ZBRSParentManifest);
+      }
+
+      if (isTranslationManifest(manifest as any)) {
+        return this.validateTranslationManifest(manifest as ZBRSTranslationManifest);
+      }
+
+      errors.push({
+        code: "UNKNOWN_MANIFEST_TYPE",
+        message:
+          "Manifest is neither a parent repository nor a translation manifest",
+        severity: "error",
+        name: "ValidationError",
+      });
     } catch (error) {
       errors.push({
         code: "VALIDATION_EXCEPTION",
@@ -192,13 +207,18 @@ export class ZBRSValidator {
     const warnings: ValidationWarning[] = [];
 
     try {
-      // Validate parent-specific fields
+      this.validateAgainstSchema(
+        this.manifestValidator,
+        manifest,
+        errors,
+        "parent manifest"
+      );
+      if (errors.length > 0) {
+        return { valid: false, errors, warnings };
+      }
+
       this.validateParentManifestStructure(manifest, errors, warnings);
-
-      // Business logic validation
       this.validateParentManifestBusinessRules(manifest, errors, warnings);
-
-      // Security validation
       this.validateManifestSecurity(manifest, errors, warnings);
     } catch (error) {
       errors.push({
@@ -223,13 +243,18 @@ export class ZBRSValidator {
     const warnings: ValidationWarning[] = [];
 
     try {
-      // Validate translation-specific fields
+      this.validateAgainstSchema(
+        this.manifestValidator,
+        manifest,
+        errors,
+        "translation manifest"
+      );
+      if (errors.length > 0) {
+        return { valid: false, errors, warnings };
+      }
+
       this.validateTranslationManifestStructure(manifest, errors, warnings);
-
-      // Business logic validation (existing method, updated for translation)
       this.validateManifestBusinessRules(manifest, errors, warnings);
-
-      // Security validation
       this.validateManifestSecurity(manifest, errors, warnings);
     } catch (error) {
       errors.push({
@@ -247,31 +272,13 @@ export class ZBRSValidator {
     };
   }
 
-  public validateBook(book: any, expectedOrder?: number): ValidationResult {
+  public validateBook(book: unknown, expectedOrder?: number): ValidationResult {
     const errors: ValidationError[] = [];
     const warnings: ValidationWarning[] = [];
 
     try {
-      // JSON Schema validation (disabled for now)
-      if (this.ajv) {
-        const validate = this.ajv.compile(this.bookSchema);
-        const valid = validate(book);
-
-        if (!valid && validate.errors) {
-          for (const error of validate.errors) {
-            errors.push({
-              code: "SCHEMA_VALIDATION",
-              message: `${error.instancePath}: ${error.message}`,
-              path: error.instancePath,
-              severity: "error",
-              name: "ValidationError",
-            });
-          }
-        }
-      }
-
-      // Business logic validation
-      this.validateBookBusinessRules(book, errors, warnings, expectedOrder);
+      this.validateAgainstSchema(this.bookValidator, book, errors, "book");
+      this.validateBookBusinessRules(book as any, errors, warnings, expectedOrder);
     } catch (error) {
       errors.push({
         code: "VALIDATION_EXCEPTION",
@@ -289,11 +296,10 @@ export class ZBRSValidator {
   }
 
   private validateManifestBusinessRules(
-    manifest: any,
+    manifest: ZBRSTranslationManifest,
     errors: ValidationError[],
     warnings: ValidationWarning[]
   ): void {
-    // Check ZBRS version compatibility
     if (manifest.zbrs_version && !manifest.zbrs_version.startsWith("1.")) {
       errors.push({
         code: "UNSUPPORTED_VERSION",
@@ -304,39 +310,28 @@ export class ZBRSValidator {
       });
     }
 
-    // Validate testament book counts
-    if (manifest.content) {
-      const { old, new: newTestament } = manifest.content.testament || {};
-      const total = (old || 0) + (newTestament || 0);
-
-      if (total !== manifest.content.books_count) {
-        errors.push({
-          code: "BOOK_COUNT_MISMATCH",
-          message: `Testament book counts (${old} + ${newTestament} = ${total}) don't match total (${manifest.content.books_count})`,
-          path: "/content/testament",
-          severity: "error",
-          name: "ValidationError",
-        });
-      }
-
-      // Standard Protestant canon check
-      if (
-        manifest.content.books_count === 66 &&
-        (old !== 39 || newTestament !== 27)
-      ) {
-        warnings.push({
-          code: "NON_STANDARD_CANON",
-          message:
-            "Book counts differ from standard Protestant canon (39 OT + 27 NT)",
-          path: "/content/testament",
-        });
-      }
+    const { old, new: newTestament } = manifest.content.testament || {};
+    const total = (old || 0) + (newTestament || 0);
+    if (total !== manifest.content.books_count) {
+      errors.push({
+        code: "BOOK_COUNT_MISMATCH",
+        message: `Testament book counts (${old} + ${newTestament} = ${total}) don't match total (${manifest.content.books_count})`,
+        path: "/content/testament",
+        severity: "error",
+        name: "ValidationError",
+      });
     }
 
-    // Validate repository size
-    if (
-      manifest.technical?.size_bytes > this.securityPolicy.max_repository_size
-    ) {
+    if (manifest.content.books_count === 66 && (old !== 39 || newTestament !== 27)) {
+      warnings.push({
+        code: "NON_STANDARD_CANON",
+        message:
+          "Book counts differ from standard Protestant canon (39 OT + 27 NT)",
+        path: "/content/testament",
+      });
+    }
+
+    if (manifest.technical.size_bytes > this.securityPolicy.max_repository_size) {
       errors.push({
         code: "REPOSITORY_TOO_LARGE",
         message: `Repository size (${manifest.technical.size_bytes}) exceeds maximum (${this.securityPolicy.max_repository_size})`,
@@ -348,57 +343,92 @@ export class ZBRSValidator {
   }
 
   private validateManifestSecurity(
-    manifest: any,
+    manifest: ZBRSParentManifest | ZBRSTranslationManifest,
     errors: ValidationError[],
     warnings: ValidationWarning[]
   ): void {
-    // Check for required checksums
-    if (
-      this.securityPolicy.require_checksums &&
-      !manifest.technical?.checksum
-    ) {
-      errors.push({
-        code: "MISSING_CHECKSUM",
-        message: "Repository checksum is required by security policy",
-        path: "/technical/checksum",
-        severity: "error",
-        name: "ValidationError",
-      });
+    if (this.securityPolicy.require_checksums) {
+      if (isTranslationManifest(manifest)) {
+        if (!manifest.technical?.checksum) {
+          errors.push({
+            code: "MISSING_CHECKSUM",
+            message: "Translation checksum is required by security policy",
+            path: "/technical/checksum",
+            severity: "error",
+            name: "ValidationError",
+          });
+        }
+      } else if (isParentManifest(manifest)) {
+        for (let i = 0; i < manifest.translations.length; i++) {
+          const translation = manifest.translations[i];
+          if (!translation.checksum) {
+            errors.push({
+              code: "MISSING_TRANSLATION_CHECKSUM",
+              message: `Translation ${translation.id} is missing checksum`,
+              path: `/translations/${i}/checksum`,
+              severity: "error",
+              name: "ValidationError",
+            });
+          }
+        }
+      }
     }
 
-    // Validate publisher information
-    if (manifest.repository?.publisher?.url) {
-      const url = new URL(manifest.repository.publisher.url);
+    const publisherUrl = isParentManifest(manifest)
+      ? manifest.publisher?.url
+      : manifest.repository.publisher?.url;
 
-      if (!this.securityPolicy.allow_http && url.protocol === "http:") {
+    if (!publisherUrl) {
+      return;
+    }
+
+    try {
+      const parsed = new URL(publisherUrl);
+
+      if (!this.securityPolicy.allow_http && parsed.protocol === "http:") {
         warnings.push({
           code: "INSECURE_URL",
           message: "Publisher URL uses insecure HTTP protocol",
-          path: "/repository/publisher/url",
+          path: isParentManifest(manifest)
+            ? "/publisher/url"
+            : "/repository/publisher/url",
         });
       }
 
-      if (this.securityPolicy.blocked_domains.includes(url.hostname)) {
+      if (this.securityPolicy.blocked_domains.includes(parsed.hostname)) {
         errors.push({
           code: "BLOCKED_DOMAIN",
-          message: `Publisher domain ${url.hostname} is blocked`,
-          path: "/repository/publisher/url",
+          message: `Publisher domain ${parsed.hostname} is blocked`,
+          path: isParentManifest(manifest)
+            ? "/publisher/url"
+            : "/repository/publisher/url",
           severity: "error",
           name: "ValidationError",
         });
       }
+    } catch (error) {
+      errors.push({
+        code: "INVALID_PUBLISHER_URL",
+        message: `Invalid publisher URL: ${error}`,
+        path: isParentManifest(manifest)
+          ? "/publisher/url"
+          : "/repository/publisher/url",
+        severity: "error",
+        name: "ValidationError",
+      });
     }
   }
 
   private validateBookBusinessRules(
     book: any,
     errors: ValidationError[],
-    warnings: ValidationWarning[],
+    _warnings: ValidationWarning[],
     expectedOrder?: number
   ): void {
-    if (!book.book || !book.chapters) return;
+    if (!book?.book || !Array.isArray(book?.chapters)) {
+      return;
+    }
 
-    // Validate book order
     if (expectedOrder && book.book.order !== expectedOrder) {
       errors.push({
         code: "INCORRECT_BOOK_ORDER",
@@ -409,7 +439,6 @@ export class ZBRSValidator {
       });
     }
 
-    // Validate chapter count
     if (book.chapters.length !== book.book.chapters_count) {
       errors.push({
         code: "CHAPTER_COUNT_MISMATCH",
@@ -420,12 +449,10 @@ export class ZBRSValidator {
       });
     }
 
-    // Validate verse count
     let totalVerses = 0;
     for (let i = 0; i < book.chapters.length; i++) {
       const chapter = book.chapters[i];
 
-      // Check chapter numbering
       if (chapter.number !== i + 1) {
         errors.push({
           code: "INCORRECT_CHAPTER_NUMBER",
@@ -436,35 +463,34 @@ export class ZBRSValidator {
         });
       }
 
-      // Check verse numbering and count
-      if (chapter.verses) {
-        for (let j = 0; j < chapter.verses.length; j++) {
-          const verse = chapter.verses[j];
+      if (!Array.isArray(chapter.verses)) {
+        continue;
+      }
 
-          if (verse.number !== j + 1) {
-            errors.push({
-              code: "INCORRECT_VERSE_NUMBER",
-              message: `Chapter ${chapter.number}, verse ${j + 1
-                } has incorrect number ${verse.number}`,
-              path: `/chapters/${i}/verses/${j}/number`,
-              severity: "error",
-              name: "ValidationError",
-            });
-          }
+      for (let j = 0; j < chapter.verses.length; j++) {
+        const verse = chapter.verses[j];
 
-          // Check for empty verse text
-          if (!verse.text || verse.text.trim().length === 0) {
-            errors.push({
-              code: "EMPTY_VERSE_TEXT",
-              message: `Chapter ${chapter.number}, verse ${verse.number} has empty text`,
-              path: `/chapters/${i}/verses/${j}/text`,
-              severity: "error",
-              name: "ValidationError",
-            });
-          }
-
-          totalVerses++;
+        if (verse.number !== j + 1) {
+          errors.push({
+            code: "INCORRECT_VERSE_NUMBER",
+            message: `Chapter ${chapter.number}, verse ${j + 1} has incorrect number ${verse.number}`,
+            path: `/chapters/${i}/verses/${j}/number`,
+            severity: "error",
+            name: "ValidationError",
+          });
         }
+
+        if (!verse.text || String(verse.text).trim().length === 0) {
+          errors.push({
+            code: "EMPTY_VERSE_TEXT",
+            message: `Chapter ${chapter.number}, verse ${verse.number} has empty text`,
+            path: `/chapters/${i}/verses/${j}/text`,
+            severity: "error",
+            name: "ValidationError",
+          });
+        }
+
+        totalVerses++;
       }
     }
 
@@ -495,7 +521,7 @@ export class ZBRSValidator {
         actual_checksum: actualChecksum,
         valid: actualChecksum === expectedChecksum,
       };
-    } catch (error) {
+    } catch {
       return {
         file_path: filePath,
         expected_checksum: expectedChecksum,
@@ -512,7 +538,6 @@ export class ZBRSValidator {
     try {
       const parsedUrl = new URL(url);
 
-      // Protocol validation
       if (!this.securityPolicy.allow_http && parsedUrl.protocol === "http:") {
         errors.push({
           code: "INSECURE_PROTOCOL",
@@ -531,7 +556,6 @@ export class ZBRSValidator {
         });
       }
 
-      // Domain validation
       if (this.securityPolicy.blocked_domains.includes(parsedUrl.hostname)) {
         errors.push({
           code: "BLOCKED_DOMAIN",
@@ -568,14 +592,11 @@ export class ZBRSValidator {
     };
   }
 
-  // New validation methods for hierarchical structure
-
   private validateParentManifestStructure(
     manifest: ZBRSParentManifest,
     errors: ValidationError[],
     warnings: ValidationWarning[]
   ): void {
-    // Validate repository type
     if (manifest.repository.type !== "parent") {
       errors.push({
         code: "INVALID_PARENT_TYPE",
@@ -585,7 +606,6 @@ export class ZBRSValidator {
       });
     }
 
-    // Validate translations array
     if (!Array.isArray(manifest.translations)) {
       errors.push({
         code: "MISSING_TRANSLATIONS_ARRAY",
@@ -600,7 +620,6 @@ export class ZBRSValidator {
       });
     }
 
-    // Validate publisher information
     if (!manifest.publisher) {
       errors.push({
         code: "MISSING_PUBLISHER",
@@ -614,9 +633,8 @@ export class ZBRSValidator {
   private validateTranslationManifestStructure(
     manifest: ZBRSTranslationManifest,
     errors: ValidationError[],
-    warnings: ValidationWarning[]
+    _warnings: ValidationWarning[]
   ): void {
-    // Validate content information
     if (!manifest.content) {
       errors.push({
         code: "MISSING_CONTENT",
@@ -626,7 +644,6 @@ export class ZBRSValidator {
       });
     }
 
-    // Validate language information
     if (!manifest.repository.language) {
       errors.push({
         code: "MISSING_LANGUAGE",
@@ -636,7 +653,6 @@ export class ZBRSValidator {
       });
     }
 
-    // Validate translation information
     if (!manifest.repository.translation) {
       errors.push({
         code: "MISSING_TRANSLATION_INFO",
@@ -650,9 +666,8 @@ export class ZBRSValidator {
   private validateParentManifestBusinessRules(
     manifest: ZBRSParentManifest,
     errors: ValidationError[],
-    warnings: ValidationWarning[]
+    _warnings: ValidationWarning[]
   ): void {
-    // Check for duplicate translation IDs
     const translationIds = new Set<string>();
     const duplicateIds: string[] = [];
 
@@ -673,7 +688,6 @@ export class ZBRSValidator {
       });
     }
 
-    // Check for duplicate directory names
     const directoryNames = new Set<string>();
     const duplicateDirectories: string[] = [];
 
@@ -694,29 +708,6 @@ export class ZBRSValidator {
         severity: "error",
         name: "ValidationError",
       });
-    }
-
-    // Validate individual translation references
-    for (const translation of manifest.translations) {
-      if (!translation.id || !translation.name || !translation.directory) {
-        errors.push({
-          code: "INCOMPLETE_TRANSLATION_REFERENCE",
-          message: `Translation reference missing required fields: ${JSON.stringify(
-            translation
-          )}`,
-          severity: "error",
-          name: "ValidationError",
-        });
-      }
-
-      if (!translation.language || !translation.language.code) {
-        errors.push({
-          code: "MISSING_TRANSLATION_LANGUAGE",
-          message: `Translation ${translation.id} missing language information`,
-          severity: "error",
-          name: "ValidationError",
-        });
-      }
     }
   }
 }

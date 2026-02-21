@@ -1,6 +1,6 @@
 # King James Version (1769) - Minimal
 
-A minimal King James Version translation demonstrating the ZBRS v1.0 translation directory structure.
+A minimal King James Version translation demonstrating the ZBRS v1.1 translation directory structure.
 
 ## Translation Information
 

@@ -283,6 +283,8 @@ export class RepositoryDiscoveryService {
               directory: ".", // Current directory
               language: manifest.repository.language,
               status: "active" as const,
+              checksum: manifest.technical.checksum,
+              size_bytes: manifest.technical.size_bytes,
             },
           ];
         }

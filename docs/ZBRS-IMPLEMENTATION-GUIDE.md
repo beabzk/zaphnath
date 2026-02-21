@@ -29,7 +29,7 @@ This guide provides practical instructions for implementing the Zaphnath Bible R
 2. **Create Repository Manifest**
    - Create root `manifest.json` with `type: "parent"`
    - List all translations in the `translations` array
-   - Ensure `zbrs_version` is "1.0"
+   - Ensure `zbrs_version` is "1.1"
 
 3. **Create Translation Manifests**
    - Create `manifest.json` in each translation directory
@@ -55,7 +55,7 @@ Your repository root `manifest.json` must include:
 
 ```json
 {
-  "zbrs_version": "1.0",
+  "zbrs_version": "1.1",
   "repository": {
     "id": "my-bible-repository",
     "name": "My Bible Repository Collection",
@@ -80,7 +80,9 @@ Your repository root `manifest.json` must include:
         "name": "English",
         "direction": "ltr"
       },
-      "status": "active"
+      "status": "active",
+      "checksum": "sha256:abc123...",
+      "size_bytes": 4567890
     },
     {
       "id": "web-2000",
@@ -91,14 +93,14 @@ Your repository root `manifest.json` must include:
         "name": "English",
         "direction": "ltr"
       },
-      "status": "active"
+      "status": "active",
+      "checksum": "sha256:def456...",
+      "size_bytes": 4123456
     }
   ],
   "technical": {
     "encoding": "UTF-8",
-    "compression": "none",
-    "checksum": "sha256:abc123...",
-    "size_bytes": 45678900
+    "compression": "none"
   }
 }
 ```
@@ -109,7 +111,7 @@ Each translation directory must have its own `manifest.json`:
 
 ```json
 {
-  "zbrs_version": "1.0",
+  "zbrs_version": "1.1",
   "repository": {
     "id": "kjv-1769",
     "name": "King James Version (1769)",

@@ -1,9 +1,9 @@
 {
-  "zbrs_version": "1.0",
+  "zbrs_version": "1.1",
   "repository": {
     "id": "minimal-example",
     "name": "Minimal Example Bible Repository",
-    "description": "A minimal example repository demonstrating the ZBRS v1.0 hierarchical standard",
+    "description": "A minimal example repository demonstrating the ZBRS v1.1 hierarchical standard",
     "version": "1.0.0",
     "type": "parent",
     "created_at": "2025-01-01T00:00:00Z",
