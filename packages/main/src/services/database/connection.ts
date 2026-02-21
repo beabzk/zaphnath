@@ -32,7 +32,7 @@ export class DatabaseConnection {
     if (!this.db) {
       try {
         this.db = new Database(this.dbPath, {
-          verbose: process.env.NODE_ENV === 'development' ? console.log : undefined,
+          verbose: process.env.DEBUG_SQL === '1' ? console.log : undefined,
         });
         
         // Enable foreign keys

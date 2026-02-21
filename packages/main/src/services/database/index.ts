@@ -36,15 +36,11 @@ export class DatabaseService {
       // Initialize migration runner and run migrations
       this.migrationRunner = new MigrationRunner(db);
 
-      // Debug schema before migrations
-      console.log("=== BEFORE MIGRATIONS ===");
-      this.migrationRunner.debugDatabaseSchema();
-
       await this.migrationRunner.runMigrations();
 
-      // Debug schema after migrations
-      console.log("=== AFTER MIGRATIONS ===");
-      this.migrationRunner.debugDatabaseSchema();
+      if (process.env.DEBUG_DB_SCHEMA === "1") {
+        this.migrationRunner.debugDatabaseSchema();
+      }
 
       // Initialize queries
       this.queries = new DatabaseQueries();
