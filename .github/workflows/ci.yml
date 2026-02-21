@@ -117,6 +117,70 @@ jobs:
       - check-release
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Generate release notes
+        run: |
+          set -euo pipefail
+
+          CURRENT_TAG="v${{ needs.check-release.outputs.version }}"
+          PREVIOUS_TAG="$(git tag --list 'v*' --sort=-v:refname | grep -Fxv "$CURRENT_TAG" | head -n 1 || true)"
+
+          if [[ -n "$PREVIOUS_TAG" ]]; then
+            RANGE="${PREVIOUS_TAG}..${CURRENT_TAG}"
+            COMPARE_URL="https://github.com/${{ github.repository }}/compare/${PREVIOUS_TAG}...${CURRENT_TAG}"
+          else
+            RANGE="${CURRENT_TAG}"
+            COMPARE_URL="https://github.com/${{ github.repository }}/tree/${CURRENT_TAG}"
+          fi
+
+          COMMITS_RAW="$(
+            git log --no-merges --pretty=format:'%s (%h)' "$RANGE" \
+              | grep -Ev '^(chore\(release\): bump version to|[0-9]+\.[0-9]+\.[0-9]+($| ))' \
+              || true
+          )"
+
+          FEATURES="$(printf '%s\n' "$COMMITS_RAW" | grep -Ei '^feat(\(.+\))?:' || true)"
+          FIXES="$(printf '%s\n' "$COMMITS_RAW" | grep -Ei '^fix(\(.+\))?:' || true)"
+          DOCS="$(printf '%s\n' "$COMMITS_RAW" | grep -Ei '^docs(\(.+\))?:' || true)"
+          PERFORMANCE="$(printf '%s\n' "$COMMITS_RAW" | grep -Ei '^(perf|refactor)(\(.+\))?:' || true)"
+          MAINTENANCE="$(printf '%s\n' "$COMMITS_RAW" | grep -Ei '^(chore|build|ci|test)(\(.+\))?:' || true)"
+          OTHER="$(printf '%s\n' "$COMMITS_RAW" | grep -Eiv '^(feat|fix|docs|perf|refactor|chore|build|ci|test)(\(.+\))?:' || true)"
+
+          write_section() {
+            local title="$1"
+            local content="$2"
+            if [[ -n "$content" ]]; then
+              echo "### ${title}" >> RELEASE_NOTES.md
+              printf '%s\n' "$content" | sed 's/^/- /' >> RELEASE_NOTES.md
+              echo >> RELEASE_NOTES.md
+            fi
+          }
+
+          echo "## What's Changed" > RELEASE_NOTES.md
+          echo >> RELEASE_NOTES.md
+
+          write_section "Features" "$FEATURES"
+          write_section "Fixes" "$FIXES"
+          write_section "Performance & Refactors" "$PERFORMANCE"
+          write_section "Maintenance" "$MAINTENANCE"
+          write_section "Documentation" "$DOCS"
+          write_section "Other Changes" "$OTHER"
+
+          if [[ ! -s RELEASE_NOTES.md || "$(wc -l < RELEASE_NOTES.md)" -le 2 ]]; then
+            echo "- No significant code changes detected in this release." >> RELEASE_NOTES.md
+            echo >> RELEASE_NOTES.md
+          fi
+
+          echo "**Full Changelog**: ${COMPARE_URL}" >> RELEASE_NOTES.md
+
+          echo "Generated release notes:"
+          cat RELEASE_NOTES.md
+
       - name: Download artifacts
         uses: actions/download-artifact@v7
         with:
@@ -141,6 +205,6 @@ jobs:
             dist/*.rpm
           tag_name: v${{ needs.check-release.outputs.version }}
           name: Zaphnath Bible Reader v${{ needs.check-release.outputs.version }}
+          body_path: RELEASE_NOTES.md
           draft: false
           prerelease: false
-          generate_release_notes: true
