@@ -5,6 +5,10 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-patch"
     assignees:
       - "beabzk"
 
@@ -14,6 +18,10 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-patch"
     assignees:
       - "beabzk"
     groups:
@@ -36,18 +44,30 @@ updates:
     directory: "/packages/main"
     schedule:
       interval: "weekly"
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-patch"
 
   # Maintain dependencies for preload package
   - package-ecosystem: "npm"
     directory: "/packages/preload"
     schedule:
       interval: "weekly"
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-patch"
 
   # Maintain dependencies for renderer package
   - package-ecosystem: "npm"
     directory: "/packages/renderer"
     schedule:
       interval: "weekly"
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-patch"
     groups:
       react:
         patterns:
