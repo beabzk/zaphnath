@@ -128,7 +128,17 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            dist/**/*
+            dist/*.yml
+            dist/*.yaml
+            dist/*.blockmap
+            dist/*.exe
+            dist/*.dmg
+            dist/*.zip
+            dist/*.AppImage
+            dist/*.deb
+            dist/*.tar.gz
+            dist/*.pkg
+            dist/*.rpm
           tag_name: v${{ needs.check-release.outputs.version }}
           name: Zaphnath Bible Reader v${{ needs.check-release.outputs.version }}
           draft: false
