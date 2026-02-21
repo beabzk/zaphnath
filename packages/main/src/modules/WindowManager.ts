@@ -1,6 +1,6 @@
 import type { AppModule } from "../AppModule.js";
 import { ModuleContext } from "../ModuleContext.js";
-import { BrowserWindow } from "electron";
+import { BrowserWindow, Menu, type MenuItemConstructorOptions } from "electron";
 import type { AppInitConfig } from "../AppInitConfig.js";
 import path from "node:path";
 
@@ -23,24 +23,89 @@ class WindowManager implements AppModule {
 
   async enable({ app }: ModuleContext): Promise<void> {
     await app.whenReady();
+    this.configureApplicationMenu();
     await this.restoreOrCreateWindow(true);
     app.on("second-instance", () => this.restoreOrCreateWindow(true));
     app.on("activate", () => this.restoreOrCreateWindow(true));
   }
 
+  configureApplicationMenu(): void {
+    const isMac = process.platform === "darwin";
+    const template: MenuItemConstructorOptions[] = [];
+
+    if (isMac) {
+      template.push({
+        label: "Zaphnath",
+        submenu: [
+          { role: "about" },
+          { type: "separator" },
+          { role: "services" },
+          { type: "separator" },
+          { role: "hide" },
+          { role: "hideOthers" },
+          { role: "unhide" },
+          { type: "separator" },
+          { role: "quit" },
+        ],
+      });
+    } else {
+      template.push({
+        label: "File",
+        submenu: [{ role: "quit" }],
+      });
+    }
+
+    template.push({
+      label: "Edit",
+      submenu: [
+        { role: "undo" },
+        { role: "redo" },
+        { type: "separator" },
+        { role: "cut" },
+        { role: "copy" },
+        { role: "paste" },
+        { role: "selectAll" },
+      ],
+    });
+
+    template.push({
+      label: "View",
+      submenu: [
+        { role: "reload" },
+        { role: "forceReload" },
+        { role: "toggleDevTools" },
+        { type: "separator" },
+        { role: "resetZoom" },
+        { role: "zoomIn" },
+        { role: "zoomOut" },
+        { type: "separator" },
+        { role: "togglefullscreen" },
+      ],
+    });
+
+    if (isMac) {
+      template.push({
+        role: "window",
+        submenu: [{ role: "minimize" }, { role: "zoom" }, { role: "front" }],
+      });
+    }
+
+    Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+  }
+
   async createWindow(): Promise<BrowserWindow> {
+    const isMac = process.platform === "darwin";
     const browserWindow = new BrowserWindow({
       show: false, // Use the 'ready-to-show' event to show the instantiated BrowserWindow.
       width: 1200, // Optimal width for Bible reading with sidebar
       height: 800, // Good height for reading content
       minWidth: 800, // Minimum width to ensure usability
       minHeight: 600, // Minimum height for proper layout
-      titleBarStyle: process.platform === "darwin" ? "hiddenInset" : "default",
+      titleBarStyle: isMac ? "hiddenInset" : "default",
+      autoHideMenuBar: !isMac,
       // Use app icon on Windows/Linux (macOS uses .icns from bundle metadata).
       icon:
-        process.platform === "darwin"
-          ? undefined
-          : path.resolve(process.cwd(), "buildResources", "icon.png"),
+        isMac ? undefined : path.resolve(process.cwd(), "buildResources", "icon.png"),
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
@@ -56,6 +121,10 @@ class WindowManager implements AppModule {
       await browserWindow.loadURL(this.#renderer.href);
     } else {
       await browserWindow.loadFile(this.#renderer.path);
+    }
+
+    if (!isMac) {
+      browserWindow.setMenuBarVisibility(false);
     }
 
     // Bible reading optimizations
