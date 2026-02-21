@@ -194,6 +194,124 @@ export const migrations: Migration[] = [
       -- The table structure should be correct after this migration
     `,
   },
+  {
+    version: 8,
+    name: "enforce_repository_translation_link_uniqueness",
+    up: `
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_repository_translations_parent_translation
+      ON repository_translations(parent_repository_id, translation_id);
+    `,
+    down: `
+      DROP INDEX IF EXISTS idx_repository_translations_parent_translation;
+    `,
+  },
+  {
+    version: 9,
+    name: "normalize_repositories_and_translations_storage",
+    up: `
+      -- Recreate books table without repository foreign key so translation IDs
+      -- can exist independently from parent repositories.
+      CREATE TABLE books_new (
+        id INTEGER PRIMARY KEY,
+        repository_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        abbreviation TEXT NOT NULL,
+        testament TEXT NOT NULL CHECK (testament IN ('OT', 'NT')),
+        book_order INTEGER NOT NULL,
+        chapter_count INTEGER NOT NULL DEFAULT 0
+      );
+
+      INSERT INTO books_new (id, repository_id, name, abbreviation, testament, book_order, chapter_count)
+      SELECT id, repository_id, name, abbreviation, testament, book_order, chapter_count
+      FROM books;
+
+      CREATE TABLE verses_new (
+        id INTEGER PRIMARY KEY,
+        repository_id TEXT NOT NULL,
+        book_id INTEGER NOT NULL,
+        chapter INTEGER NOT NULL,
+        verse INTEGER NOT NULL,
+        text TEXT NOT NULL
+      );
+
+      INSERT INTO verses_new (id, repository_id, book_id, chapter, verse, text)
+      SELECT id, repository_id, book_id, chapter, verse, text
+      FROM verses;
+
+      DROP TABLE verses;
+      DROP TABLE books;
+
+      ALTER TABLE books_new RENAME TO books;
+      ALTER TABLE verses_new RENAME TO verses;
+
+      CREATE INDEX IF NOT EXISTS idx_books_repository ON books(repository_id);
+      CREATE INDEX IF NOT EXISTS idx_books_testament ON books(testament);
+      CREATE INDEX IF NOT EXISTS idx_books_order ON books(book_order);
+
+      CREATE INDEX IF NOT EXISTS idx_verses_repository ON verses(repository_id);
+      CREATE INDEX IF NOT EXISTS idx_verses_book ON verses(book_id);
+      CREATE INDEX IF NOT EXISTS idx_verses_chapter ON verses(book_id, chapter);
+      CREATE INDEX IF NOT EXISTS idx_verses_location ON verses(book_id, chapter, verse);
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_verses_unique ON verses(repository_id, book_id, chapter, verse);
+
+      -- Recreate repository_translations with embedded translation metadata.
+      CREATE TABLE repository_translations_new (
+        id TEXT PRIMARY KEY,
+        parent_repository_id TEXT NOT NULL,
+        translation_id TEXT NOT NULL,
+        translation_name TEXT NOT NULL,
+        translation_description TEXT,
+        translation_version TEXT NOT NULL DEFAULT '1.0.0',
+        directory_name TEXT NOT NULL,
+        language_code TEXT NOT NULL,
+        status TEXT DEFAULT 'active',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (parent_repository_id) REFERENCES repositories(id) ON DELETE CASCADE
+      );
+
+      INSERT INTO repository_translations_new (
+        id,
+        parent_repository_id,
+        translation_id,
+        translation_name,
+        translation_description,
+        translation_version,
+        directory_name,
+        language_code,
+        status,
+        created_at
+      )
+      SELECT
+        rt.parent_repository_id || ':' || rt.translation_id AS id,
+        rt.parent_repository_id,
+        rt.translation_id,
+        COALESCE(MAX(r.name), rt.translation_id) AS translation_name,
+        MAX(r.description) AS translation_description,
+        COALESCE(MAX(r.version), '1.0.0') AS translation_version,
+        MIN(rt.directory_name) AS directory_name,
+        COALESCE(MIN(rt.language_code), COALESCE(MAX(r.language), 'en')) AS language_code,
+        COALESCE(MIN(rt.status), 'active') AS status,
+        COALESCE(MIN(rt.created_at), CURRENT_TIMESTAMP) AS created_at
+      FROM repository_translations rt
+      LEFT JOIN repositories r ON r.id = rt.translation_id
+      GROUP BY rt.parent_repository_id, rt.translation_id;
+
+      DROP TABLE repository_translations;
+      ALTER TABLE repository_translations_new RENAME TO repository_translations;
+
+      CREATE INDEX IF NOT EXISTS idx_repository_translations_parent ON repository_translations(parent_repository_id);
+      CREATE INDEX IF NOT EXISTS idx_repository_translations_translation ON repository_translations(translation_id);
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_repository_translations_parent_translation
+      ON repository_translations(parent_repository_id, translation_id);
+
+      -- Repositories store parent repositories only.
+      DELETE FROM repositories WHERE type = 'translation';
+      UPDATE repositories SET type = 'parent', parent_id = NULL;
+    `,
+    down: `
+      -- Note: Irreversible normalization migration.
+    `,
+  },
 ];
 
 export class MigrationRunner {

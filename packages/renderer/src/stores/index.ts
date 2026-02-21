@@ -12,6 +12,8 @@ export type {
   Verse,
   ReadingLocation,
   Bookmark,
+  Highlight,
+  Note,
   ReadingHistory,
   SearchResult,
   ImportProgress,
@@ -96,6 +98,38 @@ export const useBookmarks = () => {
     removeBookmark,
     updateBookmark,
     loadBookmarks,
+  }
+}
+
+export const useNotes = () => {
+  const notes = useReadingStore(state => state.notes)
+  const addNote = useReadingStore(state => state.addNote)
+  const removeNote = useReadingStore(state => state.removeNote)
+  const updateNote = useReadingStore(state => state.updateNote)
+  const loadNotes = useReadingStore(state => state.loadNotes)
+
+  return {
+    notes,
+    addNote,
+    removeNote,
+    updateNote,
+    loadNotes,
+  }
+}
+
+export const useHighlights = () => {
+  const highlights = useReadingStore(state => state.highlights)
+  const addHighlight = useReadingStore(state => state.addHighlight)
+  const removeHighlight = useReadingStore(state => state.removeHighlight)
+  const updateHighlight = useReadingStore(state => state.updateHighlight)
+  const loadHighlights = useReadingStore(state => state.loadHighlights)
+
+  return {
+    highlights,
+    addHighlight,
+    removeHighlight,
+    updateHighlight,
+    loadHighlights,
   }
 }
 

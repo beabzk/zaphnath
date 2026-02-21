@@ -7,6 +7,7 @@ export type AppView =
   | 'search'
   | 'bookmarks'
   | 'notes'
+  | 'highlights'
   | 'reading-plans'
   | 'downloads'
   | 'settings'
@@ -80,6 +81,7 @@ export function getViewTitle(view: AppView): string {
     search: 'Search',
     bookmarks: 'Bookmarks',
     notes: 'Notes',
+    highlights: 'Highlights',
     'reading-plans': 'Reading Plans',
     downloads: 'Downloads',
     settings: 'Settings',

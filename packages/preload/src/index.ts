@@ -42,6 +42,8 @@ const repository: Zaphnath.RepositoryAPI = {
     ipcRenderer.invoke("repository:getParentRepositories"),
   getTranslations: (parentId: string) =>
     ipcRenderer.invoke("repository:getTranslations", parentId),
+  delete: (repositoryId: string) =>
+    ipcRenderer.invoke("repository:delete", repositoryId),
 };
 
 // File System API

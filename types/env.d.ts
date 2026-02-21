@@ -104,6 +104,7 @@ declare namespace Zaphnath {
     }>;
     getParentRepositories: () => Promise<BibleRepository[]>;
     getTranslations: (parentId: string) => Promise<any[]>;
+    delete: (repositoryId: string) => Promise<{ success: boolean }>;
   }
 
   interface FileSystemAPI {

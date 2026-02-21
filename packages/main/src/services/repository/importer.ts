@@ -1,7 +1,10 @@
+import { createHash } from "crypto";
+
 import { DatabaseService } from "../database/index.js";
 import { RepositoryDiscoveryService } from "./discovery.js";
 import { ZBRSValidator } from "./validator.js";
 import type {
+  ContentBookReference,
   RepositoryDbRecord,
   ZBRSParentManifest,
   ZBRSTranslationManifest,
@@ -32,6 +35,10 @@ const createValidationError = (
 
 const toErrorMessage = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
+
+interface ResolvedBookFile extends ContentBookReference {
+  download_url?: string;
+}
 
 export class RepositoryImporter {
   private databaseService: DatabaseService;
@@ -140,9 +147,12 @@ export class RepositoryImporter {
         }),
       });
 
+      // Clean base URL for translations
+      const baseUrl = options.repository_url.replace(/\/manifest\.json$/, "").replace(/\/$/, "");
+
       for (const translation of manifest.translations) {
         const translationResult = await this.importTranslationFromParent(
-          options.repository_url,
+          baseUrl,
           translation,
           manifest.repository.id,
           options
@@ -172,8 +182,7 @@ export class RepositoryImporter {
   private async validateAndPrepareTranslation(
     manifest: ZBRSTranslationManifest,
     options: ImportOptions,
-    parentId: string | null,
-    _directoryName: string | null
+    parentId: string | null
   ): Promise<[ValidationResult, RepositoryDbRecord | null]> {
     const validation = await this.validateRepositoryChecksums(
       manifest,
@@ -181,23 +190,27 @@ export class RepositoryImporter {
     );
     if (!validation.valid) return [validation, null];
 
-    const record: RepositoryDbRecord = {
-      id: manifest.repository.id,
-      name: manifest.repository.name,
-      description: manifest.repository.description,
-      version: manifest.repository.version,
-      language: manifest.repository.language.code,
-      type: "translation",
-      parent_id: parentId,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      imported_at: new Date().toISOString(),
-      metadata: JSON.stringify({
-        technical: manifest.technical,
-        content: manifest.content,
-        extensions: manifest.extensions || {},
-      }),
-    };
+    // Parent imports store translation metadata in repository_translations only.
+    // Standalone translation imports are represented as a single parent repository.
+    const record: RepositoryDbRecord | null = parentId
+      ? null
+      : {
+        id: manifest.repository.id,
+        name: manifest.repository.name,
+        description: manifest.repository.description,
+        version: manifest.repository.version,
+        language: manifest.repository.language.code,
+        type: "parent",
+        parent_id: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        imported_at: new Date().toISOString(),
+        metadata: JSON.stringify({
+          technical: manifest.technical,
+          content: manifest.content,
+          extensions: manifest.extensions || {},
+        }),
+      };
 
     return [validation, record];
   }
@@ -206,7 +219,8 @@ export class RepositoryImporter {
     manifest: ZBRSTranslationManifest,
     options: ImportOptions,
     parentId: string | null = null,
-    _directoryName: string | null = null
+    directoryName: string | null = null,
+    translationStatus: "active" | "inactive" | "deprecated" = "active"
   ): Promise<ImportResult> {
     const startTime = Date.now();
     const result: ImportResult = {
@@ -222,17 +236,33 @@ export class RepositoryImporter {
       const [validation, record] = await this.validateAndPrepareTranslation(
         manifest,
         options,
-        parentId,
-        _directoryName
+        parentId
       );
 
       result.warnings.push(...validation.warnings);
-      if (!validation.valid || !record) {
+      if (!validation.valid) {
         result.errors.push(...validation.errors);
         return result;
       }
 
-      await this.createOrUpdateRepositoryRecord(record);
+      if (record) {
+        await this.createOrUpdateRepositoryRecord(record);
+      }
+
+      const translationParentId = parentId ?? manifest.repository.id;
+      const translationDirectory = directoryName ?? ".";
+
+      this.databaseService.getQueries().createRepositoryTranslation({
+        id: `${translationParentId}:${manifest.repository.id}`,
+        parent_repository_id: translationParentId,
+        translation_id: manifest.repository.id,
+        translation_name: manifest.repository.name,
+        translation_description: manifest.repository.description,
+        translation_version: manifest.repository.version,
+        directory_name: translationDirectory,
+        language_code: manifest.repository.language.code,
+        status: translationStatus,
+      });
 
       const importedCount = await this.importBooks(manifest, options);
       result.books_imported = importedCount;
@@ -281,7 +311,8 @@ export class RepositoryImporter {
         manifest,
         { ...options, repository_url: translationUrl },
         parentId,
-        translation.directory
+        translation.directory,
+        translation.status
       );
     } catch (error) {
       return {
@@ -306,6 +337,164 @@ export class RepositoryImporter {
     this.databaseService.getQueries().upsertRepository(record);
   }
 
+  private normalizeRepositoryBaseUrl(repositoryUrl: string): string {
+    return repositoryUrl.replace(/\/manifest\.json$/, "").replace(/\/$/, "");
+  }
+
+  private buildBookUrl(baseUrl: string, bookFile: ResolvedBookFile): string {
+    if (bookFile.download_url) {
+      return bookFile.download_url;
+    }
+
+    if (bookFile.path.startsWith("http://") || bookFile.path.startsWith("https://")) {
+      return bookFile.path;
+    }
+
+    const normalizedBase = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
+    return `${normalizedBase}${bookFile.path.replace(/^\/+/, "")}`;
+  }
+
+  private async fetchJsonFromLocation(location: string): Promise<unknown> {
+    if (!location.startsWith("http://") && !location.startsWith("https://")) {
+      throw new Error("Only HTTP(S) book sources are supported");
+    }
+
+    const response = await fetch(location);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch JSON: ${response.statusText}`);
+    }
+    const rawContent = await response.text();
+    return JSON.parse(rawContent.replace(/^\uFEFF/, ""));
+  }
+
+  private async calculateSha256(location: string): Promise<string> {
+    if (!location.startsWith("http://") && !location.startsWith("https://")) {
+      throw new Error("Only HTTP(S) checksum sources are supported");
+    }
+
+    const response = await fetch(location);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch file for checksum: ${response.statusText}`);
+    }
+
+    const data = Buffer.from(await response.arrayBuffer());
+    const hash = createHash("sha256");
+    hash.update(data);
+    return `sha256:${hash.digest("hex")}`;
+  }
+
+  private async resolveBookFiles(
+    manifest: ZBRSTranslationManifest,
+    options: ImportOptions
+  ): Promise<ResolvedBookFile[]> {
+    const manifestBooks = manifest.content?.books;
+    if (Array.isArray(manifestBooks) && manifestBooks.length > 0) {
+      return manifestBooks;
+    }
+
+    const discoveredBooks = await this.discoverBookFiles(
+      options.repository_url
+    );
+    if (discoveredBooks.length > 0) {
+      return discoveredBooks;
+    }
+
+    return [];
+  }
+
+  private async discoverBookFiles(
+    repositoryUrl: string
+  ): Promise<ResolvedBookFile[]> {
+    const normalizedUrl = this.normalizeRepositoryBaseUrl(repositoryUrl);
+
+    if (normalizedUrl.startsWith("http://") || normalizedUrl.startsWith("https://")) {
+      try {
+        const parsedUrl = new URL(normalizedUrl);
+        if (parsedUrl.hostname === "raw.githubusercontent.com") {
+          return this.discoverGitHubRawBookFiles(parsedUrl);
+        }
+      } catch {
+        return [];
+      }
+    }
+
+    return [];
+  }
+
+  private async discoverGitHubRawBookFiles(
+    repositoryUrl: URL
+  ): Promise<ResolvedBookFile[]> {
+    try {
+      const pathSegments = repositoryUrl.pathname
+        .split("/")
+        .filter((segment) => segment.length > 0);
+      if (pathSegments.length < 4) {
+        return [];
+      }
+
+      const [owner, repo, ref, ...repositoryPath] = pathSegments;
+      const booksPath = [...repositoryPath, "books"]
+        .map((segment) => encodeURIComponent(segment))
+        .join("/");
+      const apiUrl = `https://api.github.com/repos/${encodeURIComponent(
+        owner
+      )}/${encodeURIComponent(repo)}/contents/${booksPath}?ref=${encodeURIComponent(
+        ref
+      )}`;
+
+      const response = await fetch(apiUrl, {
+        headers: {
+          Accept: "application/vnd.github+json",
+          "User-Agent": "Zaphnath Bible Reader/1.0",
+        },
+      });
+
+      if (!response.ok) {
+        console.warn(
+          `Failed to discover books via GitHub API (${response.status} ${response.statusText}) for ${repositoryUrl.toString()}`
+        );
+        return [];
+      }
+
+      const data = (await response.json()) as Array<{
+        type?: string;
+        name?: string;
+        size?: number;
+        download_url?: string;
+      }>;
+
+      if (!Array.isArray(data)) {
+        return [];
+      }
+
+      return data
+        .filter(
+          (entry) =>
+            entry.type === "file" &&
+            typeof entry.name === "string" &&
+            entry.name.toLowerCase().endsWith(".json")
+        )
+        .sort((a, b) =>
+          (a.name ?? "").localeCompare(b.name ?? "", undefined, {
+            numeric: true,
+            sensitivity: "base",
+          })
+        )
+        .map((entry) => ({
+          path: `books/${entry.name as string}`,
+          checksum: "",
+          size_bytes: typeof entry.size === "number" ? entry.size : undefined,
+          media_type: "application/json",
+          download_url:
+            typeof entry.download_url === "string"
+              ? entry.download_url
+              : undefined,
+        }));
+    } catch {
+      return [];
+    }
+  }
+
   private async validateRepositoryChecksums(
     manifest: ZBRSTranslationManifest,
     options: ImportOptions
@@ -320,17 +509,33 @@ export class RepositoryImporter {
         message: "Validating file checksums...",
       });
 
-      const baseUrl = options.repository_url;
-      const bookFiles = manifest.content?.books ?? [];
+      const baseUrl = this.normalizeRepositoryBaseUrl(options.repository_url);
+      const bookFiles = await this.resolveBookFiles(manifest, options);
+      let checksumWarningEmitted = false;
 
       for (const bookFile of bookFiles) {
-        const bookUrl = `${baseUrl}/${bookFile.path}`;
         const expectedChecksum = bookFile.checksum;
-        const integrityValidation = await this.validator.validateFileIntegrity(
-          bookUrl,
-          expectedChecksum
-        );
-        if (!integrityValidation.valid) {
+        if (!expectedChecksum || !expectedChecksum.startsWith("sha256:")) {
+          if (!checksumWarningEmitted) {
+            validation.warnings.push({
+              code: "CHECKSUM_SKIPPED",
+              message:
+                "Skipping checksum validation for one or more books because checksum metadata is missing or not sha256",
+              name: "ValidationWarning",
+            });
+            checksumWarningEmitted = true;
+          }
+          continue;
+        }
+
+        const bookUrl = this.buildBookUrl(baseUrl, bookFile);
+
+        try {
+          const actualChecksum = await this.calculateSha256(bookUrl);
+          if (actualChecksum === expectedChecksum) {
+            continue;
+          }
+
           validation.valid = false;
           validation.errors.push(
             createValidationError(
@@ -339,8 +544,19 @@ export class RepositoryImporter {
               bookFile.path,
               {
                 expected: expectedChecksum,
-                actual: integrityValidation.actual_checksum,
+                actual: actualChecksum,
               }
+            )
+          );
+        } catch (error) {
+          validation.valid = false;
+          validation.errors.push(
+            createValidationError(
+              "checksum-validation-failed",
+              `Failed to validate checksum for ${bookFile.path}: ${toErrorMessage(
+                error
+              )}`,
+              bookFile.path
             )
           );
         }
@@ -353,17 +569,17 @@ export class RepositoryImporter {
     manifest: ZBRSTranslationManifest,
     options: ImportOptions
   ): Promise<number> {
-    const baseUrl = options.repository_url;
-    const bookFiles = manifest.content?.books ?? [];
+    const baseUrl = this.normalizeRepositoryBaseUrl(options.repository_url);
+    const bookFiles = await this.resolveBookFiles(manifest, options);
     let importedCount = 0;
 
     if (!Array.isArray(bookFiles) || bookFiles.length === 0) {
       console.error(
-        "No book files found or bookFiles is not an array in the manifest:",
-        manifest
+        "No book files could be resolved for translation:",
+        manifest.repository.id
       );
       throw new Error(
-        "Invalid manifest content: book files are missing or not in an array."
+        "No book files could be resolved. Ensure the translation exposes a books directory (e.g., translation/books/*.json) or provides content.books references."
       );
     }
 
@@ -376,12 +592,8 @@ export class RepositoryImporter {
       });
 
       try {
-        const bookUrl =
-          (baseUrl.endsWith("/") ? baseUrl : baseUrl + "/") + bookFileName;
-        const response = await fetch(bookUrl);
-        if (!response.ok)
-          throw new Error(`Failed to fetch book: ${response.statusText}`);
-        const book = (await response.json()) as ZBRSBook;
+        const bookUrl = this.buildBookUrl(baseUrl, bookFile);
+        const book = (await this.fetchJsonFromLocation(bookUrl)) as ZBRSBook;
 
         await this.databaseService
           .getQueries()

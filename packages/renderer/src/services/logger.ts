@@ -7,6 +7,7 @@ import {
   UserAction,
   ErrorInfo,
 } from "@/types/logging";
+import { getAppVersion } from "@/lib/version";
 
 class LoggerService implements Logger {
   private config: LoggerConfig = {
@@ -28,7 +29,7 @@ class LoggerService implements Logger {
 
   constructor() {
     this.sessionId = this.generateId();
-    this.version = "1.0.0"; // TODO: Get from package.json
+    this.version = getAppVersion();
 
     // Initialize with system info
     this.info("Logger initialized", { sessionId: this.sessionId }, "system");

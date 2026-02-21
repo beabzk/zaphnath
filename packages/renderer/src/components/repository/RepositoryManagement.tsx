@@ -108,6 +108,12 @@ export function RepositoryManagement() {
       <RepositoryList
         onImportClick={openImportDialog}
         onRepositorySelect={handleRepositorySelect}
+        onRepositoryDelete={(repoId) => {
+          if (currentRepository?.id === repoId || currentRepository?.parent_id === repoId) {
+            setCurrentRepository(null)
+          }
+          loadRepositories()
+        }}
       />
 
       {/* Selected Repository Details */}

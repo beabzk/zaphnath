@@ -5,6 +5,9 @@ import { RepositoryManagement } from '@/components/repository/RepositoryManageme
 import { SettingsInterface } from '@/components/settings/SettingsInterface'
 import { ErrorReportingPanel } from '@/components/debug/ErrorReportingPanel'
 import { SearchInterface } from '@/components/search/SearchInterface'
+import { BookmarksView as BookmarksViewComponent } from '@/components/bookmarks/BookmarksView'
+import { NotesView as NotesViewComponent } from '@/components/notes/NotesView'
+import { HighlightsView as HighlightsViewComponent } from '@/components/highlights/HighlightsView'
 import { ArrowLeft } from 'lucide-react'
 import { Reader } from '@/components/reader/Reader'
 
@@ -22,39 +25,15 @@ function SearchView() {
 }
 
 function BookmarksView() {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Bookmarks</CardTitle>
-        <CardDescription>
-          Manage your saved verses and passages
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <p className="text-muted-foreground">
-          Bookmarks feature will be implemented in future sprints.
-        </p>
-      </CardContent>
-    </Card>
-  )
+  return <BookmarksViewComponent />
 }
 
 function NotesView() {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Notes</CardTitle>
-        <CardDescription>
-          Create and organize your study notes
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <p className="text-muted-foreground">
-          Notes feature will be implemented in future sprints.
-        </p>
-      </CardContent>
-    </Card>
-  )
+  return <NotesViewComponent />
+}
+
+function HighlightsView() {
+  return <HighlightsViewComponent />
 }
 
 function ReadingPlansView() {
@@ -116,6 +95,8 @@ export function ViewRouter() {
         return <BookmarksView />
       case 'notes':
         return <NotesView />
+      case 'highlights':
+        return <HighlightsView />
       case 'reading-plans':
         return <ReadingPlansView />
       case 'downloads':

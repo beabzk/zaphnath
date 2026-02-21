@@ -293,6 +293,20 @@ export class IpcHandlers implements AppModule {
       }
     );
 
+    // Delete repository
+    ipcMain.handle(
+      "repository:delete",
+      async (_event, repositoryId: string) => {
+        try {
+          this.databaseService.getQueries().deleteRepository(repositoryId);
+          return { success: true };
+        } catch (error) {
+          console.error("Delete repository error:", error);
+          throw error;
+        }
+      }
+    );
+
     // Get parent repositories
     ipcMain.handle("repository:getParentRepositories", async (_event) => {
       try {

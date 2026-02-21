@@ -1,7 +1,7 @@
 {
   "name": "zaphnath",
   "description": "Zaphnath Bible Reader - A modern, secure Bible study application",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
   "author": {
@@ -22,13 +22,13 @@
     "packages/*"
   ],
   "engines": {
-    "node": ">=24.0.0"
+    "node": ">=24.0.0 <25.0.0"
   },
   "scripts": {
-    "build": "npm run build -ws --if-present",
+    "build": "npm run build --workspaces --if-present",
     "compile": "npm run build && electron-builder build --config electron-builder.mjs",
     "start": "node packages/dev-mode.js",
-    "typecheck": "npm run typecheck -ws --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
     "create-renderer": "cd packages && npm create vite@latest renderer",
     "integrate-renderer": "npm start --workspace @app/integrate-renderer",
     "init": "npm run create-renderer && npm run integrate-renderer && npm install",
@@ -37,30 +37,31 @@
     "convert-bible-files": "bash tools/convert-bible-files.sh",
     "validate-zbrs": "node tools/validators/validate-zbrs.js",
     "test-import": "node tools/test-import.js",
-    "version:patch": "npm version patch --no-git-tag-version",
-    "version:minor": "npm version minor --no-git-tag-version",
-    "version:major": "npm version major --no-git-tag-version",
-    "version:prerelease": "npm version prerelease --no-git-tag-version",
+    "version:patch": "npm version patch",
+    "version:minor": "npm version minor",
+    "version:major": "npm version major",
+    "version:prerelease": "npm version prerelease",
     "version:show": "node -p \"require('./package.json').version\"",
     "version:info": "node tools/version-manager.js show",
     "version:set": "node tools/version-manager.js set",
+    "version:tag": "node tools/version-manager.js tag",
     "version:help": "node tools/version-manager.js help",
     "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
     "lint:fix": "eslint . --ext .ts,.tsx,.js,.jsx --fix"
   },
   "devDependencies": {
-    "@eslint/js": "^9.38.0",
+    "@electron/rebuild": "^4.0.3",
+    "@eslint/js": "^9.39.3",
     "@npmcli/map-workspaces": "5.0.0",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^24.9.0",
-    "@typescript-eslint/eslint-plugin": "^8.46.2",
-    "@typescript-eslint/parser": "^8.46.2",
+    "@typescript-eslint/eslint-plugin": "^8.56.0",
+    "@typescript-eslint/parser": "^8.56.0",
     "electron": "^38.3.0",
-    "electron-builder": "26.0.12",
-    "electron-rebuild": "^3.2.9",
-    "eslint": "^9.38.0",
+    "electron-builder": "^26.8.1",
+    "eslint": "^9.39.3",
     "eslint-plugin-react": "^7.37.5",
-    "eslint-plugin-react-hooks": "^7.0.0",
+    "eslint-plugin-react-hooks": "^7.0.1",
     "glob": "11.0.3"
   },
   "dependencies": {

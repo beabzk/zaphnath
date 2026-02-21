@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { Copy, Highlighter, BookmarkPlus, StickyNote, X, GitCompare } from 'lucide-react'
+import { Copy, Highlighter, BookmarkPlus, BookmarkMinus, StickyNote, X, GitCompare } from 'lucide-react'
 
 interface VerseContextMenuProps {
   x: number
@@ -12,6 +12,7 @@ interface VerseContextMenuProps {
   onClearHighlight: () => void
   onCompare: () => void
   hasHighlight: boolean
+  hasBookmark?: boolean
 }
 
 const HIGHLIGHT_COLORS = [
@@ -34,6 +35,7 @@ export function VerseContextMenu({
   onClearHighlight,
   onCompare,
   hasHighlight,
+  hasBookmark = false,
 }: VerseContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -130,8 +132,11 @@ export function VerseContextMenu({
         }}
         className="w-full px-3 py-2 text-sm flex items-center gap-2 hover:bg-accent transition-colors text-left border-t border-border"
       >
-        <BookmarkPlus className="w-4 h-4" />
-        Add Bookmark
+        {hasBookmark ? (
+          <><BookmarkMinus className="w-4 h-4" /> Remove Bookmark</>
+        ) : (
+          <><BookmarkPlus className="w-4 h-4" /> Add Bookmark</>
+        )}
       </button>
 
       {/* Note */}

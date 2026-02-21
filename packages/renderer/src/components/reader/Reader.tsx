@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { useInView } from 'react-intersection-observer'
 import { useRepositoryStore, useReadingStore } from '@/stores'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, Bookmark as BookmarkIcon, StickyNote } from 'lucide-react'
 import { VerseContextMenu } from './VerseContextMenu'
 import { ReadingControls, ReadingPreferences, PRESETS } from './ReadingControls'
 import { VerseComparison } from './VerseComparison'
+import { BookmarkDialog } from './BookmarkDialog'
+import { NoteDialog } from './NoteDialog'
 
 
 export function Reader() {
@@ -20,15 +22,32 @@ export function Reader() {
   } = useRepositoryStore()
 
   const [chapterSelect, setChapterSelect] = useState<number | null>(null)
+  const [testament, setTestament] = useState<'old' | 'new'>('old')
   const [progress, setProgress] = useState(0)
   const [currentVerseNumber, setCurrentVerseNumber] = useState<number>(1)
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; verseId: string; verseNumber: number } | null>(null)
   const [selectedVerses] = useState<Set<string>>(new Set())
   const [readingPrefs, setReadingPrefs] = useState<ReadingPreferences>(PRESETS.reading)
   const [comparisonVerse, setComparisonVerse] = useState<{ bookId: string; chapter: number; verse: number } | null>(null)
+  const [bookmarkDialogVerse, setBookmarkDialogVerse] = useState<{
+    repositoryId: string
+    bookId: string
+    bookName: string
+    chapterNumber: number
+    verseNumber: number
+    verseText: string
+  } | null>(null)
+  const [noteDialogVerse, setNoteDialogVerse] = useState<{
+    repositoryId: string
+    bookId: string
+    bookName: string
+    chapterNumber: number
+    verseNumber: number
+    verseText: string
+  } | null>(null)
   const scrollRef = useRef<HTMLDivElement | null>(null)
 
-  const { highlights, addHighlight, removeHighlight } = useReadingStore()
+  const { highlights, addHighlight, removeHighlight, bookmarks, removeBookmark, notes } = useReadingStore()
 
   // Context menu handlers
   const handleVerseContextMenu = useCallback((e: React.MouseEvent, verseId: string, verseNumber: number) => {
@@ -59,25 +78,56 @@ export function Reader() {
   }, [contextMenu, currentRepository, currentBook, currentChapter, addHighlight])
 
   const handleClearHighlight = useCallback(() => {
-    if (!contextMenu) return
+    if (!contextMenu || !currentRepository || !currentBook) return
     const highlight = highlights.find(h => 
+      h.repository_id === currentRepository.id &&
+      h.book_id === currentBook.id &&
       h.chapter_number === currentChapter?.number && 
       h.verse_number === contextMenu.verseNumber
     )
     if (highlight) {
       removeHighlight(highlight.id)
     }
-  }, [contextMenu, highlights, currentChapter, removeHighlight])
+  }, [contextMenu, highlights, currentRepository, currentBook, currentChapter, removeHighlight])
 
   const handleBookmark = useCallback(() => {
-    // TODO: Implement bookmark functionality
-    console.log('Bookmark verse:', contextMenu?.verseNumber)
-  }, [contextMenu])
+    if (!contextMenu || !currentRepository || !currentBook || !currentChapter) return
+
+    const existingBookmark = bookmarks.find(
+      b => b.repository_id === currentRepository.id &&
+           b.book_id === currentBook.id &&
+           b.chapter_number === currentChapter.number &&
+           b.verse_number === contextMenu.verseNumber
+    )
+
+    if (existingBookmark) {
+      removeBookmark(existingBookmark.id)
+    } else {
+      const verse = verses.find(v => v.id === contextMenu.verseId)
+      setBookmarkDialogVerse({
+        repositoryId: currentRepository.id,
+        bookId: currentBook.id,
+        bookName: currentBook.name,
+        chapterNumber: currentChapter.number,
+        verseNumber: contextMenu.verseNumber,
+        verseText: verse?.text ?? '',
+      })
+    }
+  }, [contextMenu, currentRepository, currentBook, currentChapter, bookmarks, removeBookmark, verses])
 
   const handleNote = useCallback(() => {
-    // TODO: Implement note functionality
-    console.log('Add note to verse:', contextMenu?.verseNumber)
-  }, [contextMenu])
+    if (!contextMenu || !currentRepository || !currentBook || !currentChapter) return
+
+    const verse = verses.find(v => v.id === contextMenu.verseId)
+    setNoteDialogVerse({
+      repositoryId: currentRepository.id,
+      bookId: currentBook.id,
+      bookName: currentBook.name,
+      chapterNumber: currentChapter.number,
+      verseNumber: contextMenu.verseNumber,
+      verseText: verse?.text ?? '',
+    })
+  }, [contextMenu, currentRepository, currentBook, currentChapter, verses])
 
   const handleCompare = useCallback(() => {
     if (!contextMenu || !currentBook || !currentChapter) return
@@ -117,9 +167,14 @@ export function Reader() {
     return currentBook ? Array.from({ length: currentBook.chapter_count }, (_, i) => i + 1) : []
   }, [currentBook])
 
+  const filteredBooks = useMemo(() => {
+    return books.filter(b => b.testament === testament)
+  }, [books, testament])
+
   const handleSelectBook = (bookId: string) => {
     const book = books.find(b => b.id === bookId)
     if (book) {
+      setTestament(book.testament)
       setCurrentBook(book)
       loadChapter(book.id, 1)
       setChapterSelect(1)
@@ -215,10 +270,28 @@ export function Reader() {
       {/* Books list - minimal sidebar */}
       <div className="w-52 border-r border-border flex flex-col h-full">
         <div className="px-3 py-2 border-b border-border">
-          <h3 className="text-sm font-medium">{currentRepository.name}</h3>
+          <h3 className="text-sm font-medium mb-2">{currentRepository.name}</h3>
+          <div className="flex gap-1">
+            <button
+              className={`flex-1 px-2 py-1 text-xs rounded transition-colors ${
+                testament === 'old' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent/50'
+              }`}
+              onClick={() => setTestament('old')}
+            >
+              Old Testament
+            </button>
+            <button
+              className={`flex-1 px-2 py-1 text-xs rounded transition-colors ${
+                testament === 'new' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent/50'
+              }`}
+              onClick={() => setTestament('new')}
+            >
+              New Testament
+            </button>
+          </div>
         </div>
         <div className="flex-1 overflow-y-auto">
-          {books.map(b => (
+          {filteredBooks.map(b => (
             <button
               key={b.id}
               className={`w-full text-left px-3 py-1.5 hover:bg-accent/50 transition-colors flex items-center gap-2 text-sm ${
@@ -288,12 +361,12 @@ export function Reader() {
                 ←
               </button>
               <select
-                className="bg-transparent border-0 px-2 py-1 text-sm focus:outline-none cursor-pointer"
+                className="bg-background text-foreground border border-border rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"
                 value={chapterSelect ?? ''}
                 onChange={(e) => handleChangeChapter(Number(e.target.value))}
               >
                 {chaptersForCurrentBook.map(n => (
-                  <option key={n} value={n}>{n}</option>
+                  <option key={n} value={n} className="bg-background text-foreground">{n}</option>
                 ))}
               </select>
               <button
@@ -337,10 +410,22 @@ export function Reader() {
                 textAlign: readingPrefs.textAlign,
               }}
             >
-              {verses.map((v) => {
+            {verses.map((v) => {
                 const highlight = highlights.find(h => 
+                  h.repository_id === currentRepository?.id &&
+                  h.book_id === currentBook?.id &&
                   h.chapter_number === currentChapter?.number && 
                   h.verse_number === v.number
+                )
+                const isBookmarked = bookmarks.some(
+                  b => b.book_id === currentBook?.id &&
+                       b.chapter_number === currentChapter?.number &&
+                       b.verse_number === v.number
+                )
+                const hasNote = notes.some(
+                  n => n.book_id === currentBook?.id &&
+                       n.chapter_number === currentChapter?.number &&
+                       n.verse_number === v.number
                 )
                 return (
                   <VerseItem
@@ -348,6 +433,8 @@ export function Reader() {
                     verse={v}
                     highlight={highlight}
                     isSelected={selectedVerses.has(v.id)}
+                    isBookmarked={isBookmarked}
+                    hasNote={hasNote}
                     showNumber={readingPrefs.verseNumbers}
                     spacing={readingPrefs.verseSpacing}
                     onInView={(inView) => {
@@ -379,11 +466,30 @@ export function Reader() {
             onClearHighlight={handleClearHighlight}
             onCompare={handleCompare}
             hasHighlight={highlights.some(h => 
+              h.repository_id === currentRepository?.id &&
+              h.book_id === currentBook?.id &&
               h.chapter_number === currentChapter?.number && 
               h.verse_number === contextMenu.verseNumber
             )}
+            hasBookmark={bookmarks.some(
+              b => b.book_id === currentBook?.id &&
+                   b.chapter_number === currentChapter?.number &&
+                   b.verse_number === contextMenu.verseNumber
+            )}
           />
         )}
+
+        {/* Bookmark Dialog */}
+        <BookmarkDialog
+          verse={bookmarkDialogVerse}
+          onClose={() => setBookmarkDialogVerse(null)}
+        />
+
+        {/* Note Dialog */}
+        <NoteDialog
+          verse={noteDialogVerse}
+          onClose={() => setNoteDialogVerse(null)}
+        />
 
         {/* Verse Comparison Modal */}
         {comparisonVerse && (
@@ -404,13 +510,15 @@ interface VerseItemProps {
   verse: { id: string; number: number; text: string }
   highlight?: { color: string }
   isSelected: boolean
+  isBookmarked: boolean
+  hasNote: boolean
   showNumber: boolean
   spacing: number
   onInView: (inView: boolean) => void
   onContextMenu: (e: React.MouseEvent) => void
 }
 
-function VerseItem({ verse, highlight, isSelected, showNumber, spacing, onInView, onContextMenu }: VerseItemProps) {
+function VerseItem({ verse, highlight, isSelected, isBookmarked, hasNote, showNumber, spacing, onInView, onContextMenu }: VerseItemProps) {
   const { ref, inView } = useInView({
     threshold: 0.5,
     trackVisibility: true,
@@ -435,7 +543,13 @@ function VerseItem({ verse, highlight, isSelected, showNumber, spacing, onInView
           {verse.number}
         </span>
       )}
-      <p className={showNumber ? '' : 'flex-1'}>{verse.text}</p>
+      <p className={showNumber ? 'flex-1' : 'flex-1'}>{verse.text}</p>
+      {hasNote && (
+        <StickyNote className="w-3.5 h-3.5 text-amber-500 flex-shrink-0 mt-1" />
+      )}
+      {isBookmarked && (
+        <BookmarkIcon className="w-3.5 h-3.5 text-primary flex-shrink-0 mt-1 fill-primary" />
+      )}
     </div>
   )
 }

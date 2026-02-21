@@ -10,6 +10,27 @@ export class DatabaseQueries {
     this.db = connection.connect();
   }
 
+  private tableExists(tableName: string): boolean {
+    const stmt = this.db.prepare(
+      "SELECT 1 as exists_flag FROM sqlite_master WHERE type = 'table' AND name = ?"
+    );
+    return Boolean(stmt.get(tableName));
+  }
+
+  private deleteTranslationData(repositoryId: string): void {
+    this.db.prepare("DELETE FROM verses WHERE repository_id = ?").run(repositoryId);
+    this.db.prepare("DELETE FROM books WHERE repository_id = ?").run(repositoryId);
+
+    const optionalTables = ["notes", "highlights", "bookmarks"];
+    for (const tableName of optionalTables) {
+      if (this.tableExists(tableName)) {
+        this.db
+          .prepare(`DELETE FROM ${tableName} WHERE repository_id = ?`)
+          .run(repositoryId);
+      }
+    }
+  }
+
   // Repository queries
   public getRepositories(): Zaphnath.BibleRepository[] {
     const stmt = this.db.prepare(`
@@ -38,11 +59,10 @@ export class DatabaseQueries {
         GROUP BY repository_id
       ) verse_counts ON r.id = verse_counts.repository_id
       LEFT JOIN (
-        SELECT parent_id, COUNT(*) as translation_count
-        FROM repositories
-        WHERE type = 'translation' AND parent_id IS NOT NULL
-        GROUP BY parent_id
-      ) translation_counts ON r.id = translation_counts.parent_id
+        SELECT parent_repository_id, COUNT(*) as translation_count
+        FROM repository_translations
+        GROUP BY parent_repository_id
+      ) translation_counts ON r.id = translation_counts.parent_repository_id
       ORDER BY r.name
     `);
     return stmt.all() as Zaphnath.BibleRepository[];
@@ -74,8 +94,30 @@ export class DatabaseQueries {
   }
 
   public deleteRepository(id: string): void {
-    const stmt = this.db.prepare("DELETE FROM repositories WHERE id = ?");
-    stmt.run(id);
+    const deleteAll = this.db.transaction(() => {
+      // For parent repositories, delete child translations first
+      const translations = this.db
+        .prepare(
+          `
+          SELECT translation_id as id
+          FROM repository_translations
+          WHERE parent_repository_id = ?
+          `
+        )
+        .all(id) as { id: string }[];
+
+      for (const translation of translations) {
+        this.deleteTranslationData(translation.id);
+      }
+
+      this.db
+        .prepare("DELETE FROM repository_translations WHERE parent_repository_id = ?")
+        .run(id);
+
+      // Delete parent repository row (repository_translations cascade on parent_repository_id).
+      this.db.prepare("DELETE FROM repositories WHERE id = ?").run(id);
+    });
+    deleteAll();
   }
 
   public upsertRepository(record: RepositoryDbRecord): void {
@@ -392,18 +434,27 @@ export class DatabaseQueries {
     parentId?: string
   ): Zaphnath.BibleRepository[] {
     let query = `
-      SELECT id, name, description, language, version, created_at, updated_at, type, parent_id
-      FROM repositories
-      WHERE type = 'translation'
+      SELECT
+        rt.translation_id as id,
+        rt.translation_name as name,
+        rt.translation_description as description,
+        rt.language_code as language,
+        rt.translation_version as version,
+        rt.created_at as created_at,
+        rt.created_at as updated_at,
+        'translation' as type,
+        rt.parent_repository_id as parent_id
+      FROM repository_translations rt
+      WHERE 1 = 1
     `;
     let params: any[] = [];
 
     if (parentId) {
-      query += " AND parent_id = ?";
+      query += " AND rt.parent_repository_id = ?";
       params.push(parentId);
     }
 
-    query += " ORDER BY name";
+    query += " ORDER BY rt.translation_name";
 
     const stmt = this.db.prepare(query);
     return stmt.all(...params) as Zaphnath.BibleRepository[];
@@ -433,38 +484,65 @@ export class DatabaseQueries {
     description: string;
     language: string;
     version: string;
-    parent_id?: string;
+    parent_id: string;
+    directory_name?: string;
+    status?: string;
   }): void {
-    const stmt = this.db.prepare(`
-      INSERT INTO repositories (id, name, description, language, version, type, parent_id)
-      VALUES (?, ?, ?, ?, ?, 'translation', ?)
-    `);
-    stmt.run(
-      repository.id,
-      repository.name,
-      repository.description,
-      repository.language,
-      repository.version,
-      repository.parent_id || null
-    );
+    this.createRepositoryTranslation({
+      id: `${repository.parent_id}:${repository.id}`,
+      parent_repository_id: repository.parent_id,
+      translation_id: repository.id,
+      translation_name: repository.name,
+      translation_description: repository.description,
+      translation_version: repository.version,
+      directory_name: repository.directory_name || repository.id,
+      language_code: repository.language,
+      status: repository.status || "active",
+    });
   }
 
   public createRepositoryTranslation(translation: {
     id: string;
     parent_repository_id: string;
     translation_id: string;
+    translation_name: string;
+    translation_description?: string | null;
+    translation_version: string;
     directory_name: string;
     language_code: string;
     status?: string;
   }): void {
     const stmt = this.db.prepare(`
-      INSERT INTO repository_translations (id, parent_repository_id, translation_id, directory_name, language_code, status)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO repository_translations (
+        id,
+        parent_repository_id,
+        translation_id,
+        translation_name,
+        translation_description,
+        translation_version,
+        directory_name,
+        language_code,
+        status
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(parent_repository_id, translation_id) DO UPDATE SET
+        id = excluded.id,
+        parent_repository_id = excluded.parent_repository_id,
+        translation_id = excluded.translation_id,
+        translation_name = excluded.translation_name,
+        translation_description = excluded.translation_description,
+        translation_version = excluded.translation_version,
+        directory_name = excluded.directory_name,
+        language_code = excluded.language_code,
+        status = excluded.status
     `);
     stmt.run(
       translation.id,
       translation.parent_repository_id,
       translation.translation_id,
+      translation.translation_name,
+      translation.translation_description || null,
+      translation.translation_version,
       translation.directory_name,
       translation.language_code,
       translation.status || "active"
@@ -474,23 +552,20 @@ export class DatabaseQueries {
   public getRepositoryTranslations(parentId: string): any[] {
     const stmt = this.db.prepare(`
       SELECT 
-        rt.*, 
-        r.name as translation_name, 
-        r.description as translation_description,
+        rt.*,
         COALESCE(book_counts.book_count, 0) as book_count,
         COALESCE(verse_counts.verse_count, 0) as verse_count
       FROM repository_translations rt
-      JOIN repositories r ON rt.translation_id = r.id
       LEFT JOIN (
         SELECT repository_id, COUNT(*) as book_count
         FROM books
         GROUP BY repository_id
-      ) book_counts ON r.id = book_counts.repository_id
+      ) book_counts ON rt.translation_id = book_counts.repository_id
       LEFT JOIN (
         SELECT repository_id, COUNT(*) as verse_count
         FROM verses
         GROUP BY repository_id
-      ) verse_counts ON r.id = verse_counts.repository_id
+      ) verse_counts ON rt.translation_id = verse_counts.repository_id
       WHERE rt.parent_repository_id = ?
       ORDER BY rt.directory_name
     `);
@@ -501,10 +576,15 @@ export class DatabaseQueries {
     parentId: string,
     translationId: string
   ): void {
-    const stmt = this.db.prepare(`
+    const deleteTranslation = this.db.transaction(() => {
+      this.deleteTranslationData(translationId);
+
+      this.db.prepare(`
       DELETE FROM repository_translations
       WHERE parent_repository_id = ? AND translation_id = ?
-    `);
-    stmt.run(parentId, translationId);
+    `).run(parentId, translationId);
+    });
+
+    deleteTranslation();
   }
 }
