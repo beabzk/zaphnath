@@ -2,6 +2,7 @@ import type { AppModule } from "../AppModule.js";
 import { ModuleContext } from "../ModuleContext.js";
 import { BrowserWindow } from "electron";
 import type { AppInitConfig } from "../AppInitConfig.js";
+import path from "node:path";
 
 class WindowManager implements AppModule {
   readonly #preload: { path: string };
@@ -35,8 +36,11 @@ class WindowManager implements AppModule {
       minWidth: 800, // Minimum width to ensure usability
       minHeight: 600, // Minimum height for proper layout
       titleBarStyle: process.platform === "darwin" ? "hiddenInset" : "default",
+      // Use app icon on Windows/Linux (macOS uses .icns from bundle metadata).
       icon:
-        process.platform === "linux" ? "buildResources/icon.png" : undefined,
+        process.platform === "darwin"
+          ? undefined
+          : path.resolve(process.cwd(), "buildResources", "icon.png"),
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,

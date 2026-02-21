@@ -11,6 +11,10 @@ import { allowExternalUrls } from "./modules/ExternalUrls.js";
 import { IpcHandlers } from "./modules/IpcHandlers.js";
 
 export async function initApp(initConfig: AppInitConfig) {
+  if (process.platform === "win32") {
+    app.setAppUserModelId("io.github.beabzk.zaphnath");
+  }
+
   const moduleRunner = createModuleRunner()
     .init(
       createWindowManagerModule({

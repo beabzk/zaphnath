@@ -29,7 +29,7 @@ export default /** @type import('electron-builder').Configuration */
     },
     win: {
       target: ['nsis', 'portable'],
-      icon: 'buildResources/icon.png',
+      icon: 'buildResources/icon.ico',
       verifyUpdateCodeSignature: false,
     },
     nsis: {
@@ -39,6 +39,10 @@ export default /** @type import('electron-builder').Configuration */
       createStartMenuShortcut: true,
       shortcutName: 'Zaphnath Bible Reader',
       deleteAppDataOnUninstall: false, // Preserve user's Bible data and settings
+      artifactName: '${productName}-${version}-${os}-${arch}-nsis.${ext}',
+    },
+    portable: {
+      artifactName: '${productName}-${version}-${os}-${arch}-portable.${ext}',
     },
     linux: {
       target: ['deb', 'AppImage', 'tar.gz'],
