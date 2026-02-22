@@ -1,18 +1,23 @@
-import { ipcMain, dialog, BrowserWindow } from "electron";
+import { ipcMain, dialog, BrowserWindow, type IpcMainInvokeEvent } from "electron";
 import { AppModule } from "../AppModule.js";
 import { DatabaseService } from "../services/database/index.js";
 import { RepositoryService } from "../services/repository/index.js";
 import type { ModuleContext } from "../ModuleContext.js";
+import type { AppInitConfig } from "../AppInitConfig.js";
 
 export class IpcHandlers implements AppModule {
   private databaseService: DatabaseService;
   private repositoryService: RepositoryService;
-  private context: ModuleContext;
+  private readonly allowedRendererOrigins: Set<string>;
+  private readonly allowFileProtocol: boolean;
 
-  constructor(context: ModuleContext) {
-    this.context = context;
+  constructor(renderer: AppInitConfig["renderer"]) {
     this.databaseService = DatabaseService.getInstance();
     this.repositoryService = RepositoryService.getInstance();
+    this.allowedRendererOrigins =
+      renderer instanceof URL ? new Set([renderer.origin]) : new Set();
+    this.allowFileProtocol =
+      renderer instanceof URL ? renderer.protocol === "file:" : true;
   }
 
   public async enable(context: ModuleContext): Promise<void> {
@@ -53,13 +58,63 @@ export class IpcHandlers implements AppModule {
     console.log("IPC handlers removed");
   }
 
+  private assertTrustedIpcSender(
+    event: IpcMainInvokeEvent,
+    channel: string
+  ): void {
+    const senderWindow = BrowserWindow.fromWebContents(event.sender);
+    const senderUrl = event.senderFrame?.url || event.sender.getURL();
+
+    if (!senderWindow || !senderUrl) {
+      this.logBlockedIpcSender(channel, senderUrl, "missing sender window or URL");
+      throw new Error("Unauthorized IPC sender");
+    }
+
+    let parsedSenderUrl: URL;
+    try {
+      parsedSenderUrl = new URL(senderUrl);
+    } catch {
+      this.logBlockedIpcSender(channel, senderUrl, "invalid sender URL");
+      throw new Error("Unauthorized IPC sender");
+    }
+
+    const isAllowedFileRequest =
+      this.allowFileProtocol && parsedSenderUrl.protocol === "file:";
+    const isAllowedOrigin = this.allowedRendererOrigins.has(
+      parsedSenderUrl.origin
+    );
+
+    if (isAllowedFileRequest || isAllowedOrigin) {
+      return;
+    }
+
+    this.logBlockedIpcSender(
+      channel,
+      senderUrl,
+      "origin is not in the allowlist"
+    );
+    throw new Error("Unauthorized IPC sender");
+  }
+
+  private logBlockedIpcSender(
+    channel: string,
+    senderUrl: string | undefined,
+    reason: string
+  ): void {
+    console.warn(
+      `[IPC] Blocked unauthorized sender for ${channel}. URL: ${
+        senderUrl ?? "unknown"
+      }. Reason: ${reason}`
+    );
+  }
+
   private registerDatabaseHandlers(): void {
     // Raw database query handler (for advanced usage)
     ipcMain.handle(
       "database:query",
-      async (_event, sql: string, params?: any[]) => {
+      async (event, sql: string, params?: any[]) => {
+        this.assertTrustedIpcSender(event, "database:query");
         try {
-          // TODO: Add origin validation for security
           const queries = this.databaseService.getQueries();
           return queries.executeRaw(sql, params || []);
         } catch (error) {
@@ -72,9 +127,9 @@ export class IpcHandlers implements AppModule {
     // Raw database execute handler (for advanced usage)
     ipcMain.handle(
       "database:execute",
-      async (_event, sql: string, params?: any[]) => {
+      async (event, sql: string, params?: any[]) => {
+        this.assertTrustedIpcSender(event, "database:execute");
         try {
-          // TODO: Add origin validation for security
           const queries = this.databaseService.getQueries();
           return queries.executeRawRun(sql, params || []);
         } catch (error) {
@@ -87,9 +142,9 @@ export class IpcHandlers implements AppModule {
     // Get all books
     ipcMain.handle(
       "database:getBooks",
-      async (_event, repositoryId?: string) => {
+      async (event, repositoryId?: string) => {
+        this.assertTrustedIpcSender(event, "database:getBooks");
         try {
-          // TODO: Add origin validation for security
           return this.databaseService.getBooks(repositoryId);
         } catch (error) {
           console.error("Get books error:", error);
@@ -101,9 +156,9 @@ export class IpcHandlers implements AppModule {
     // Get verses for a specific book and chapter
     ipcMain.handle(
       "database:getVerses",
-      async (_event, bookId: number, chapter: number) => {
+      async (event, bookId: number, chapter: number) => {
+        this.assertTrustedIpcSender(event, "database:getVerses");
         try {
-          // TODO: Add origin validation for security
           return this.databaseService.getVerses(bookId, chapter);
         } catch (error) {
           console.error("Get verses error:", error);
@@ -115,10 +170,10 @@ export class IpcHandlers implements AppModule {
     // Search verses
     ipcMain.handle(
       "database:searchVerses",
-      async (_event, query: string, repositoryId?: string) => {
+      async (event, query: string, repositoryId?: string) => {
+        this.assertTrustedIpcSender(event, "database:searchVerses");
         try {
           console.log(`[IPC] searchVerses called with query: "${query}", repositoryId: ${repositoryId}`);
-          // TODO: Add origin validation for security
           const results = this.databaseService.searchVerses(query, repositoryId);
           console.log(`[IPC] searchVerses returned ${results.length} results`);
           return results;
@@ -130,9 +185,9 @@ export class IpcHandlers implements AppModule {
     );
 
     // Get user setting
-    ipcMain.handle("database:getSetting", async (_event, key: string) => {
+    ipcMain.handle("database:getSetting", async (event, key: string) => {
+      this.assertTrustedIpcSender(event, "database:getSetting");
       try {
-        // TODO: Add origin validation for security
         return this.databaseService.getSetting(key);
       } catch (error) {
         console.error("Get setting error:", error);
@@ -143,9 +198,9 @@ export class IpcHandlers implements AppModule {
     // Set user setting
     ipcMain.handle(
       "database:setSetting",
-      async (_event, key: string, value: string) => {
+      async (event, key: string, value: string) => {
+        this.assertTrustedIpcSender(event, "database:setSetting");
         try {
-          // TODO: Add origin validation for security
           this.databaseService.setSetting(key, value);
           return true;
         } catch (error) {
@@ -156,9 +211,9 @@ export class IpcHandlers implements AppModule {
     );
 
     // Get database statistics
-    ipcMain.handle("database:getStats", async (_event) => {
+    ipcMain.handle("database:getStats", async (event) => {
+      this.assertTrustedIpcSender(event, "database:getStats");
       try {
-        // TODO: Add origin validation for security
         return this.databaseService.getStats();
       } catch (error) {
         console.error("Get stats error:", error);
@@ -169,9 +224,9 @@ export class IpcHandlers implements AppModule {
     // Get chapter data (verses for a specific book and chapter)
     ipcMain.handle(
       "database:getChapter",
-      async (_event, bookId: string, chapterNumber: number) => {
+      async (event, bookId: string, chapterNumber: number) => {
+        this.assertTrustedIpcSender(event, "database:getChapter");
         try {
-          // TODO: Add origin validation for security
           const verses = this.databaseService.getVerses(
             parseInt(bookId),
             chapterNumber
@@ -190,9 +245,9 @@ export class IpcHandlers implements AppModule {
 
   private registerRepositoryHandlers(): void {
     // List all repositories from database
-    ipcMain.handle("repository:list", async (_event) => {
+    ipcMain.handle("repository:list", async (event) => {
+      this.assertTrustedIpcSender(event, "repository:list");
       try {
-        // TODO: Add origin validation for security
         return this.databaseService.getRepositories();
       } catch (error) {
         console.error("List repositories error:", error);
@@ -201,9 +256,9 @@ export class IpcHandlers implements AppModule {
     });
 
     // Discover available repositories
-    ipcMain.handle("repository:discover", async (_event) => {
+    ipcMain.handle("repository:discover", async (event) => {
+      this.assertTrustedIpcSender(event, "repository:discover");
       try {
-        // TODO: Add origin validation for security
         return await this.repositoryService.discoverRepositories();
       } catch (error) {
         console.error("Discover repositories error:", error);
@@ -214,9 +269,9 @@ export class IpcHandlers implements AppModule {
     // Import repository
     ipcMain.handle(
       "repository:import",
-      async (_event, repositoryUrl: string, options?: any) => {
+      async (event, repositoryUrl: string, options?: any) => {
+        this.assertTrustedIpcSender(event, "repository:import");
         try {
-          // TODO: Add origin validation for security
           const importOptions = {
             repository_url: repositoryUrl,
             validate_checksums: true,
@@ -233,9 +288,9 @@ export class IpcHandlers implements AppModule {
     );
 
     // Validate repository URL
-    ipcMain.handle("repository:validate", async (_event, url: string) => {
+    ipcMain.handle("repository:validate", async (event, url: string) => {
+      this.assertTrustedIpcSender(event, "repository:validate");
       try {
-        // TODO: Add origin validation for security
         return await this.repositoryService.validateRepositoryUrl(url);
       } catch (error) {
         console.error("Validate repository error:", error);
@@ -244,9 +299,9 @@ export class IpcHandlers implements AppModule {
     });
 
     // Get repository manifest
-    ipcMain.handle("repository:getManifest", async (_event, url: string) => {
+    ipcMain.handle("repository:getManifest", async (event, url: string) => {
+      this.assertTrustedIpcSender(event, "repository:getManifest");
       try {
-        // TODO: Add origin validation for security
         return await this.repositoryService.getRepositoryManifest(url);
       } catch (error) {
         console.error("Get repository manifest error:", error);
@@ -255,9 +310,9 @@ export class IpcHandlers implements AppModule {
     });
 
     // Get repository sources
-    ipcMain.handle("repository:getSources", async (_event) => {
+    ipcMain.handle("repository:getSources", async (event) => {
+      this.assertTrustedIpcSender(event, "repository:getSources");
       try {
-        // TODO: Add origin validation for security
         return this.repositoryService.getRepositorySources();
       } catch (error) {
         console.error("Get repository sources error:", error);
@@ -266,9 +321,9 @@ export class IpcHandlers implements AppModule {
     });
 
     // Add repository source
-    ipcMain.handle("repository:addSource", async (_event, source: any) => {
+    ipcMain.handle("repository:addSource", async (event, source: any) => {
+      this.assertTrustedIpcSender(event, "repository:addSource");
       try {
-        // TODO: Add origin validation for security
         this.repositoryService.addRepositorySource(source);
         return true;
       } catch (error) {
@@ -280,9 +335,9 @@ export class IpcHandlers implements AppModule {
     // Scan directory for repositories
     ipcMain.handle(
       "repository:scanDirectory",
-      async (_event, directoryPath: string) => {
+      async (event, directoryPath: string) => {
+        this.assertTrustedIpcSender(event, "repository:scanDirectory");
         try {
-          // TODO: Add origin validation for security
           return await this.repositoryService.scanDirectoryForRepositories(
             directoryPath
           );
@@ -296,7 +351,8 @@ export class IpcHandlers implements AppModule {
     // Delete repository
     ipcMain.handle(
       "repository:delete",
-      async (_event, repositoryId: string) => {
+      async (event, repositoryId: string) => {
+        this.assertTrustedIpcSender(event, "repository:delete");
         try {
           this.databaseService.getQueries().deleteRepository(repositoryId);
           return { success: true };
@@ -308,9 +364,9 @@ export class IpcHandlers implements AppModule {
     );
 
     // Get parent repositories
-    ipcMain.handle("repository:getParentRepositories", async (_event) => {
+    ipcMain.handle("repository:getParentRepositories", async (event) => {
+      this.assertTrustedIpcSender(event, "repository:getParentRepositories");
       try {
-        // TODO: Add origin validation for security
         return this.databaseService.getQueries().getParentRepositories();
       } catch (error) {
         console.error("Get parent repositories error:", error);
@@ -321,9 +377,9 @@ export class IpcHandlers implements AppModule {
     // Get translations for a parent repository
     ipcMain.handle(
       "repository:getTranslations",
-      async (_event, parentId: string) => {
+      async (event, parentId: string) => {
+        this.assertTrustedIpcSender(event, "repository:getTranslations");
         try {
-          // TODO: Add origin validation for security
           return this.databaseService
             .getQueries()
             .getRepositoryTranslations(parentId);
@@ -337,9 +393,9 @@ export class IpcHandlers implements AppModule {
 
   private registerFileSystemHandlers(): void {
     // Show open dialog for directory selection
-    ipcMain.handle("filesystem:showOpenDialog", async (_event, options: any) => {
+    ipcMain.handle("filesystem:showOpenDialog", async (event, options: any) => {
+      this.assertTrustedIpcSender(event, "filesystem:showOpenDialog");
       try {
-        // TODO: Add origin validation for security
         const focusedWindow = BrowserWindow.getFocusedWindow();
         const dialogOptions = {
           properties: ["openDirectory"] as const,
