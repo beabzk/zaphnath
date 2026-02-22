@@ -99,17 +99,69 @@ function validateBumpType(current, target, bumpType) {
 /**
  * Generate changelog entry
  */
-function generateChangelogEntry(version, bumpType) {
+function generateChangelogEntry(version, bumpType, previousVersion = null) {
   const date = new Date().toISOString().split("T")[0];
   const versionType = bumpType.charAt(0).toUpperCase() + bumpType.slice(1);
+  const commits = getChangelogCommits(previousVersion);
+  const commitLines = commits.length
+    ? commits.map(({ subject, hash }) => `- ${subject} (${hash})`).join("\n")
+    : "- No user-facing changes listed since the previous version.";
 
   return `## [${version}] - ${date}
 
 ### ${versionType} Release
 
-- TODO: Add changelog entries for this release
+### What's Changed
+
+${commitLines}
 
 `;
+}
+
+/**
+ * Build changelog commit list from git history
+ */
+function getChangelogCommits(previousVersion = null) {
+  let command =
+    "git log --pretty=format:%s:::%h --no-merges -n 20";
+
+  if (previousVersion) {
+    const previousTag = `v${previousVersion}`;
+    if (tagExists(previousTag)) {
+      command = `git log ${previousTag}..HEAD --pretty=format:%s:::%h --no-merges`;
+    }
+  }
+
+  let output = "";
+  try {
+    output = runCommand(command);
+  } catch {
+    return [];
+  }
+
+  if (!output) {
+    return [];
+  }
+
+  return output
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [subject = "", hash = ""] = line.split(":::");
+      return { subject, hash };
+    })
+    .filter(({ subject }) => !isVersionBumpCommit(subject));
+}
+
+/**
+ * Filter out auto-generated version bump commits
+ */
+function isVersionBumpCommit(subject) {
+  return (
+    /^chore\(release\): bump version to /i.test(subject) ||
+    /^v\d+\.\d+\.\d+/.test(subject)
+  );
 }
 
 /**
@@ -190,7 +242,11 @@ function bumpVersion(bumpType, customVersion = null, options = {}) {
       }
 
       if (changelog) {
-        const changelogEntry = generateChangelogEntry(currentVersion, "custom");
+        const changelogEntry = generateChangelogEntry(
+          currentVersion,
+          "custom",
+          null
+        );
         console.log("\n📝 Suggested changelog entry:");
         console.log("================================");
         console.log(changelogEntry);
@@ -230,7 +286,8 @@ function bumpVersion(bumpType, customVersion = null, options = {}) {
   if (changelog) {
     const changelogEntry = generateChangelogEntry(
       newVersion,
-      customVersion ? "custom" : bumpType
+      customVersion ? "custom" : bumpType,
+      currentVersion
     );
     console.log("\n📝 Suggested changelog entry:");
     console.log("================================");
