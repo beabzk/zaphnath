@@ -1,7 +1,9 @@
+import { useCallback, useEffect, useState } from 'react'
 import { useSettings } from './SettingsProvider'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
+import { repository } from '@app/preload'
 import {
   BookOpen,
   Scroll,
@@ -14,9 +16,64 @@ import {
   ArrowDown
 } from 'lucide-react'
 
+type RepositoryOption = {
+  id: string
+  label: string
+}
+
 export function ReadingSettings() {
   const { settings, updateSetting } = useSettings()
   const { reading } = settings
+  const [repositoryOptions, setRepositoryOptions] = useState<RepositoryOption[]>([])
+  const [repositoriesLoading, setRepositoriesLoading] = useState(false)
+  const [repositoriesError, setRepositoriesError] = useState<string | null>(null)
+
+  const loadRepositoryOptions = useCallback(async () => {
+    setRepositoriesLoading(true)
+    setRepositoriesError(null)
+
+    try {
+      const listedRepositories = (await repository.list()) || []
+      const optionsById = new Map<string, RepositoryOption>()
+
+      for (const repo of listedRepositories) {
+        if (repo.type === 'parent') {
+          const translations = (await repository.getTranslations(repo.id)) || []
+          for (const translation of translations) {
+            const translationId = translation.translation_id || translation.id
+            const translationName = translation.translation_name || translation.name || translationId
+            if (!translationId) continue
+
+            optionsById.set(translationId, {
+              id: translationId,
+              label: `${translationName} (${repo.name})`,
+            })
+          }
+          continue
+        }
+
+        optionsById.set(repo.id, {
+          id: repo.id,
+          label: repo.name,
+        })
+      }
+
+      const options = [...optionsById.values()].sort((a, b) =>
+        a.label.localeCompare(b.label)
+      )
+      setRepositoryOptions(options)
+    } catch (error) {
+      console.error('[ReadingSettings] Failed to load repository options:', error)
+      setRepositoriesError('Failed to load repositories')
+      setRepositoryOptions([])
+    } finally {
+      setRepositoriesLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadRepositoryOptions()
+  }, [loadRepositoryOptions])
 
   const SettingGroup = ({ title, children }: { title: string; children: React.ReactNode }) => (
     <div className="space-y-3">
@@ -70,14 +127,27 @@ export function ReadingSettings() {
           <select
             value={reading.defaultRepository || ''}
             onChange={(e) => updateSetting('reading', 'defaultRepository', e.target.value || null)}
+            disabled={repositoriesLoading}
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
-            <option value="">Select a repository...</option>
-            {/* TODO: Populate with actual repositories */}
-            <option value="kjv-1769">King James Version (1769)</option>
-            <option value="esv">English Standard Version</option>
-            <option value="niv">New International Version</option>
+            <option value="">
+              {repositoriesLoading ? 'Loading repositories...' : 'Select a repository...'}
+            </option>
+            {repositoryOptions.map((repo) => (
+              <option key={repo.id} value={repo.id}>
+                {repo.label}
+              </option>
+            ))}
+            {reading.defaultRepository &&
+              !repositoryOptions.some((repo) => repo.id === reading.defaultRepository) && (
+                <option value={reading.defaultRepository}>
+                  {reading.defaultRepository} (not currently available)
+                </option>
+              )}
           </select>
+          {repositoriesError && (
+            <p className="text-xs text-destructive">{repositoriesError}</p>
+          )}
           <p className="text-xs text-muted-foreground">
             Choose which Bible translation to open by default
           </p>
