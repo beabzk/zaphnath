@@ -47,7 +47,7 @@ export function Reader() {
   } | null>(null)
   const scrollRef = useRef<HTMLDivElement | null>(null)
 
-  const { highlights, addHighlight, removeHighlight, bookmarks, removeBookmark, notes } = useReadingStore()
+  const { currentLocation, highlights, addHighlight, removeHighlight, bookmarks, removeBookmark, notes } = useReadingStore()
 
   // Context menu handlers
   const handleVerseContextMenu = useCallback((e: React.MouseEvent, verseId: string, verseNumber: number) => {
@@ -162,6 +162,41 @@ export function Reader() {
       if (scrollRef.current) scrollRef.current.scrollTop = 0
     }
   }, [currentChapter?.number])
+
+  // If a verse was selected from another view (e.g. search), scroll it into view.
+  useEffect(() => {
+    if (
+      !currentLocation?.verse_number ||
+      !currentRepository ||
+      !currentBook ||
+      !currentChapter
+    ) {
+      return
+    }
+
+    const matchesCurrentContext =
+      currentLocation.book_id === currentBook.id &&
+      currentLocation.chapter_number === currentChapter.number
+
+    if (!matchesCurrentContext) {
+      return
+    }
+
+    const verseDomId = `verse-${currentBook.id}-${currentChapter.number}-${currentLocation.verse_number}`
+    const verseElement = document.getElementById(verseDomId)
+    if (!verseElement) {
+      return
+    }
+
+    setCurrentVerseNumber(currentLocation.verse_number)
+    verseElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [
+    currentBook,
+    currentChapter,
+    currentLocation,
+    currentRepository,
+    verses.length,
+  ])
 
   const chaptersForCurrentBook = useMemo(() => {
     return currentBook ? Array.from({ length: currentBook.chapter_count }, (_, i) => i + 1) : []
@@ -430,6 +465,7 @@ export function Reader() {
                 return (
                   <VerseItem
                     key={v.id}
+                    domId={`verse-${currentBook.id}-${currentChapter?.number ?? 0}-${v.number}`}
                     verse={v}
                     highlight={highlight}
                     isSelected={selectedVerses.has(v.id)}
@@ -507,6 +543,7 @@ export function Reader() {
 
 // Individual verse component with intersection observer
 interface VerseItemProps {
+  domId: string
   verse: { id: string; number: number; text: string }
   highlight?: { color: string }
   isSelected: boolean
@@ -518,7 +555,7 @@ interface VerseItemProps {
   onContextMenu: (e: React.MouseEvent) => void
 }
 
-function VerseItem({ verse, highlight, isSelected, isBookmarked, hasNote, showNumber, spacing, onInView, onContextMenu }: VerseItemProps) {
+function VerseItem({ domId, verse, highlight, isSelected, isBookmarked, hasNote, showNumber, spacing, onInView, onContextMenu }: VerseItemProps) {
   const { ref, inView } = useInView({
     threshold: 0.5,
     trackVisibility: true,
@@ -531,6 +568,7 @@ function VerseItem({ verse, highlight, isSelected, isBookmarked, hasNote, showNu
 
   return (
     <div
+      id={domId}
       ref={ref}
       className={`flex items-start gap-3 px-2 py-1 -mx-2 rounded transition-colors ${
         highlight ? highlight.color : ''

@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Search, X, Filter } from 'lucide-react'
 import Fuse from 'fuse.js'
-import { useRepositoryStore, useSearch } from '@/stores'
+import { useRepositoryStore, useReadingStore, useSearch } from '@/stores'
+import { useNavigation } from '@/components/layout/Navigation'
+import { repository } from '@app/preload'
 
 interface SearchFilters {
   repositories: string[]
@@ -11,7 +13,9 @@ interface SearchFilters {
 
 export function SearchInterface() {
   const { query, results, loading, setQuery, setResults, setLoading } = useSearch()
-  const { repositories } = useRepositoryStore()
+  const { repositories, currentRepository, books, setCurrentRepository, loadBooks, setCurrentBook, loadChapter } = useRepositoryStore()
+  const { setCurrentLocation } = useReadingStore()
+  const { setCurrentView } = useNavigation()
   
   const [filters, setFilters] = useState<SearchFilters>({
     repositories: [],
@@ -21,6 +25,67 @@ export function SearchInterface() {
   const [showFilters, setShowFilters] = useState(false)
   const [searchHistory, setSearchHistory] = useState<string[]>([])
   const [fuse, setFuse] = useState<Fuse<Zaphnath.BibleVerse> | null>(null)
+
+  const resolveRepositoryForResult = useCallback(async (repositoryId: string) => {
+    const existingRepository = repositories.find((repo) => repo.id === repositoryId) || null
+    if (existingRepository) {
+      return existingRepository
+    }
+
+    try {
+      const listedRepositories = (await repository.list()) || []
+      const directMatch = listedRepositories.find((repo: any) => repo.id === repositoryId) || null
+      if (directMatch) {
+        return directMatch
+      }
+
+      for (const parentRepository of listedRepositories as any[]) {
+        if (parentRepository.type !== 'parent') {
+          continue
+        }
+
+        const translations = (await repository.getTranslations(parentRepository.id)) || []
+        const translation = translations.find((item: any) => {
+          const translationId = item.translation_id || item.id
+          return translationId === repositoryId
+        })
+
+        if (!translation) {
+          continue
+        }
+
+        const now = new Date().toISOString()
+        return {
+          id: translation.translation_id || translation.id || repositoryId,
+          name: translation.translation_name || translation.name || repositoryId,
+          description:
+            translation.translation_description ||
+            `${translation.translation_name || translation.name || repositoryId} from ${parentRepository.name}`,
+          language: translation.language_code || translation.language || parentRepository.language || 'en',
+          version: translation.translation_version || parentRepository.version || '1.0.0',
+          created_at: translation.created_at || parentRepository.created_at || now,
+          updated_at: translation.updated_at || parentRepository.updated_at || now,
+          type: 'translation' as const,
+          parent_id: parentRepository.id,
+          book_count: translation.book_count,
+          verse_count: translation.verse_count,
+        }
+      }
+    } catch (error) {
+      console.error('[SearchInterface] Failed to resolve repository metadata:', error, repositoryId)
+    }
+
+    return {
+      id: repositoryId,
+      name: repositoryId,
+      description: `Translation ${repositoryId}`,
+      language: 'en',
+      version: '1.0.0',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      type: 'translation' as const,
+    }
+  }, [repositories])
 
   // Initialize Fuse.js index
   useEffect(() => {
@@ -145,10 +210,52 @@ export function SearchInterface() {
   }
 
   // Handle result click
-  const handleResultClick = (result: typeof results[0]) => {
-    // TODO: Navigate to verse
-    console.log('Navigate to:', result)
-  }
+  const handleResultClick = useCallback(async (result: typeof results[0]) => {
+    const repositoryId = result.repository_id
+    const bookId = result.book_id
+    const chapterNumber = result.chapter_number
+    const verseNumber = result.verse_number
+
+    try {
+      const isCurrentRepository = currentRepository?.id === repositoryId
+      const targetRepository = await resolveRepositoryForResult(repositoryId)
+
+      if (!isCurrentRepository) {
+        setCurrentRepository(targetRepository)
+      }
+
+      if (!isCurrentRepository || books.length === 0) {
+        await loadBooks(repositoryId)
+      }
+
+      const latestBooks = useRepositoryStore.getState().books
+      const targetBook = latestBooks.find((book) => book.id === bookId) || null
+      if (targetBook) {
+        setCurrentBook(targetBook)
+        await loadChapter(bookId, chapterNumber)
+      }
+
+      setCurrentLocation({
+        repository_id: repositoryId,
+        book_id: bookId,
+        chapter_number: chapterNumber,
+        verse_number: verseNumber,
+      })
+      setCurrentView('reader')
+    } catch (error) {
+      console.error('[SearchInterface] Failed to navigate to verse:', error, result)
+    }
+  }, [
+    books.length,
+    currentRepository?.id,
+    loadBooks,
+    loadChapter,
+    resolveRepositoryForResult,
+    setCurrentBook,
+    setCurrentLocation,
+    setCurrentRepository,
+    setCurrentView,
+  ])
 
   return (
     <div className="h-full flex flex-col">
