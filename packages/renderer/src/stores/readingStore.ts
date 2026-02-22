@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { devtools, persist } from 'zustand/middleware'
+import { useRepositoryStore } from './repositoryStore'
 import { 
   ReadingState, 
   ReadingLocation, 
@@ -27,7 +28,32 @@ const initialState = {
 export const useReadingStore = create<ReadingState>()(
   devtools(
     persist(
-      (set, get) => ({
+      (set, get) => {
+        const ensureRepositoryContext = async (repositoryId: string) => {
+          const repositoryState = useRepositoryStore.getState()
+          const isCurrentRepository = repositoryState.currentRepository?.id === repositoryId
+
+          if (!isCurrentRepository) {
+            const targetRepository =
+              repositoryState.repositories.find((repo) => repo.id === repositoryId) || null
+            if (targetRepository) {
+              repositoryState.setCurrentRepository(targetRepository)
+            }
+          }
+
+          const refreshedRepositoryState = useRepositoryStore.getState()
+          const hasBooksForRepository = refreshedRepositoryState.books.some(
+            (book) => book.repository_id === repositoryId
+          )
+
+          if (!hasBooksForRepository) {
+            await refreshedRepositoryState.loadBooks(repositoryId)
+          }
+
+          return useRepositoryStore.getState()
+        }
+
+        return {
         ...initialState,
 
         // Location Actions
@@ -233,31 +259,106 @@ export const useReadingStore = create<ReadingState>()(
             chapter_number: chapter,
             verse_number: verse
           }
-          
+
+          const repositoryState = await ensureRepositoryContext(repositoryId)
+          const targetBook = repositoryState.books.find((book) => book.id === bookId) || null
+
+          if (targetBook) {
+            repositoryState.setCurrentBook(targetBook)
+            await repositoryState.loadChapter(bookId, chapter)
+          } else {
+            console.warn('[readingStore] goToVerse could not resolve target book', {
+              repositoryId,
+              bookId,
+              chapter,
+            })
+          }
+
           get().setCurrentLocation(location)
-          
-          // TODO: Trigger chapter loading in repository store
-          // This would typically dispatch an action to load the chapter data
         },
 
         goToNextChapter: async () => {
           const { currentLocation } = get()
           if (!currentLocation) return
-          
-          // TODO: Implement next chapter logic
-          // This would require book/chapter metadata to determine the next chapter
-          console.log('Navigate to next chapter from:', currentLocation)
+
+          const { goToVerse } = get()
+          const repositoryState = await ensureRepositoryContext(
+            currentLocation.repository_id
+          )
+
+          const sortedBooks = [...repositoryState.books].sort(
+            (a, b) => a.order - b.order
+          )
+          const currentBookIndex = sortedBooks.findIndex(
+            (book) => book.id === currentLocation.book_id
+          )
+
+          if (currentBookIndex === -1) {
+            console.warn('[readingStore] goToNextChapter could not resolve current book', currentLocation)
+            return
+          }
+
+          const currentBook = sortedBooks[currentBookIndex]
+          let targetBook = currentBook
+          let targetChapter = currentLocation.chapter_number + 1
+
+          if (targetChapter > currentBook.chapter_count) {
+            const nextBook = sortedBooks[currentBookIndex + 1]
+            if (!nextBook) {
+              return
+            }
+            targetBook = nextBook
+            targetChapter = 1
+          }
+
+          await goToVerse(
+            currentLocation.repository_id,
+            targetBook.id,
+            targetChapter
+          )
         },
 
         goToPreviousChapter: async () => {
           const { currentLocation } = get()
           if (!currentLocation) return
-          
-          // TODO: Implement previous chapter logic
-          // This would require book/chapter metadata to determine the previous chapter
-          console.log('Navigate to previous chapter from:', currentLocation)
+
+          const { goToVerse } = get()
+          const repositoryState = await ensureRepositoryContext(
+            currentLocation.repository_id
+          )
+
+          const sortedBooks = [...repositoryState.books].sort(
+            (a, b) => a.order - b.order
+          )
+          const currentBookIndex = sortedBooks.findIndex(
+            (book) => book.id === currentLocation.book_id
+          )
+
+          if (currentBookIndex === -1) {
+            console.warn('[readingStore] goToPreviousChapter could not resolve current book', currentLocation)
+            return
+          }
+
+          const currentBook = sortedBooks[currentBookIndex]
+          let targetBook = currentBook
+          let targetChapter = currentLocation.chapter_number - 1
+
+          if (targetChapter < 1) {
+            const previousBook = sortedBooks[currentBookIndex - 1]
+            if (!previousBook) {
+              return
+            }
+            targetBook = previousBook
+            targetChapter = Math.max(previousBook.chapter_count, 1)
+          }
+
+          await goToVerse(
+            currentLocation.repository_id,
+            targetBook.id,
+            targetChapter
+          )
         },
-      }),
+      }},
       {
         name: 'zaphnath-reading-store',
         version: 1,
