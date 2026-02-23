@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import {
   BookOpen,
@@ -36,6 +36,7 @@ interface Repository {
   parent_id?: string
   book_count?: number
   verse_count?: number
+  translation_count?: number
   translations?: TranslationInfo[]
 }
 
@@ -77,6 +78,8 @@ export function RepositoryList({
 }: RepositoryListProps) {
   const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set())
   const [translationsByParent, setTranslationsByParent] = useState<Record<string, TranslationInfo[]>>({})
+  const [translationsLoadingByParent, setTranslationsLoadingByParent] = useState<Record<string, boolean>>({})
+  const [translationErrorByParent, setTranslationErrorByParent] = useState<Record<string, string>>({})
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null)
 
   const filteredRepositories = useMemo(() => {
@@ -99,53 +102,88 @@ export function RepositoryList({
     })
   }, [repositories, translationsByParent])
 
+  const loadTranslationsForParent = useCallback(async (parentId: string) => {
+    if (translationsByParent[parentId] || translationsLoadingByParent[parentId]) {
+      return
+    }
+
+    setTranslationsLoadingByParent((prev) => ({ ...prev, [parentId]: true }))
+    setTranslationErrorByParent((prev) => {
+      const next = { ...prev }
+      delete next[parentId]
+      return next
+    })
+
+    try {
+      const translations = await repository.getTranslations(parentId)
+      const mappedTranslations: TranslationInfo[] = (translations || []).map(t => ({
+        id: t.translation_id || t.id,
+        name: t.translation_name || t.name,
+        directory: t.directory_name || t.directory,
+        language: t.language_code || t.language,
+        status: t.status || 'active',
+        book_count: t.book_count,
+        verse_count: t.verse_count
+      }))
+
+      setTranslationsByParent((prev) => ({ ...prev, [parentId]: mappedTranslations }))
+    } catch (translationError) {
+      console.error(`Failed to fetch translations for ${parentId}:`, translationError)
+      setTranslationErrorByParent((prev) => ({
+        ...prev,
+        [parentId]: translationError instanceof Error ? translationError.message : 'Failed to load translations'
+      }))
+    } finally {
+      setTranslationsLoadingByParent((prev) => ({ ...prev, [parentId]: false }))
+    }
+  }, [translationsByParent, translationsLoadingByParent])
+
   useEffect(() => {
-    let mounted = true
+    const activeParentIds = new Set(
+      repositories.filter((repo) => repo.type === 'parent').map((repo) => repo.id)
+    )
 
-    const parentRepositories = repositories.filter(repo => repo.type === 'parent')
+    setExpandedParents((prev) => {
+      const filtered = new Set([...prev].filter((id) => activeParentIds.has(id)))
+      return filtered.size === prev.size ? prev : filtered
+    })
 
-    if (parentRepositories.length === 0) {
-      setTranslationsByParent({})
-      return () => {
-        mounted = false
-      }
-    }
+    setTranslationsByParent((prev) =>
+      Object.fromEntries(Object.entries(prev).filter(([id]) => activeParentIds.has(id)))
+    )
 
-    const loadTranslations = async () => {
-      const translationEntries = await Promise.all(
-        parentRepositories.map(async (repo) => {
-          try {
-            const translations = await repository.getTranslations(repo.id)
-            const mappedTranslations: TranslationInfo[] = (translations || []).map(t => ({
-              id: t.translation_id || t.id,
-              name: t.translation_name || t.name,
-              directory: t.directory_name || t.directory,
-              language: t.language_code || t.language,
-              status: t.status || 'active',
-              book_count: t.book_count,
-              verse_count: t.verse_count
-            }))
-            return [repo.id, mappedTranslations] as const
-          } catch (translationError) {
-            console.error(`Failed to fetch translations for ${repo.id}:`, translationError)
-            return [repo.id, []] as const
-          }
-        })
-      )
+    setTranslationsLoadingByParent((prev) =>
+      Object.fromEntries(Object.entries(prev).filter(([id]) => activeParentIds.has(id)))
+    )
 
-      if (!mounted) {
-        return
-      }
-
-      setTranslationsByParent(Object.fromEntries(translationEntries))
-    }
-
-    void loadTranslations()
-
-    return () => {
-      mounted = false
-    }
+    setTranslationErrorByParent((prev) =>
+      Object.fromEntries(Object.entries(prev).filter(([id]) => activeParentIds.has(id)))
+    )
   }, [repositories])
+
+  useEffect(() => {
+    expandedParents.forEach((parentId) => {
+      void loadTranslationsForParent(parentId)
+    })
+  }, [expandedParents, loadTranslationsForParent])
+
+  const toggleParentExpansion = (parentId: string) => {
+    const shouldExpand = !expandedParents.has(parentId)
+
+    setExpandedParents(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(parentId)) {
+        newSet.delete(parentId)
+      } else {
+        newSet.add(parentId)
+      }
+      return newSet
+    })
+
+    if (shouldExpand) {
+      void loadTranslationsForParent(parentId)
+    }
+  }
 
   useEffect(() => {
     if (!deleteTarget) {
@@ -171,18 +209,6 @@ export function RepositoryList({
       event.preventDefault()
       action()
     }
-  }
-
-  const toggleParentExpansion = (parentId: string) => {
-    setExpandedParents(prev => {
-      const newSet = new Set(prev)
-      if (newSet.has(parentId)) {
-        newSet.delete(parentId)
-      } else {
-        newSet.add(parentId)
-      }
-      return newSet
-    })
   }
 
   const handleDeleteRepository = async (repositoryId: string) => {
@@ -341,7 +367,7 @@ export function RepositoryList({
                     {repo.type === 'parent' && (
                       <Badge variant="secondary" className="text-xs">
                         <Languages className="h-3 w-3 mr-1" />
-                        {repo.translations?.length || 0} translations
+                        {repo.translations?.length ?? repo.translation_count ?? 0} translations
                       </Badge>
                     )}
 
@@ -405,6 +431,21 @@ export function RepositoryList({
             {/* Expanded Translations for Parent Repositories */}
             {repo.type === 'parent' && expandedParents.has(repo.id) && repo.translations && (
               <div className="ml-6 pl-4 border-l-2 border-border space-y-0">
+                {translationsLoadingByParent[repo.id] && (
+                  <div className="p-2 text-xs text-muted-foreground border-b border-border/50">
+                    Loading translations...
+                  </div>
+                )}
+                {translationErrorByParent[repo.id] && (
+                  <div className="p-2 text-xs text-destructive border-b border-border/50">
+                    {translationErrorByParent[repo.id]}
+                  </div>
+                )}
+                {!translationsLoadingByParent[repo.id] && !translationErrorByParent[repo.id] && repo.translations.length === 0 && (
+                  <div className="p-2 text-xs text-muted-foreground border-b border-border/50">
+                    No translations available
+                  </div>
+                )}
                 {repo.translations.map((translation) => (
                   <div
                     key={translation.id}
