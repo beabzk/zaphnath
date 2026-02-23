@@ -440,10 +440,20 @@ export const useRepositoryStore = create<RepositoryState>()(
       }),
       {
         name: "zaphnath-repository-store",
-        version: 1,
+        version: 2,
+        migrate: (persistedState: any, version: number) => {
+          if (version < 2) {
+            return {
+              ...persistedState,
+              repositories: [],
+              currentRepository: null,
+            };
+          }
+
+          return persistedState;
+        },
         partialize: (state) => ({
           currentRepository: state.currentRepository,
-          repositories: state.repositories,
           // Don't persist loading states, errors, or temporary data
         }),
       }
