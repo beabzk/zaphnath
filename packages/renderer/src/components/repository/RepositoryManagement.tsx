@@ -131,6 +131,7 @@ export function RepositoryManagement() {
       {/* Repository List */}
       <RepositoryList
         repositories={repositories}
+        currentRepositoryId={currentRepository?.id}
         isLoading={isLoading}
         errorMessage={error?.message || null}
         onRefresh={() => void loadOverviewData()}

@@ -51,6 +51,7 @@ interface TranslationInfo {
 
 interface RepositoryListProps {
   repositories: Repository[]
+  currentRepositoryId?: string | null
   isLoading: boolean
   errorMessage: string | null
   onRefresh: () => void
@@ -61,6 +62,7 @@ interface RepositoryListProps {
 
 export function RepositoryList({
   repositories,
+  currentRepositoryId = null,
   isLoading,
   errorMessage,
   onRefresh,
@@ -68,7 +70,6 @@ export function RepositoryList({
   onRepositorySelect,
   onRepositoryDelete
 }: RepositoryListProps) {
-  const [selectedRepository, setSelectedRepository] = useState<string | null>(null)
   const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set())
   const [translationsByParent, setTranslationsByParent] = useState<Record<string, TranslationInfo[]>>({})
 
@@ -140,14 +141,7 @@ export function RepositoryList({
     }
   }, [repositories])
 
-  useEffect(() => {
-    if (filteredRepositories.length > 0 && !selectedRepository) {
-      setSelectedRepository(filteredRepositories[0].id)
-    }
-  }, [filteredRepositories, selectedRepository])
-
   const handleRepositorySelect = (repository: Repository) => {
-    setSelectedRepository(repository.id)
     onRepositorySelect?.(repository)
   }
 
@@ -170,9 +164,6 @@ export function RepositoryList({
 
     try {
       await repository.delete(repositoryId)
-      if (selectedRepository === repositoryId) {
-        setSelectedRepository(null)
-      }
       onRepositoryDelete?.(repositoryId)
     } catch (err) {
       console.error('Failed to delete repository:', err)
@@ -279,7 +270,7 @@ export function RepositoryList({
               className={`p-3 border-b border-border transition-all ${
                 repo.type === 'parent' ? 'cursor-default' : 'cursor-pointer hover:bg-accent/30'
               } ${
-                selectedRepository === repo.id ? 'bg-accent/20' : ''
+                currentRepositoryId === repo.id ? 'bg-accent/20' : ''
               }`}
               onClick={() => {
                 if (repo.type === 'parent') {
@@ -317,10 +308,10 @@ export function RepositoryList({
                       </Badge>
                     )}
 
-                    {selectedRepository === repo.id && (
+                    {currentRepositoryId === repo.id && (
                       <Badge variant="default" className="text-xs">
                         <CheckCircle className="h-3 w-3 mr-1" />
-                        Active
+                        Current
                       </Badge>
                     )}
                   </div>
@@ -381,7 +372,7 @@ export function RepositoryList({
                   <div
                     key={translation.id}
                     className={`p-2 border-b border-border/50 cursor-pointer transition-all hover:bg-accent/30 ${
-                      selectedRepository === translation.id ? 'bg-accent/20' : ''
+                      currentRepositoryId === translation.id ? 'bg-accent/20' : ''
                     }`}
                     onClick={() => {
                       // Create a repository object for the translation
@@ -402,7 +393,7 @@ export function RepositoryList({
                     }}
                   >
                     <div className="flex items-center gap-2 mb-2">
-                      {selectedRepository === translation.id && (
+                      {currentRepositoryId === translation.id && (
                         <CheckCircle className="h-3 w-3 text-primary" />
                       )}
                       <BookOpen className="h-3 w-3 text-green-600" />
