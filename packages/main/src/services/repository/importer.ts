@@ -158,7 +158,46 @@ export class RepositoryImporter {
       // Clean base URL for translations
       const baseUrl = options.repository_url.replace(/\/manifest\.json$/, "").replace(/\/$/, "");
 
-      for (const translation of manifest.translations) {
+      const selectedTranslationIds = new Set(options.selected_translations || []);
+      const useSelectiveImport = selectedTranslationIds.size > 0;
+      const availableTranslationIds = new Set(manifest.translations.map((t) => t.id));
+
+      if (useSelectiveImport) {
+        for (const translation of manifest.translations) {
+          if (!selectedTranslationIds.has(translation.id)) {
+            result.translations_skipped!.push(translation.id);
+          }
+        }
+
+        const unknownSelections = [...selectedTranslationIds].filter(
+          (translationId) => !availableTranslationIds.has(translationId)
+        );
+        if (unknownSelections.length > 0) {
+          result.warnings.push({
+            code: "UNKNOWN_TRANSLATION_SELECTION",
+            message: `Selected translations not found in parent manifest: ${unknownSelections.join(", ")}`,
+            name: "ValidationWarning",
+          });
+        }
+      }
+
+      const translationsToImport = useSelectiveImport
+        ? manifest.translations.filter((translation) =>
+          selectedTranslationIds.has(translation.id)
+        )
+        : manifest.translations;
+
+      if (translationsToImport.length === 0) {
+        result.errors.push(
+          createValidationError(
+            "no-translations-selected",
+            "No translations were selected for import"
+          )
+        );
+        return result;
+      }
+
+      for (const translation of translationsToImport) {
         const translationResult = await this.importTranslationFromParent(
           baseUrl,
           translation,

@@ -280,7 +280,7 @@ export interface ImportOptions {
   validate_checksums: boolean;
   download_audio: boolean;
   overwrite_existing: boolean;
-  import_type?: "full" | "translation"; // New: specify import type
+  import_type?: "full" | "selective" | "translation"; // New: specify import type
   selected_translations?: string[]; // New: for selective translation import
   progress_callback?: (progress: ImportProgress) => void;
 }

@@ -70,6 +70,19 @@ export function RepositoryImportDialog({ isOpen, onClose, onImportComplete }: Re
   const [multipleRepositories, setMultipleRepositories] = useState<Array<{ path: string; manifest: any; validation: ValidationResult }> | null>(null)
   const [selectedRepository, setSelectedRepository] = useState<string | null>(null)
 
+  const applyManifestState = (manifestData: any) => {
+    setManifest(manifestData)
+    setRepositoryManifest(manifestData)
+
+    if ((manifestData as any)?.repository?.type === 'parent' && Array.isArray((manifestData as any)?.translations)) {
+      setImportMode('full')
+      setSelectedTranslations((manifestData as any).translations.map((t: TranslationInfo) => t.id))
+      return
+    }
+
+    setSelectedTranslations([])
+  }
+
   const handleValidate = async () => {
     if (!importUrl.trim()) return
 
@@ -105,7 +118,7 @@ export function RepositoryImportDialog({ isOpen, onClose, onImportComplete }: Re
           const repo = scanResult.repositories[0]
           setValidation(repo.validation)
           if (repo.validation.valid) {
-            setManifest(repo.manifest)
+            applyManifestState(repo.manifest)
             // Update the import URL to the specific repository path
             setImportUrl(repo.path)
           }
@@ -120,13 +133,7 @@ export function RepositoryImportDialog({ isOpen, onClose, onImportComplete }: Re
 
       if (validationResult.valid) {
         const manifestData = await repository.getManifest(importUrl.trim())
-        setManifest(manifestData)
-        setRepositoryManifest(manifestData)
-
-        // If this is a parent repository, initialize translation selection
-        if ((manifestData as any).repository?.type === 'parent' && (manifestData as any).translations) {
-          setSelectedTranslations((manifestData as any).translations.map((t: TranslationInfo) => t.id))
-        }
+        applyManifestState(manifestData)
       }
     } catch (error) {
       setValidation({
@@ -150,8 +157,13 @@ export function RepositoryImportDialog({ isOpen, onClose, onImportComplete }: Re
     if (selectedRepo) {
       setSelectedRepository(repositoryPath)
       setImportUrl(repositoryPath)
-      setManifest(selectedRepo.manifest)
       setValidation(selectedRepo.validation)
+      if (selectedRepo.validation.valid) {
+        applyManifestState(selectedRepo.manifest)
+      } else {
+        setManifest(null)
+        setRepositoryManifest(null)
+      }
     }
   }
 
@@ -238,13 +250,7 @@ export function RepositoryImportDialog({ isOpen, onClose, onImportComplete }: Re
 
       if (validationResult.valid) {
         const manifestData = await repository.getManifest(url.trim())
-        setManifest(manifestData)
-        setRepositoryManifest(manifestData)
-
-        // If this is a parent repository, initialize translation selection
-        if ((manifestData as any).repository?.type === 'parent' && (manifestData as any).translations) {
-          setSelectedTranslations((manifestData as any).translations.map((t: TranslationInfo) => t.id))
-        }
+        applyManifestState(manifestData)
       }
     } catch (error) {
       setValidation({
