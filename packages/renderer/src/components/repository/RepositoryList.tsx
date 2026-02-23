@@ -166,6 +166,13 @@ export function RepositoryList({
     onRepositorySelect?.(repository)
   }
 
+  const handleRowKeyDown = (event: React.KeyboardEvent<HTMLElement>, action: () => void) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      action()
+    }
+  }
+
   const toggleParentExpansion = (parentId: string) => {
     setExpandedParents(prev => {
       const newSet = new Set(prev)
@@ -290,6 +297,9 @@ export function RepositoryList({
               } ${
                 currentRepositoryId === repo.id ? 'bg-accent/20' : ''
               }`}
+              role="button"
+              tabIndex={0}
+              aria-expanded={repo.type === 'parent' ? expandedParents.has(repo.id) : undefined}
               onClick={() => {
                 if (repo.type === 'parent') {
                   toggleParentExpansion(repo.id)
@@ -297,6 +307,15 @@ export function RepositoryList({
                   handleRepositorySelect(repo)
                 }
               }}
+              onKeyDown={(event) =>
+                handleRowKeyDown(event, () => {
+                  if (repo.type === 'parent') {
+                    toggleParentExpansion(repo.id)
+                  } else {
+                    handleRepositorySelect(repo)
+                  }
+                })
+              }
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1 space-y-2">
@@ -392,6 +411,8 @@ export function RepositoryList({
                     className={`p-2 border-b border-border/50 cursor-pointer transition-all hover:bg-accent/30 ${
                       currentRepositoryId === translation.id ? 'bg-accent/20' : ''
                     }`}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => {
                       // Create a repository object for the translation
                       const translationRepo: Repository = {
@@ -409,6 +430,24 @@ export function RepositoryList({
                       }
                       handleRepositorySelect(translationRepo)
                     }}
+                    onKeyDown={(event) =>
+                      handleRowKeyDown(event, () => {
+                        const translationRepo: Repository = {
+                          id: translation.id,
+                          name: translation.name,
+                          description: `${translation.name} from ${repo.name}`,
+                          language: translation.language,
+                          version: repo.version,
+                          created_at: repo.created_at,
+                          updated_at: repo.updated_at,
+                          type: 'translation',
+                          parent_id: repo.id,
+                          book_count: translation.book_count,
+                          verse_count: translation.verse_count
+                        }
+                        handleRepositorySelect(translationRepo)
+                      })
+                    }
                   >
                     <div className="flex items-center gap-2 mb-2">
                       {currentRepositoryId === translation.id && (
