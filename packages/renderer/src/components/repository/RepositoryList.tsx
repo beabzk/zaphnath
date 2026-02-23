@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import {
   BookOpen,
@@ -50,77 +50,101 @@ interface TranslationInfo {
 }
 
 interface RepositoryListProps {
+  repositories: Repository[]
+  isLoading: boolean
+  errorMessage: string | null
+  onRefresh: () => void
   onImportClick: () => void
   onRepositorySelect?: (repository: Repository) => void
   onRepositoryDelete?: (repositoryId: string) => void
 }
 
-export function RepositoryList({ onImportClick, onRepositorySelect, onRepositoryDelete }: RepositoryListProps) {
-  const [repositories, setRepositories] = useState<Repository[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+export function RepositoryList({
+  repositories,
+  isLoading,
+  errorMessage,
+  onRefresh,
+  onImportClick,
+  onRepositorySelect,
+  onRepositoryDelete
+}: RepositoryListProps) {
   const [selectedRepository, setSelectedRepository] = useState<string | null>(null)
   const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set())
+  const [translationsByParent, setTranslationsByParent] = useState<Record<string, TranslationInfo[]>>({})
+
+  const filteredRepositories = useMemo(() => {
+    const baseRepositories = repositories.filter(repo => {
+      if (repo.type === 'parent') return true
+      if (repo.type === 'translation' && !repo.parent_id) return true
+      if (repo.type === 'translation' && repo.parent_id) return false
+      return true
+    })
+
+    return baseRepositories.map(repo => {
+      if (repo.type !== 'parent') {
+        return repo
+      }
+
+      return {
+        ...repo,
+        translations: translationsByParent[repo.id] || []
+      }
+    })
+  }, [repositories, translationsByParent])
 
   useEffect(() => {
-    loadRepositories()
-  }, [])
+    let mounted = true
 
-  const loadRepositories = async () => {
-    try {
-      setLoading(true)
-      setError(null)
-      
-      const repos = await repository.list() as Repository[]
-      
-      // Filter out translation repositories that have a parent
-      // They should only show up as nested items under their parent
-      const filteredRepos = (repos || []).filter(repo => {
-        // Show parent repositories
-        if (repo.type === 'parent') return true
-        // Show standalone translations (no parent_id)
-        if (repo.type === 'translation' && !repo.parent_id) return true
-        // Hide translations that belong to a parent
-        if (repo.type === 'translation' && repo.parent_id) return false
-        // Show any other repositories (backwards compatibility)
-        return true
-      })
-      
-      // For each parent repository, fetch its translations
-      for (const repo of filteredRepos) {
-        if (repo.type === 'parent') {
+    const parentRepositories = repositories.filter(repo => repo.type === 'parent')
+
+    if (parentRepositories.length === 0) {
+      setTranslationsByParent({})
+      return () => {
+        mounted = false
+      }
+    }
+
+    const loadTranslations = async () => {
+      const translationEntries = await Promise.all(
+        parentRepositories.map(async (repo) => {
           try {
             const translations = await repository.getTranslations(repo.id)
-            // Convert the database format to the expected format
-            // Use translation_id (the actual repository ID) not the composite id
-            repo.translations = translations?.map(t => ({
-              id: t.translation_id || t.id,  // translation_id is the actual repository ID in books table
+            const mappedTranslations: TranslationInfo[] = (translations || []).map(t => ({
+              id: t.translation_id || t.id,
               name: t.translation_name || t.name,
               directory: t.directory_name || t.directory,
               language: t.language_code || t.language,
               status: t.status || 'active',
               book_count: t.book_count,
               verse_count: t.verse_count
-            })) || []
-          } catch (error) {
-            console.error(`Failed to fetch translations for ${repo.id}:`, error)
-            repo.translations = []
+            }))
+            return [repo.id, mappedTranslations] as const
+          } catch (translationError) {
+            console.error(`Failed to fetch translations for ${repo.id}:`, translationError)
+            return [repo.id, []] as const
           }
-        }
-      }
-      
-      setRepositories(filteredRepos)
+        })
+      )
 
-      // Set first repository as selected if none selected
-      if (filteredRepos.length > 0 && !selectedRepository) {
-        setSelectedRepository(filteredRepos[0].id)
+      if (!mounted) {
+        return
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load repositories')
-    } finally {
-      setLoading(false)
+
+      setTranslationsByParent(Object.fromEntries(translationEntries))
     }
-  }
+
+    void loadTranslations()
+
+    return () => {
+      mounted = false
+    }
+  }, [repositories])
+
+  useEffect(() => {
+    if (filteredRepositories.length > 0 && !selectedRepository) {
+      setSelectedRepository(filteredRepositories[0].id)
+    }
+  }, [filteredRepositories, selectedRepository])
 
   const handleRepositorySelect = (repository: Repository) => {
     setSelectedRepository(repository.id)
@@ -150,7 +174,6 @@ export function RepositoryList({ onImportClick, onRepositorySelect, onRepository
         setSelectedRepository(null)
       }
       onRepositoryDelete?.(repositoryId)
-      await loadRepositories()
     } catch (err) {
       console.error('Failed to delete repository:', err)
     }
@@ -175,7 +198,7 @@ export function RepositoryList({ onImportClick, onRepositorySelect, onRepository
     return languageNames[language] || language.toUpperCase()
   }
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="border-b border-border">
         <div className="px-6 py-4">
@@ -191,7 +214,7 @@ export function RepositoryList({ onImportClick, onRepositorySelect, onRepository
     )
   }
 
-  if (error) {
+  if (errorMessage) {
     return (
       <div className="border-b border-border">
         <div className="px-6 py-4">
@@ -201,9 +224,9 @@ export function RepositoryList({ onImportClick, onRepositorySelect, onRepository
         <div className="px-6 pb-4">
           <div className="flex items-center gap-2 text-destructive mb-4">
             <AlertCircle className="h-4 w-4" />
-            <span>{error}</span>
+            <span>{errorMessage}</span>
           </div>
-          <button onClick={loadRepositories} className="px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
+          <button onClick={onRefresh} className="px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
             Try Again
           </button>
         </div>
@@ -211,7 +234,7 @@ export function RepositoryList({ onImportClick, onRepositorySelect, onRepository
     )
   }
 
-  if (repositories.length === 0) {
+  if (filteredRepositories.length === 0) {
     return (
       <div className="border-b border-border">
         <div className="px-6 py-4">
@@ -244,12 +267,12 @@ export function RepositoryList({ onImportClick, onRepositorySelect, onRepository
           </button>
         </div>
         <p className="text-sm text-muted-foreground">
-          {repositories.length} repository{repositories.length !== 1 ? 's' : ''} available
+          {filteredRepositories.length} repository{filteredRepositories.length !== 1 ? 's' : ''} available
         </p>
       </div>
       <div className="px-6 pb-4 space-y-3">
         
-        {repositories.map((repo) => (
+        {filteredRepositories.map((repo) => (
           <div key={repo.id} className="space-y-2">
             {/* Parent Repository or Standalone Translation */}
             <div

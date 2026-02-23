@@ -131,6 +131,10 @@ export function RepositoryManagement() {
 
       {/* Repository List */}
       <RepositoryList
+        repositories={repositories}
+        isLoading={isLoading}
+        errorMessage={error?.message || null}
+        onRefresh={() => void loadOverviewData()}
         onImportClick={openImportDialog}
         onRepositorySelect={handleRepositorySelect}
         onRepositoryDelete={(repoId) => {
