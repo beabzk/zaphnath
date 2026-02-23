@@ -5,7 +5,6 @@ import { useRepositoryStore, useModal, useNotifications } from '@/stores'
 import { useNavigation } from '@/components/layout/Navigation'
 import { database } from '@app/preload'
 import {
-  Download,
   Database,
   BookOpen,
   HardDrive,
@@ -215,20 +214,9 @@ export function RepositoryManagement() {
       {/* Quick Actions */}
       <div className="px-6 py-4">
         <h2 className="text-lg font-semibold mb-1">Quick Actions</h2>
-        <p className="text-sm text-muted-foreground mb-4">Common repository management tasks</p>
+        <p className="text-sm text-muted-foreground mb-4">Common maintenance tasks</p>
         
-        <div className="grid grid-cols-3 gap-3">
-          <button
-            onClick={openImportDialog}
-            className="p-4 border border-border hover:bg-accent/50 transition-colors flex flex-col items-center gap-2"
-          >
-            <Download className="h-5 w-5" />
-            <div className="text-center">
-              <div className="font-medium text-sm">Import Repository</div>
-              <div className="text-xs text-muted-foreground">Add new Bible translation</div>
-            </div>
-          </button>
-
+        <div className="grid grid-cols-2 gap-3">
           <button
             onClick={() => void loadOverviewData()}
             className="p-4 border border-border hover:bg-accent/50 transition-colors flex flex-col items-center gap-2"
