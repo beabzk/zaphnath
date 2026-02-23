@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
@@ -69,8 +69,9 @@ export function RepositoryImportDialog({ isOpen, onClose, onImportComplete }: Re
   const [manifest, setManifest] = useState<any>(null)
   const [multipleRepositories, setMultipleRepositories] = useState<Array<{ path: string; manifest: any; validation: ValidationResult }> | null>(null)
   const [selectedRepository, setSelectedRepository] = useState<string | null>(null)
+  const validationRequestIdRef = useRef(0)
 
-  const applyManifestState = (manifestData: any) => {
+  const applyManifestState = useCallback((manifestData: any) => {
     setManifest(manifestData)
     setRepositoryManifest(manifestData)
 
@@ -81,24 +82,29 @@ export function RepositoryImportDialog({ isOpen, onClose, onImportComplete }: Re
     }
 
     setSelectedTranslations([])
-  }
+  }, [])
 
-  const handleValidate = async () => {
-    if (!importUrl.trim()) return
+  const validateSource = useCallback(async (sourceUrl: string, sourceType: 'url' | 'file' | 'discover') => {
+    const trimmedUrl = sourceUrl.trim()
+    if (!trimmedUrl) return
+
+    const requestId = ++validationRequestIdRef.current
 
     try {
       setIsValidating(true)
       setValidation(null)
       setManifest(null)
+      setRepositoryManifest(null)
       setMultipleRepositories(null)
       setSelectedRepository(null)
 
       // Check if this is a local directory path
-      const isLocalPath = importType === 'file' && !importUrl.startsWith('http')
+      const isLocalPath = sourceType === 'file' && !trimmedUrl.startsWith('http')
 
       if (isLocalPath) {
         // Try scanning for multiple repositories first
-        const scanResult = await repository.scanDirectory(importUrl.trim())
+        const scanResult = await repository.scanDirectory(trimmedUrl)
+        if (requestId !== validationRequestIdRef.current) return
 
         if (scanResult.repositories.length > 1) {
           // Multiple repositories found - show selection UI
@@ -128,14 +134,17 @@ export function RepositoryImportDialog({ isOpen, onClose, onImportComplete }: Re
       }
 
       // Regular single repository validation
-      const validationResult = await repository.validate(importUrl.trim())
+      const validationResult = await repository.validate(trimmedUrl)
+      if (requestId !== validationRequestIdRef.current) return
       setValidation(validationResult)
 
       if (validationResult.valid) {
-        const manifestData = await repository.getManifest(importUrl.trim())
+        const manifestData = await repository.getManifest(trimmedUrl)
+        if (requestId !== validationRequestIdRef.current) return
         applyManifestState(manifestData)
       }
     } catch (error) {
+      if (requestId !== validationRequestIdRef.current) return
       setValidation({
         valid: false,
         errors: [{
@@ -146,9 +155,34 @@ export function RepositoryImportDialog({ isOpen, onClose, onImportComplete }: Re
         warnings: []
       })
     } finally {
+      if (requestId !== validationRequestIdRef.current) return
       setIsValidating(false)
     }
-  }
+  }, [applyManifestState])
+
+  useEffect(() => {
+    if (importType === 'discover') {
+      return
+    }
+
+    const trimmedUrl = importUrl.trim()
+    if (!trimmedUrl) {
+      validationRequestIdRef.current += 1
+      setValidation(null)
+      setManifest(null)
+      setRepositoryManifest(null)
+      setMultipleRepositories(null)
+      setSelectedRepository(null)
+      setIsValidating(false)
+      return
+    }
+
+    const timeoutId = setTimeout(() => {
+      void validateSource(trimmedUrl, importType)
+    }, 500)
+
+    return () => clearTimeout(timeoutId)
+  }, [importType, importUrl, validateSource])
 
   const handleRepositorySelection = (repositoryPath: string) => {
     if (!multipleRepositories) return
@@ -237,34 +271,7 @@ export function RepositoryImportDialog({ isOpen, onClose, onImportComplete }: Re
     setImportUrl(url)
     // Stay on discover tab, don't switch to URL tab
     // setImportType('url')
-
-    // Immediately validate the selected repository
-    try {
-      setIsValidating(true)
-      setValidation(null)
-      setManifest(null)
-      setRepositoryManifest(null)
-
-      const validationResult = await repository.validate(url.trim())
-      setValidation(validationResult)
-
-      if (validationResult.valid) {
-        const manifestData = await repository.getManifest(url.trim())
-        applyManifestState(manifestData)
-      }
-    } catch (error) {
-      setValidation({
-        valid: false,
-        errors: [{
-          code: 'VALIDATION_ERROR',
-          message: error instanceof Error ? error.message : 'Validation failed',
-          severity: 'error'
-        }],
-        warnings: []
-      })
-    } finally {
-      setIsValidating(false)
-    }
+    await validateSource(url, 'discover')
   }
 
   const handleClose = () => {
@@ -359,22 +366,19 @@ export function RepositoryImportDialog({ isOpen, onClose, onImportComplete }: Re
               ) : importType === 'url' ? (
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Repository URL</label>
-                  <div className="flex gap-2">
-                    <input
-                      type="url"
-                      placeholder="https://example.com/bible-repository/"
-                      value={importUrl}
-                      onChange={(e) => setImportUrl(e.target.value)}
-                      className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                    />
-                    <Button onClick={handleValidate} disabled={isValidating || !importUrl.trim()}>
-                      {isValidating ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        'Validate'
-                      )}
-                    </Button>
-                  </div>
+                  <input
+                    type="url"
+                    placeholder="https://example.com/bible-repository/"
+                    value={importUrl}
+                    onChange={(e) => setImportUrl(e.target.value)}
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  />
+                  {isValidating && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Validating repository...
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -385,22 +389,18 @@ export function RepositoryImportDialog({ isOpen, onClose, onImportComplete }: Re
                       placeholder="C:\\Users\\...\\repository"
                       value={importUrl}
                       onChange={(event) => setImportUrl(event.target.value)}
-                      className="flex-1 rounded-md border border-input bg-muted px-3 py-2 text-sm"
+                      className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
                     />
                     <Button onClick={handleFileSelect}>
                       <FolderOpen className="h-4 w-4 mr-2" />
                       Browse
                     </Button>
                   </div>
-                  {importUrl && (
-                    <Button onClick={handleValidate} disabled={isValidating} className="w-full">
-                      {isValidating ? (
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      ) : (
-                        <CheckCircle className="h-4 w-4 mr-2" />
-                      )}
-                      Validate Repository
-                    </Button>
+                  {isValidating && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Validating repository...
+                    </div>
                   )}
                 </div>
               )}
