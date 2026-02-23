@@ -1,8 +1,9 @@
-import { useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { RepositoryList } from './RepositoryList'
 import { RepositoryImportDialog } from './RepositoryImportDialog'
 import { useRepositoryStore, useModal, useNotifications } from '@/stores'
 import { useNavigation } from '@/components/layout/Navigation'
+import { database } from '@app/preload'
 import {
   Download,
   Database,
@@ -14,6 +15,13 @@ import {
 } from 'lucide-react'
 
 // Types are now imported from stores
+
+interface OverviewStats {
+  repositories: number
+  books: number
+  verses: number
+  databaseSize: string
+}
 
 export function RepositoryManagement() {
   const {
@@ -28,13 +36,29 @@ export function RepositoryManagement() {
 
   const { isOpen: showImportDialog, open: openImportDialog, close: closeImportDialog } = useModal('repository-import')
   const { addNotification } = useNotifications()
+  const [overviewStats, setOverviewStats] = useState<OverviewStats | null>(null)
+  const [isOverviewLoading, setIsOverviewLoading] = useState(true)
 
-  useEffect(() => {
-    loadRepositories()
+  const loadOverviewData = useCallback(async () => {
+    setIsOverviewLoading(true)
+    await loadRepositories()
+
+    try {
+      const stats = await database.getStats() as OverviewStats
+      setOverviewStats(stats)
+    } catch (statsError) {
+      console.error('Failed to load database stats:', statsError)
+    } finally {
+      setIsOverviewLoading(false)
+    }
   }, [loadRepositories])
 
+  useEffect(() => {
+    void loadOverviewData()
+  }, [loadOverviewData])
+
   const handleImportComplete = () => {
-    loadRepositories()
+    void loadOverviewData()
     addNotification({
       type: 'success',
       title: 'Repository Imported',
@@ -42,6 +66,11 @@ export function RepositoryManagement() {
       duration: 5000
     })
   }
+
+  const repositoryCount = overviewStats?.repositories ?? repositories.length
+  const bookCount = overviewStats?.books ?? repositories.reduce((sum, repo) => sum + (repo.book_count || 0), 0)
+  const verseCount = overviewStats?.verses ?? repositories.reduce((sum, repo) => sum + (repo.verse_count || 0), 0)
+  const databaseSize = overviewStats?.databaseSize ?? '-'
 
   const handleRepositorySelect = (repository: any) => {
     setCurrentRepository(repository)
@@ -61,7 +90,7 @@ export function RepositoryManagement() {
           <p className="text-sm text-muted-foreground">Current status of your Bible database and repositories</p>
         </div>
         <div className="px-6 pb-4">
-          {isLoading ? (
+          {isLoading || isOverviewLoading ? (
             <div className="flex items-center justify-center py-4">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
             </div>
@@ -70,7 +99,7 @@ export function RepositoryManagement() {
               <AlertCircle className="h-4 w-4" />
               <span>{error.message}</span>
               <button 
-                onClick={loadRepositories} 
+                onClick={() => void loadOverviewData()} 
                 className="ml-auto px-3 py-1 text-sm border border-border hover:bg-accent transition-colors"
               >
                 <RefreshCw className="h-4 w-4 mr-2 inline" />
@@ -80,23 +109,19 @@ export function RepositoryManagement() {
           ) : (
             <div className="grid grid-cols-4 gap-px bg-border">
               <div className="bg-background px-4 py-3">
-                <div className="text-3xl font-semibold">{repositories.length}</div>
+                <div className="text-3xl font-semibold">{repositoryCount}</div>
                 <div className="text-xs text-muted-foreground mt-1">Repositories</div>
               </div>
               <div className="bg-background px-4 py-3">
-                <div className="text-3xl font-semibold">
-                  {repositories.reduce((sum, repo) => sum + (repo.book_count || 0), 0)}
-                </div>
+                <div className="text-3xl font-semibold">{bookCount}</div>
                 <div className="text-xs text-muted-foreground mt-1">Books</div>
               </div>
               <div className="bg-background px-4 py-3">
-                <div className="text-3xl font-semibold">
-                  {repositories.reduce((sum, repo) => sum + (repo.verse_count || 0), 0).toLocaleString()}
-                </div>
+                <div className="text-3xl font-semibold">{verseCount.toLocaleString()}</div>
                 <div className="text-xs text-muted-foreground mt-1">Verses</div>
               </div>
               <div className="bg-background px-4 py-3">
-                <div className="text-3xl font-semibold text-muted-foreground">-</div>
+                <div className="text-3xl font-semibold text-muted-foreground">{databaseSize}</div>
                 <div className="text-xs text-muted-foreground mt-1">Database Size</div>
               </div>
             </div>
@@ -112,7 +137,7 @@ export function RepositoryManagement() {
           if (currentRepository?.id === repoId || currentRepository?.parent_id === repoId) {
             setCurrentRepository(null)
           }
-          loadRepositories()
+          void loadOverviewData()
         }}
       />
 
@@ -201,7 +226,7 @@ export function RepositoryManagement() {
           </button>
 
           <button
-            onClick={loadRepositories}
+            onClick={() => void loadOverviewData()}
             className="p-4 border border-border hover:bg-accent/50 transition-colors flex flex-col items-center gap-2"
           >
             <RefreshCw className="h-5 w-5" />
