@@ -60,6 +60,11 @@ interface RepositoryListProps {
   onRepositoryDelete?: (repositoryId: string) => void
 }
 
+interface DeleteTarget {
+  id: string
+  name: string
+}
+
 export function RepositoryList({
   repositories,
   currentRepositoryId = null,
@@ -72,6 +77,7 @@ export function RepositoryList({
 }: RepositoryListProps) {
   const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set())
   const [translationsByParent, setTranslationsByParent] = useState<Record<string, TranslationInfo[]>>({})
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null)
 
   const filteredRepositories = useMemo(() => {
     const baseRepositories = repositories.filter(repo => {
@@ -141,6 +147,21 @@ export function RepositoryList({
     }
   }, [repositories])
 
+  useEffect(() => {
+    if (!deleteTarget) {
+      return
+    }
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setDeleteTarget(null)
+      }
+    }
+
+    document.addEventListener('keydown', handleEscape)
+    return () => document.removeEventListener('keydown', handleEscape)
+  }, [deleteTarget])
+
   const handleRepositorySelect = (repository: Repository) => {
     onRepositorySelect?.(repository)
   }
@@ -158,13 +179,10 @@ export function RepositoryList({
   }
 
   const handleDeleteRepository = async (repositoryId: string) => {
-    if (!confirm('Are you sure you want to delete this repository? This action cannot be undone.')) {
-      return
-    }
-
     try {
       await repository.delete(repositoryId)
       onRepositoryDelete?.(repositoryId)
+      setDeleteTarget(null)
     } catch (err) {
       console.error('Failed to delete repository:', err)
     }
@@ -354,12 +372,12 @@ export function RepositoryList({
                       className="text-destructive"
                       onClick={(e) => {
                         e.stopPropagation()
-                        handleDeleteRepository(repo.id)
+                        setDeleteTarget({ id: repo.id, name: repo.name })
                       }}
                     >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Delete
-                    </DropdownMenuItem>
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete
+                      </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
@@ -423,6 +441,44 @@ export function RepositoryList({
           </div>
         ))}
       </div>
+
+      {deleteTarget && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          onClick={() => setDeleteTarget(null)}
+        >
+          <div
+            className="bg-popover border border-border shadow-lg w-full max-w-md mx-4"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="px-4 py-3 border-b border-border">
+              <h3 className="text-sm font-medium">Delete Repository</h3>
+              <p className="text-xs text-muted-foreground mt-1">
+                This action cannot be undone.
+              </p>
+            </div>
+            <div className="px-4 py-3 space-y-2">
+              <p className="text-sm">
+                Delete <span className="font-medium">{deleteTarget.name}</span>?
+              </p>
+            </div>
+            <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-border">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                className="px-3 py-1.5 text-sm hover:bg-accent rounded-md transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => void handleDeleteRepository(deleteTarget.id)}
+                className="px-3 py-1.5 text-sm bg-destructive text-destructive-foreground rounded-md hover:opacity-90 transition-opacity"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
