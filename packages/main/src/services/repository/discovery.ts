@@ -2,7 +2,7 @@ import { net } from "electron";
 import { createHash } from "crypto";
 import { readFile, access, readdir, stat } from "fs/promises";
 import { join } from "path";
-import { fileURLToPath } from "url";
+import { fileURLToPath, pathToFileURL } from "url";
 import type {
   RepositoryIndex,
   RepositoryIndexEntry,
@@ -353,10 +353,11 @@ export class RepositoryDiscoveryService {
     const errors: string[] = [];
 
     try {
-      // Convert to file:// URL if it's a local path
-      const directoryUrl = directoryPath.startsWith("file://")
-        ? directoryPath
-        : `file://${directoryPath.replace(/\\/g, "/")}`;
+      const directoryUrl = normalizeRepositoryUrl(directoryPath);
+      if (!directoryUrl.startsWith("file://")) {
+        errors.push(`Directory scan only supports local file paths: ${directoryPath}`);
+        return { repositories, errors };
+      }
 
       const localPath = fileURLToPath(directoryUrl);
 
@@ -367,52 +368,21 @@ export class RepositoryDiscoveryService {
         return { repositories, errors };
       }
 
-      // Read directory contents
-      const entries = await readdir(localPath, { withFileTypes: true });
+      const rootManifestPath = join(localPath, "manifest.json");
+      let hasRootManifest = false;
 
-      // Check each subdirectory for a manifest.json file
-      for (const entry of entries) {
-        if (entry.isDirectory()) {
-          const subDirPath = join(localPath, entry.name);
-          const manifestPath = join(subDirPath, "manifest.json");
-
-          try {
-            // Check if manifest.json exists
-            await access(manifestPath);
-
-            // Try to read and validate the manifest
-            const manifestContent = await readFile(manifestPath, "utf-8");
-            // Remove BOM if present
-            const cleanContent = manifestContent.replace(/^\uFEFF/, '');
-            const manifest = JSON.parse(cleanContent) as ZBRSManifest;
-
-            // Validate the manifest
-            const validation = this.validator.validateManifest(manifest);
-
-            // Convert back to file:// URL for consistency
-            const repositoryUrl = `file://${subDirPath.replace(/\\/g, "/")}`;
-
-            repositories.push({
-              path: repositoryUrl,
-              manifest,
-              validation,
-            });
-          } catch (error) {
-            // Skip directories without valid manifests, but don't treat as errors
-            // This allows parent directories to contain non-repository folders
-            console.log(`Skipping directory ${entry.name}: ${error}`);
-          }
-        }
+      try {
+        await access(rootManifestPath);
+        hasRootManifest = true;
+      } catch {
+        hasRootManifest = false;
       }
 
-      // If no repositories found, check if the directory itself is a repository
-      if (repositories.length === 0) {
-        const manifestPath = join(localPath, "manifest.json");
+      // If the selected directory itself is a repository, prioritize it.
+      if (hasRootManifest) {
         try {
-          await access(manifestPath);
-          const manifestContent = await readFile(manifestPath, "utf-8");
-          // Remove BOM if present
-          const cleanContent = manifestContent.replace(/^\uFEFF/, '');
+          const manifestContent = await readFile(rootManifestPath, "utf-8");
+          const cleanContent = manifestContent.replace(/^\uFEFF/, "");
           const manifest = JSON.parse(cleanContent) as ZBRSManifest;
           const validation = this.validator.validateManifest(manifest);
 
@@ -421,11 +391,54 @@ export class RepositoryDiscoveryService {
             manifest,
             validation,
           });
+          return { repositories, errors };
         } catch (error) {
-          errors.push(
-            `No repositories found in directory and directory itself is not a valid repository: ${error}`
-          );
+          errors.push(`Failed to read repository manifest in selected directory: ${error}`);
+          return { repositories, errors };
         }
+      }
+
+      // Read directory contents
+      const entries = await readdir(localPath, { withFileTypes: true });
+
+      // Check each subdirectory for a manifest.json file
+      for (const entry of entries) {
+        if (!entry.isDirectory()) {
+          continue;
+        }
+
+        const subDirPath = join(localPath, entry.name);
+        const manifestPath = join(subDirPath, "manifest.json");
+
+        try {
+          // Check if manifest.json exists
+          await access(manifestPath);
+
+          // Try to read and validate the manifest
+          const manifestContent = await readFile(manifestPath, "utf-8");
+          // Remove BOM if present
+          const cleanContent = manifestContent.replace(/^\uFEFF/, "");
+          const manifest = JSON.parse(cleanContent) as ZBRSManifest;
+
+          // Validate the manifest
+          const validation = this.validator.validateManifest(manifest);
+
+          const repositoryUrl = pathToFileURL(subDirPath).toString();
+
+          repositories.push({
+            path: repositoryUrl,
+            manifest,
+            validation,
+          });
+        } catch (error) {
+          // Skip directories without valid manifests, but don't treat as errors
+          // This allows parent directories to contain non-repository folders
+          console.log(`Skipping directory ${entry.name}: ${error}`);
+        }
+      }
+
+      if (repositories.length === 0) {
+        errors.push("No repositories found in selected directory");
       }
     } catch (error) {
       errors.push(`Failed to scan directory: ${error}`);
