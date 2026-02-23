@@ -213,7 +213,7 @@ export function RepositoryImportDialog({ isOpen, onClose, onImportComplete }: Re
       })
 
       if (result && !result.canceled && result.filePaths.length > 0) {
-        setImportUrl(`file://${result.filePaths[0]}`)
+        setImportUrl(result.filePaths[0])
         setImportType('file')
       }
     } catch (error) {
@@ -376,9 +376,9 @@ export function RepositoryImportDialog({ isOpen, onClose, onImportComplete }: Re
                   <div className="flex gap-2">
                     <input
                       type="text"
-                      placeholder="Select a directory..."
-                      value={importUrl.replace('file://', '')}
-                      readOnly
+                      placeholder="C:\\Users\\...\\repository"
+                      value={importUrl}
+                      onChange={(event) => setImportUrl(event.target.value)}
                       className="flex-1 rounded-md border border-input bg-muted px-3 py-2 text-sm"
                     />
                     <Button onClick={handleFileSelect}>

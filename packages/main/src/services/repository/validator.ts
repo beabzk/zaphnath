@@ -15,6 +15,7 @@ import type {
   IntegrityCheck,
 } from "./types.js";
 import { isParentManifest, isTranslationManifest } from "./types.js";
+import { normalizeRepositoryUrl } from "./pathUtils.js";
 
 type SchemaError = {
   instancePath?: string;
@@ -536,7 +537,8 @@ export class ZBRSValidator {
     const warnings: ValidationWarning[] = [];
 
     try {
-      const parsedUrl = new URL(url);
+      const normalizedUrl = normalizeRepositoryUrl(url);
+      const parsedUrl = new URL(normalizedUrl);
 
       if (!this.securityPolicy.allow_http && parsedUrl.protocol === "http:") {
         errors.push({
@@ -556,7 +558,13 @@ export class ZBRSValidator {
         });
       }
 
-      if (this.securityPolicy.blocked_domains.includes(parsedUrl.hostname)) {
+      const isNetworkUrl =
+        parsedUrl.protocol === "http:" || parsedUrl.protocol === "https:";
+
+      if (
+        isNetworkUrl &&
+        this.securityPolicy.blocked_domains.includes(parsedUrl.hostname)
+      ) {
         errors.push({
           code: "BLOCKED_DOMAIN",
           message: `Domain ${parsedUrl.hostname} is blocked`,
@@ -566,6 +574,7 @@ export class ZBRSValidator {
       }
 
       if (
+        isNetworkUrl &&
         this.securityPolicy.allowed_domains.length > 0 &&
         !this.securityPolicy.allowed_domains.includes(parsedUrl.hostname)
       ) {

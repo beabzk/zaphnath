@@ -17,6 +17,7 @@ import type {
 import { isParentManifest, isTranslationManifest } from "./types.js";
 import { NetworkError } from "./types.js";
 import { ZBRSValidator } from "./validator.js";
+import { normalizeRepositoryUrl } from "./pathUtils.js";
 
 export class RepositoryDiscoveryService {
   private validator: ZBRSValidator;
@@ -76,25 +77,27 @@ export class RepositoryDiscoveryService {
   public async fetchRepositoryIndex(
     indexUrl: string
   ): Promise<RepositoryIndexEntry[]> {
+    const normalizedIndexUrl = normalizeRepositoryUrl(indexUrl);
+
     // Check cache first
-    const cached = this.cache.get(indexUrl);
+    const cached = this.cache.get(normalizedIndexUrl);
     if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
       return cached.data;
     }
 
     // Validate URL
-    const urlValidation = this.validator.validateRepositoryUrl(indexUrl);
+    const urlValidation = this.validator.validateRepositoryUrl(normalizedIndexUrl);
     if (!urlValidation.valid) {
       throw new NetworkError(
         `Invalid repository index URL: ${urlValidation.errors
           .map((e) => e.message)
           .join(", ")}`,
-        indexUrl
+        normalizedIndexUrl
       );
     }
 
     try {
-      const response = await this.fetchJson(indexUrl);
+      const response = await this.fetchJson(normalizedIndexUrl);
 
       // Handle GitHub registry format
       if (response.registry && Array.isArray(response.repositories)) {
@@ -111,7 +114,7 @@ export class RepositoryDiscoveryService {
         }));
 
         // Cache the result
-        this.cache.set(indexUrl, {
+        this.cache.set(normalizedIndexUrl, {
           data: repositories,
           timestamp: Date.now(),
         });
@@ -126,7 +129,7 @@ export class RepositoryDiscoveryService {
       }
 
       // Cache the result
-      this.cache.set(indexUrl, {
+      this.cache.set(normalizedIndexUrl, {
         data: index.repositories,
         timestamp: Date.now(),
       });
@@ -135,7 +138,7 @@ export class RepositoryDiscoveryService {
     } catch (error) {
       throw new NetworkError(
         `Failed to fetch repository index: ${error}`,
-        indexUrl
+        normalizedIndexUrl
       );
     }
   }
@@ -143,15 +146,17 @@ export class RepositoryDiscoveryService {
   public async fetchRepositoryManifest(
     repositoryUrl: string
   ): Promise<ZBRSManifest> {
+    const normalizedRepositoryUrl = normalizeRepositoryUrl(repositoryUrl);
+
     // Handle URLs that already point to manifest.json
     let manifestUrl: string;
-    if (repositoryUrl.endsWith("manifest.json")) {
-      manifestUrl = repositoryUrl;
+    if (normalizedRepositoryUrl.endsWith("manifest.json")) {
+      manifestUrl = normalizedRepositoryUrl;
     } else {
       // Ensure URL ends with manifest.json
-      manifestUrl = repositoryUrl.endsWith("/")
-        ? `${repositoryUrl}manifest.json`
-        : `${repositoryUrl}/manifest.json`;
+      manifestUrl = normalizedRepositoryUrl.endsWith("/")
+        ? `${normalizedRepositoryUrl}manifest.json`
+        : `${normalizedRepositoryUrl}/manifest.json`;
     }
 
     console.log(`Fetching manifest from: ${manifestUrl}`);

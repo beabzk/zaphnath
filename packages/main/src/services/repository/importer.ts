@@ -1,8 +1,12 @@
 import { createHash } from "crypto";
+import { readdir, readFile, stat } from "fs/promises";
+import { join } from "path";
+import { fileURLToPath } from "url";
 
 import { DatabaseService } from "../database/index.js";
 import { RepositoryDiscoveryService } from "./discovery.js";
 import { ZBRSValidator } from "./validator.js";
+import { normalizeRepositoryUrl } from "./pathUtils.js";
 import type {
   ContentBookReference,
   RepositoryDbRecord,
@@ -53,6 +57,10 @@ export class RepositoryImporter {
 
   public async importRepository(options: ImportOptions): Promise<ImportResult> {
     const startTime = Date.now();
+    const normalizedOptions: ImportOptions = {
+      ...options,
+      repository_url: normalizeRepositoryUrl(options.repository_url),
+    };
     const result: ImportResult = {
       success: false,
       repository_id: "",
@@ -70,14 +78,14 @@ export class RepositoryImporter {
       });
 
       const manifest = await this.discoveryService.fetchRepositoryManifest(
-        options.repository_url
+        normalizedOptions.repository_url
       );
       result.repository_id = manifest.repository.id;
 
       if (isParentManifest(manifest)) {
-        return await this.importParentRepository(manifest, options);
+        return await this.importParentRepository(manifest, normalizedOptions);
       } else if (isTranslationManifest(manifest)) {
-        return await this.importTranslation(manifest, options);
+        return await this.importTranslation(manifest, normalizedOptions);
       } else {
         result.errors.push(
           createValidationError(
@@ -338,7 +346,8 @@ export class RepositoryImporter {
   }
 
   private normalizeRepositoryBaseUrl(repositoryUrl: string): string {
-    return repositoryUrl.replace(/\/manifest\.json$/, "").replace(/\/$/, "");
+    const normalizedUrl = normalizeRepositoryUrl(repositoryUrl);
+    return normalizedUrl.replace(/\/manifest\.json$/, "").replace(/\/$/, "");
   }
 
   private buildBookUrl(baseUrl: string, bookFile: ResolvedBookFile): string {
@@ -346,20 +355,47 @@ export class RepositoryImporter {
       return bookFile.download_url;
     }
 
-    if (bookFile.path.startsWith("http://") || bookFile.path.startsWith("https://")) {
-      return bookFile.path;
+    const normalizedBookPath = bookFile.path.replace(/\\/g, "/");
+    if (
+      normalizedBookPath.startsWith("http://") ||
+      normalizedBookPath.startsWith("https://") ||
+      normalizedBookPath.startsWith("file://")
+    ) {
+      return normalizedBookPath;
+    }
+
+    const absoluteBookPath = normalizeRepositoryUrl(bookFile.path);
+    if (absoluteBookPath.startsWith("file://")) {
+      return absoluteBookPath;
+    }
+
+    if (baseUrl.startsWith("file://")) {
+      const normalizedBase = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
+      return new URL(normalizedBookPath.replace(/^\/+/, ""), normalizedBase)
+        .toString();
     }
 
     const normalizedBase = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
-    return `${normalizedBase}${bookFile.path.replace(/^\/+/, "")}`;
+    return `${normalizedBase}${normalizedBookPath.replace(/^\/+/, "")}`;
   }
 
   private async fetchJsonFromLocation(location: string): Promise<unknown> {
-    if (!location.startsWith("http://") && !location.startsWith("https://")) {
-      throw new Error("Only HTTP(S) book sources are supported");
+    const normalizedLocation = normalizeRepositoryUrl(location);
+
+    if (normalizedLocation.startsWith("file://")) {
+      const localPath = fileURLToPath(normalizedLocation);
+      const rawContent = await readFile(localPath, "utf-8");
+      return JSON.parse(rawContent.replace(/^\uFEFF/, ""));
     }
 
-    const response = await fetch(location);
+    if (
+      !normalizedLocation.startsWith("http://") &&
+      !normalizedLocation.startsWith("https://")
+    ) {
+      throw new Error("Only HTTP(S) or local file book sources are supported");
+    }
+
+    const response = await fetch(normalizedLocation);
     if (!response.ok) {
       throw new Error(`Failed to fetch JSON: ${response.statusText}`);
     }
@@ -368,11 +404,24 @@ export class RepositoryImporter {
   }
 
   private async calculateSha256(location: string): Promise<string> {
-    if (!location.startsWith("http://") && !location.startsWith("https://")) {
-      throw new Error("Only HTTP(S) checksum sources are supported");
+    const normalizedLocation = normalizeRepositoryUrl(location);
+
+    if (normalizedLocation.startsWith("file://")) {
+      const localPath = fileURLToPath(normalizedLocation);
+      const data = await readFile(localPath);
+      const hash = createHash("sha256");
+      hash.update(data);
+      return `sha256:${hash.digest("hex")}`;
     }
 
-    const response = await fetch(location);
+    if (
+      !normalizedLocation.startsWith("http://") &&
+      !normalizedLocation.startsWith("https://")
+    ) {
+      throw new Error("Only HTTP(S) or local file checksum sources are supported");
+    }
+
+    const response = await fetch(normalizedLocation);
     if (!response.ok) {
       throw new Error(`Failed to fetch file for checksum: ${response.statusText}`);
     }
@@ -407,6 +456,10 @@ export class RepositoryImporter {
   ): Promise<ResolvedBookFile[]> {
     const normalizedUrl = this.normalizeRepositoryBaseUrl(repositoryUrl);
 
+    if (normalizedUrl.startsWith("file://")) {
+      return this.discoverLocalBookFiles(normalizedUrl);
+    }
+
     if (normalizedUrl.startsWith("http://") || normalizedUrl.startsWith("https://")) {
       try {
         const parsedUrl = new URL(normalizedUrl);
@@ -419,6 +472,45 @@ export class RepositoryImporter {
     }
 
     return [];
+  }
+
+  private async discoverLocalBookFiles(
+    repositoryUrl: string
+  ): Promise<ResolvedBookFile[]> {
+    try {
+      const repositoryPath = fileURLToPath(repositoryUrl);
+      const booksDirectory = join(repositoryPath, "books");
+      const entries = await readdir(booksDirectory, { withFileTypes: true });
+
+      const files = await Promise.all(
+        entries
+          .filter(
+            (entry) =>
+              entry.isFile() &&
+              entry.name.toLowerCase().endsWith(".json")
+          )
+          .map(async (entry) => {
+            const filePath = join(booksDirectory, entry.name);
+            const fileStat = await stat(filePath);
+
+            return {
+              path: `books/${entry.name}`,
+              checksum: "",
+              size_bytes: fileStat.size,
+              media_type: "application/json",
+            } as ResolvedBookFile;
+          })
+      );
+
+      return files.sort((a, b) =>
+        a.path.localeCompare(b.path, undefined, {
+          numeric: true,
+          sensitivity: "base",
+        })
+      );
+    } catch {
+      return [];
+    }
   }
 
   private async discoverGitHubRawBookFiles(
@@ -626,6 +718,7 @@ export class RepositoryImporter {
     selectedTranslations: string[]
   ): Promise<ImportResult> {
     const startTime = Date.now();
+    const normalizedRepositoryUrl = normalizeRepositoryUrl(repositoryUrl);
     const result: ImportResult = {
       success: false,
       repository_id: "",
@@ -640,7 +733,7 @@ export class RepositoryImporter {
     try {
       // Fetch the parent repository manifest
       const manifest = await this.discoveryService.fetchRepositoryManifest(
-        repositoryUrl
+        normalizedRepositoryUrl
       );
 
       if (!isParentManifest(manifest)) {
@@ -685,7 +778,7 @@ export class RepositoryImporter {
       });
 
       // Import selected translations
-      const baseUrl = repositoryUrl.replace("/manifest.json", "");
+      const baseUrl = this.normalizeRepositoryBaseUrl(normalizedRepositoryUrl);
       let totalBooksImported = 0;
 
       for (const translation of manifest.translations) {
@@ -696,7 +789,7 @@ export class RepositoryImporter {
               translation,
               manifest.repository.id,
               {
-                repository_url: repositoryUrl,
+                repository_url: normalizedRepositoryUrl,
                 validate_checksums: true,
                 download_audio: false,
                 overwrite_existing: false,
