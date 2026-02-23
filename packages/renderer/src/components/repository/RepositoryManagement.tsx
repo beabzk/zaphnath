@@ -77,6 +77,13 @@ export function RepositoryManagement() {
     setCurrentView('reader')
   }
 
+  const currentBookCount = currentRepository?.book_count ?? null
+  const currentVerseCount = currentRepository?.verse_count ?? null
+  const hasIndexedBooks = (currentBookCount ?? 0) > 0
+  const hasIndexedVerses = (currentVerseCount ?? 0) > 0
+  const isParentRepository = currentRepository?.type === 'parent'
+  const isTranslationReady = !isParentRepository && hasIndexedBooks && hasIndexedVerses
+
   return (
     <div className="h-full flex flex-col">
       {/* Database Overview */}
@@ -174,29 +181,47 @@ export function RepositoryManagement() {
                   </div>
                   <div className="flex justify-between py-1">
                     <span className="text-muted-foreground">Books:</span>
-                    <span>{currentRepository.book_count || 'Unknown'}</span>
+                    <span>{currentBookCount ?? 'Unknown'}</span>
                   </div>
                   <div className="flex justify-between py-1">
                     <span className="text-muted-foreground">Verses:</span>
-                    <span>{currentRepository.verse_count?.toLocaleString() || 'Unknown'}</span>
+                    <span>{currentVerseCount !== null ? currentVerseCount.toLocaleString() : 'Unknown'}</span>
                   </div>
                 </div>
               </div>
-              
+               
               <div>
                 <h4 className="font-medium mb-3">Repository Status</h4>
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <CheckCircle className="h-4 w-4 text-green-600" />
-                    <span className="text-sm">Imported and validated</span>
+                    <span className="text-sm">Repository metadata available</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                    <span className="text-sm">Database indexed</span>
+                    {hasIndexedBooks ? (
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <AlertCircle className="h-4 w-4 text-amber-500" />
+                    )}
+                    <span className="text-sm">
+                      {hasIndexedBooks
+                        ? `${currentBookCount} books indexed`
+                        : 'No indexed books detected'}
+                    </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                    <span className="text-sm">Ready for reading</span>
+                    {isTranslationReady ? (
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <AlertCircle className="h-4 w-4 text-amber-500" />
+                    )}
+                    <span className="text-sm">
+                      {isTranslationReady
+                        ? 'Ready for reading'
+                        : isParentRepository
+                          ? 'Select a translation to read'
+                          : 'Not ready for reading yet'}
+                    </span>
                   </div>
                 </div>
                 
