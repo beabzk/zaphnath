@@ -4,6 +4,11 @@ import { DatabaseService } from "../services/database/index.js";
 import { RepositoryService } from "../services/repository/index.js";
 import type { ModuleContext } from "../ModuleContext.js";
 import type { AppInitConfig } from "../AppInitConfig.js";
+import {
+  getAutoUpdaterModuleInstance,
+  isUpdatePolicy,
+  type UpdatePolicy,
+} from "./AutoUpdater.js";
 
 export class IpcHandlers implements AppModule {
   private databaseService: DatabaseService;
@@ -29,6 +34,7 @@ export class IpcHandlers implements AppModule {
     this.registerDatabaseHandlers();
     this.registerRepositoryHandlers();
     this.registerFileSystemHandlers();
+    this.registerUpdaterHandlers();
 
     console.log("IPC handlers registered");
 
@@ -51,6 +57,8 @@ export class IpcHandlers implements AppModule {
     ipcMain.removeAllListeners("repository:getParentRepositories");
     ipcMain.removeAllListeners("repository:getTranslations");
     ipcMain.removeAllListeners("filesystem:showOpenDialog");
+    ipcMain.removeAllListeners("updater:getPolicy");
+    ipcMain.removeAllListeners("updater:setPolicy");
 
     // Shutdown database service
     await this.databaseService.shutdown();
@@ -412,5 +420,41 @@ export class IpcHandlers implements AppModule {
         throw error;
       }
     });
+  }
+
+  private registerUpdaterHandlers(): void {
+    ipcMain.handle("updater:getPolicy", async (event) => {
+      this.assertTrustedIpcSender(event, "updater:getPolicy");
+      try {
+        const updater = getAutoUpdaterModuleInstance();
+        return updater?.getPolicy() ?? "auto";
+      } catch (error) {
+        console.error("Get updater policy error:", error);
+        throw error;
+      }
+    });
+
+    ipcMain.handle(
+      "updater:setPolicy",
+      async (event, policy: UpdatePolicy | string) => {
+        this.assertTrustedIpcSender(event, "updater:setPolicy");
+        try {
+          if (!isUpdatePolicy(policy)) {
+            throw new Error(`Invalid updater policy: ${policy}`);
+          }
+
+          const updater = getAutoUpdaterModuleInstance();
+          if (!updater) {
+            throw new Error("Auto updater module is not available");
+          }
+
+          await updater.setPolicy(policy);
+          return { success: true, policy };
+        } catch (error) {
+          console.error("Set updater policy error:", error);
+          throw error;
+        }
+      }
+    );
   }
 }

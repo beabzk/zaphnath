@@ -90,6 +90,14 @@ export function SettingsProvider({
     // Update version and lastModified
     merged.version = defaults.version
     merged.lastModified = new Date().toISOString()
+
+    // Backward compatibility: migrate legacy boolean autoUpdate to updatePolicy
+    if (
+      typeof stored?.advanced?.autoUpdate === 'boolean' &&
+      typeof stored?.advanced?.updatePolicy !== 'string'
+    ) {
+      merged.advanced.updatePolicy = stored.advanced.autoUpdate ? 'auto' : 'manual'
+    }
     
     return merged
   }
@@ -218,6 +226,29 @@ export function SettingsProvider({
 
     return () => clearTimeout(timeoutId)
   }, [settings, hasUnsavedChanges, isLoading, saveSettings])
+
+  // Keep main-process updater policy in sync with renderer settings
+  useEffect(() => {
+    if (isLoading) return
+    if (!window.updater || typeof window.updater.setPolicy !== 'function') return
+
+    let cancelled = false
+    const syncUpdatePolicy = async () => {
+      try {
+        await window.updater.setPolicy(settings.advanced.updatePolicy)
+      } catch (error) {
+        if (!cancelled) {
+          console.error('Failed to sync updater policy:', error)
+        }
+      }
+    }
+
+    syncUpdatePolicy()
+
+    return () => {
+      cancelled = true
+    }
+  }, [isLoading, settings.advanced.updatePolicy])
 
   const value = {
     settings,

@@ -52,4 +52,11 @@ const filesystem: Zaphnath.FileSystemAPI = {
     ipcRenderer.invoke("filesystem:showOpenDialog", options),
 };
 
-export { sha256sum, versions, send, database, repository, filesystem };
+// Auto Updater API
+const updater: Zaphnath.UpdaterAPI = {
+  getPolicy: () => ipcRenderer.invoke("updater:getPolicy"),
+  setPolicy: (policy: "auto" | "notify" | "manual") =>
+    ipcRenderer.invoke("updater:setPolicy", policy),
+};
+
+export { sha256sum, versions, send, database, repository, filesystem, updater };

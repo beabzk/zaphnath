@@ -122,6 +122,13 @@ declare namespace Zaphnath {
     }>;
   }
 
+  interface UpdaterAPI {
+    getPolicy: () => Promise<"auto" | "notify" | "manual">;
+    setPolicy: (
+      policy: "auto" | "notify" | "manual"
+    ) => Promise<{ success: boolean; policy: "auto" | "notify" | "manual" }>;
+  }
+
   // ZBRS Types
   interface RepositoryIndexEntry {
     id: string;
@@ -241,4 +248,5 @@ interface Window {
   database: Zaphnath.DatabaseAPI;
   repository: Zaphnath.RepositoryAPI;
   filesystem: Zaphnath.FileSystemAPI;
+  updater: Zaphnath.UpdaterAPI;
 }

@@ -61,7 +61,7 @@ export interface AdvancedSettings {
   enableLogging: boolean
   logLevel: 'error' | 'warn' | 'info' | 'debug'
   enableAnalytics: boolean
-  autoUpdate: boolean
+  updatePolicy: 'auto' | 'notify' | 'manual'
   experimentalFeatures: boolean
   developerMode: boolean
   database: {
@@ -127,7 +127,7 @@ export const defaultSettings: AppSettings = {
     enableLogging: true,
     logLevel: 'info',
     enableAnalytics: false,
-    autoUpdate: true,
+    updatePolicy: 'auto',
     experimentalFeatures: false,
     developerMode: false,
     database: {
@@ -164,6 +164,7 @@ export const settingsValidation: Record<string, SettingsValidationRule> = {
   'audio.speechVolume': { type: 'number', min: 0.0, max: 1.0 },
   'audio.pauseBetweenVerses': { type: 'number', min: 0, max: 3000 },
   'advanced.cacheSize': { type: 'number', min: 100, max: 2000 },
+  'advanced.updatePolicy': { type: 'string', enum: ['auto', 'notify', 'manual'] },
   'advanced.database.backupInterval': { type: 'number', min: 1, max: 168 },
   'advanced.database.maxBackups': { type: 'number', min: 1, max: 30 },
 }
