@@ -39,7 +39,23 @@ class LoggerService implements Logger {
   }
 
   private generateId(): string {
-    return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const timestamp = Date.now();
+
+    if (typeof crypto !== "undefined") {
+      if (typeof crypto.randomUUID === "function") {
+        return `${timestamp}-${crypto.randomUUID()}`;
+      }
+
+      const bytes = new Uint8Array(16);
+      crypto.getRandomValues(bytes);
+      const randomHex = Array.from(bytes, (byte) =>
+        byte.toString(16).padStart(2, "0")
+      ).join("");
+
+      return `${timestamp}-${randomHex}`;
+    }
+
+    return `${timestamp}-${performance.now().toString(16).replace(".", "")}`;
   }
 
   private setupErrorListeners(): void {
