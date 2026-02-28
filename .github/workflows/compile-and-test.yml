@@ -61,6 +61,7 @@ jobs:
       - run: pnpm run compile -- -p never
         env:
           VITE_DISTRIBUTION_CHANNEL: ${{inputs.distribution-channel}}
+          GH_TOKEN: ${{ github.token }}
 
       - run: pnpm --if-present run test
         if: matrix.os != 'ubuntu-latest'
