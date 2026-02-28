@@ -15,9 +15,15 @@ runs:
         Xvfb :99 -screen 0 1280x960x24 &
         echo "DISPLAY=:99" >> $GITHUB_ENV
 
-    - uses: actions/setup-node@v4
+    - uses: pnpm/action-setup@v4
+      with:
+        version: 10
+
+    - uses: actions/setup-node@v6
       with:
         node-version-file: '.nvmrc'
+        cache: "pnpm"
+        cache-dependency-path: "pnpm-lock.yaml"
 
     - name: Check if renderer directory exists
       id: check-renderer
@@ -30,24 +36,16 @@ runs:
       shell: bash
 
     - run: |
-        npm run create-renderer -- -- --template ${{inputs.renderer-template}}
-        npm start --workspace @app/integrate-renderer
+        pnpm run create-renderer -- -- --template ${{inputs.renderer-template}}
+        pnpm --filter @app/integrate-renderer start
       shell: bash
       if: inputs.renderer-template != '' && steps.check-renderer.outputs.RENDERER_EXIST == 'false'
 
-    - name: Cache Dependencies
-      uses: actions/cache@v4
-      with:
-        path: node_modules
-        key: npm-${{ runner.os }}-${{ inputs.renderer-template }}-${{ hashFiles('**/package.json') }}
-        restore-keys: |
-          npm-${{ runner.os }}-${{ inputs.renderer-template }}-
-
     - name: Install Dependencies
       run: >-
-        if [ "${{ steps.check-renderer.outputs.RENDERER_EXIST }}" == "true" ] && [ -f "package-lock.json" ]; then
-          npm ci
+        if [ -f "pnpm-lock.yaml" ]; then
+          pnpm install --frozen-lockfile
         else
-          npm install
+          pnpm install
         fi
       shell: bash

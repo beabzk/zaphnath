@@ -1,5 +1,3 @@
-/// <reference types="vite/client" />
-
 /**
  * Describes all existing environment variables and their types.
  * Required for Code completion/intellisense and type checking.
@@ -10,6 +8,9 @@
  * @see https://vitejs.dev/guide/env-and-mode.html#env-files Vite Env Variables Doc.
  */
 interface ImportMetaEnv {
+  /** Vite dev mode flag */
+  readonly DEV: boolean;
+
   /**
    * URL where `renderer` web page is running.
    * This variable is initialized in scripts/watch.ts
@@ -18,6 +19,9 @@ interface ImportMetaEnv {
 
   /** Current app version */
   readonly VITE_APP_VERSION: string;
+
+  /** Release channel used by updater (e.g. release, dev) */
+  readonly VITE_DISTRIBUTION_CHANNEL?: string;
 }
 
 interface ImportMeta {

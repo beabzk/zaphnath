@@ -18,43 +18,41 @@ Pre-release project. The app is actively evolving and schema/data internals may 
 ## Requirements
 
 - Node.js `24.x` (see `.nvmrc`)
-- npm `11+`
+- pnpm `10+`
 
 ## Quick Start
 
 ```bash
-npm install
-npm start
+pnpm install
+pnpm start
 ```
 
 ## Common Commands
 
 | Command | Purpose |
 | --- | --- |
-| `npm start` | Run app in development mode |
-| `npm run build` | Build all workspaces |
-| `npm run compile` | Build distributable app packages |
-| `npm run typecheck` | Run TypeScript checks across workspaces |
-| `npm run lint` | Run ESLint |
-| `npm run lint:fix` | Run ESLint with autofix |
-| `npm run rebuild` | Rebuild native modules |
+| `pnpm start` | Run app in development mode |
+| `pnpm run build` | Build all workspaces |
+| `pnpm run compile` | Build distributable app packages |
+| `pnpm run typecheck` | Run TypeScript checks across workspaces |
+| `pnpm run lint` | Run ESLint |
+| `pnpm run lint:fix` | Run ESLint with autofix |
+| `pnpm run rebuild` | Rebuild native modules |
 
 ## Versioning
 
 ### App version
 
-- Show version info: `npm run version:info`
-- Bump semver: `npm run version:patch` / `npm run version:minor` / `npm run version:major`
-- Set explicit version: `npm run version:set -- 0.1.2`
-- Tag current version: `npm run version:tag`
-- Tag and push: `npm run version:tag -- --push`
-
-Note: when passing flags to npm scripts, include `--` before the flags.
+- Show version info: `pnpm run version:info`
+- Bump semver: `pnpm run version:patch` / `pnpm run version:minor` / `pnpm run version:major`
+- Set explicit version: `pnpm run version:set -- 0.1.2`
+- Tag current version: `pnpm run version:tag`
+- Tag and push: `pnpm run version:tag -- --push`
 
 ### ZBRS version
 
-- Show detected ZBRS versions: `npm run zbrs:version:show`
-- Bump ZBRS version across related repos: `npm run zbrs:version:set -- 1.1`
+- Show detected ZBRS versions: `pnpm run zbrs:version:show`
+- Bump ZBRS version across related repos: `pnpm run zbrs:version:set -- 1.1`
 
 ## Repository Layout
 

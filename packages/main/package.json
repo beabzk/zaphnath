@@ -17,15 +17,15 @@
     }
   },
   "dependencies": {
-    "@app/preload": "*",
-    "@app/renderer": "*",
+    "@app/preload": "workspace:*",
+    "@app/renderer": "workspace:*",
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
     "better-sqlite3": "^12.4.1",
     "electron-updater": "6.8.3"
   },
   "devDependencies": {
-    "@app/electron-versions": "*",
+    "@app/electron-versions": "workspace:*",
     "electron-devtools-installer": "^4.0.0",
     "typescript": "^5.9.3",
     "vite": "^7.1.11"

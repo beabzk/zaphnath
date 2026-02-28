@@ -238,7 +238,7 @@ function bumpVersion(bumpType, customVersion = null, options = {}) {
     if (customVersion === currentVersion) {
       console.log(`ℹ️ Version unchanged: ${currentVersion}`);
       if (gitTag) {
-        console.log("ℹ️ No version bump performed; run `npm run version:tag` to tag current version.");
+        console.log("ℹ️ No version bump performed; run `pnpm run version:tag` to tag current version.");
       }
 
       if (changelog) {
@@ -256,12 +256,12 @@ function bumpVersion(bumpType, customVersion = null, options = {}) {
     }
   }
 
-  const npmVersionTarget = customVersion || bumpType;
+  const packageManagerVersionTarget = customVersion || bumpType;
   const noTagArg = gitTag ? "" : " --no-git-tag-version";
 
   let newVersion;
   try {
-    const result = runCommand(`npm version ${npmVersionTarget}${noTagArg}`);
+    const result = runCommand(`pnpm version ${packageManagerVersionTarget}${noTagArg}`);
     newVersion = result.replace(/^v/, "");
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

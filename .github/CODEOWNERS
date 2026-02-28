@@ -11,6 +11,5 @@
 
 # Dependencies and configuration files
 package.json @beabzk
-package-lock.json @beabzk
+pnpm-lock.yaml @beabzk
 /packages/*/package.json @beabzk
-/packages/*/package-lock.json @beabzk

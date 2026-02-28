@@ -112,7 +112,7 @@ export function RepositoryImportDialog({ isOpen, onClose, onImportComplete }: Re
           setValidation({
             valid: true,
             errors: [],
-            warnings: scanResult.errors.map(error => ({
+            warnings: scanResult.errors.map((error: string) => ({
               code: 'SCAN_WARNING',
               message: error,
               severity: 'warning' as const
@@ -155,8 +155,9 @@ export function RepositoryImportDialog({ isOpen, onClose, onImportComplete }: Re
         warnings: []
       })
     } finally {
-      if (requestId !== validationRequestIdRef.current) return
-      setIsValidating(false)
+      if (requestId === validationRequestIdRef.current) {
+        setIsValidating(false)
+      }
     }
   }, [applyManifestState])
 

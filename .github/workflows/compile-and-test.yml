@@ -39,7 +39,7 @@ jobs:
         name: Setup boilerplate
         with:
           renderer-template: ${{inputs.renderer-template}}
-      - run: npm run typecheck --if-present
+      - run: pnpm run typecheck
 
   compile:
     strategy:
@@ -57,15 +57,15 @@ jobs:
         with:
           renderer-template: ${{inputs.renderer-template}}
 
-      - run: npm version "${{inputs.app-version}}" --no-git-tag-version --allow-same-version
-      - run: npm run compile -- -p never
+      - run: pnpm version "${{inputs.app-version}}" --no-git-tag-version --allow-same-version
+      - run: pnpm run compile -- -p never
         env:
           VITE_DISTRIBUTION_CHANNEL: ${{inputs.distribution-channel}}
 
-      - run: npm run test --if-present
+      - run: pnpm --if-present run test
         if: matrix.os != 'ubuntu-latest'
 
-      - run: xvfb-run --auto-servernum --server-args="-screen 0 1280x960x24" -- npm run test --if-present
+      - run: xvfb-run --auto-servernum --server-args="-screen 0 1280x960x24" -- pnpm --if-present run test
         if: matrix.os == 'ubuntu-latest'
 
       - uses: actions/attest-build-provenance@v3

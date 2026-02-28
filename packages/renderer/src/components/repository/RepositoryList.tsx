@@ -116,15 +116,17 @@ export function RepositoryList({
 
     try {
       const translations = await repository.getTranslations(parentId)
-      const mappedTranslations: TranslationInfo[] = (translations || []).map(t => ({
-        id: t.translation_id || t.id,
-        name: t.translation_name || t.name,
-        directory: t.directory_name || t.directory,
-        language: t.language_code || t.language,
-        status: t.status || 'active',
-        book_count: t.book_count,
-        verse_count: t.verse_count
-      }))
+      const mappedTranslations: TranslationInfo[] = (translations || []).map((t: Record<string, unknown>) => {
+        const id = String(t.translation_id ?? t.id ?? '')
+        const name = String(t.translation_name ?? t.name ?? '')
+        const directory = String(t.directory_name ?? t.directory ?? '')
+        const language = String(t.language_code ?? t.language ?? '')
+        const status = String(t.status ?? 'active')
+        const book_count = typeof t.book_count === 'number' ? t.book_count : undefined
+        const verse_count = typeof t.verse_count === 'number' ? t.verse_count : undefined
+
+        return { id, name, directory, language, status, book_count, verse_count }
+      })
 
       setTranslationsByParent((prev) => ({ ...prev, [parentId]: mappedTranslations }))
     } catch (translationError) {

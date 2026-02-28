@@ -9,7 +9,7 @@ A set of helper functions to get the versions of internal components bundled wit
 To install this package, use the following command:
 
 ```bash
-npm install -D @app/electron-versions
+pnpm add -D @app/electron-versions
 ```
 
 ## Usage

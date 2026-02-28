@@ -21,6 +21,8 @@
     "noFallthroughCasesInSwitch": true,
     "baseUrl": ".",
     "paths": {
+      "@app/preload": ["../preload/src/index.ts"],
+      "@app/preload/*": ["../preload/src/*"],
       "@app/*": ["../*"],
       "@/*": ["./src/*"]
     }

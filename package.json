@@ -18,6 +18,7 @@
     "url": "https://github.com/beabzk/zaphnath/issues"
   },
   "main": "packages/entry-point.mjs",
+  "packageManager": "pnpm@10.13.1",
   "workspaces": [
     "packages/*"
   ],
@@ -25,22 +26,22 @@
     "node": ">=24.0.0 <25.0.0"
   },
   "scripts": {
-    "build": "npm run build --workspaces --if-present",
-    "compile": "npm run build && electron-builder build --config electron-builder.mjs",
+    "build": "pnpm -r --filter @app/* --if-present run build",
+    "compile": "pnpm run build && electron-builder build --config electron-builder.mjs",
     "start": "node packages/dev-mode.js",
-    "typecheck": "npm run typecheck --workspaces --if-present",
-    "create-renderer": "cd packages && npm create vite@latest renderer",
-    "integrate-renderer": "npm start --workspace @app/integrate-renderer",
-    "init": "npm run create-renderer && npm run integrate-renderer && npm install",
-    "rebuild": "electron-rebuild",
-    "postinstall": "electron-rebuild",
+    "typecheck": "pnpm -r --filter @app/* --if-present run typecheck",
+    "create-renderer": "pnpm create vite@latest packages/renderer",
+    "integrate-renderer": "pnpm --filter @app/integrate-renderer start",
+    "init": "pnpm run create-renderer && pnpm run integrate-renderer && pnpm install",
+    "rebuild": "electron-rebuild -f -w better-sqlite3",
+    "postinstall": "electron-rebuild -f -w better-sqlite3",
     "convert-bible-files": "bash tools/convert-bible-files.sh",
     "validate-zbrs": "node tools/validators/validate-zbrs.js",
     "test-import": "node tools/test-import.js",
-    "version:patch": "npm version patch",
-    "version:minor": "npm version minor",
-    "version:major": "npm version major",
-    "version:prerelease": "npm version prerelease",
+    "version:patch": "pnpm version patch",
+    "version:minor": "pnpm version minor",
+    "version:major": "pnpm version major",
+    "version:prerelease": "pnpm version prerelease",
     "version:show": "node -p \"require('./package.json').version\"",
     "version:info": "node tools/version-manager.js show",
     "version:set": "node tools/version-manager.js set",
@@ -64,10 +65,13 @@
     "eslint": "^9.39.3",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.0.1",
-    "glob": "13.0.6"
+    "glob": "13.0.6",
+    "vite": "^7.1.11"
   },
   "dependencies": {
-    "@app/main": "*",
+    "@app/main": "workspace:*",
+    "@app/preload": "workspace:*",
+    "@app/renderer": "workspace:*",
     "@radix-ui/react-dropdown-menu": "^2.1.16"
   }
 }
