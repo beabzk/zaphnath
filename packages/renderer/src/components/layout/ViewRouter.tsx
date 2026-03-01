@@ -1,6 +1,7 @@
 import { useNavigation, getViewTitle } from './Navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import { RepositoryManagement } from '@/components/repository/RepositoryManagement'
 import { SettingsInterface } from '@/components/settings/SettingsInterface'
 import { ErrorReportingPanel } from '@/components/debug/ErrorReportingPanel'
@@ -8,8 +9,9 @@ import { SearchInterface } from '@/components/search/SearchInterface'
 import { BookmarksView as BookmarksViewComponent } from '@/components/bookmarks/BookmarksView'
 import { NotesView as NotesViewComponent } from '@/components/notes/NotesView'
 import { HighlightsView as HighlightsViewComponent } from '@/components/highlights/HighlightsView'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, PanelTopClose } from 'lucide-react'
 import { Reader } from '@/components/reader/Reader'
+import { getPlatformDisplayName } from '@/lib/platform'
 
 // Reader view
 function ReaderView() {
@@ -82,6 +84,8 @@ function DebugView() {
 
 export function ViewRouter() {
   const { currentView, goBack, canGoBack } = useNavigation()
+  const isReaderView = currentView === 'reader'
+  const platformLabel = getPlatformDisplayName()
 
   const renderView = () => {
     switch (currentView) {
@@ -111,19 +115,32 @@ export function ViewRouter() {
   }
 
   return (
-    <div className="space-y-4">
-      {/* View Header */}
-      <div className="flex items-center gap-4">
-        {canGoBack && (
-          <Button variant="ghost" size="icon" onClick={goBack}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        )}
-        <h2 className="text-2xl font-bold">{getViewTitle(currentView)}</h2>
-      </div>
+    <div className="flex h-full min-h-0 flex-col">
+      {!isReaderView && (
+        <div className="flex items-center justify-between border-b border-border/70 bg-muted/30 px-4 py-2.5">
+          <div className="flex items-center gap-2">
+            {canGoBack && (
+              <Button variant="ghost" size="icon" onClick={goBack}>
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+            )}
+            <h2 className="text-base font-semibold tracking-tight">{getViewTitle(currentView)}</h2>
+          </div>
+          <div className="hidden items-center gap-1 text-xs text-muted-foreground sm:flex">
+            <PanelTopClose className="h-3.5 w-3.5" />
+            <span>{platformLabel} Workspace</span>
+          </div>
+        </div>
+      )}
 
-      {/* View Content */}
-      {renderView()}
+      <div
+        className={cn(
+          "min-h-0 flex-1",
+          isReaderView ? "h-full" : "overflow-auto p-4"
+        )}
+      >
+        {renderView()}
+      </div>
     </div>
   )
 }

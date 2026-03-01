@@ -26,60 +26,214 @@
   --color-ring: hsl(var(--ring));
 
   /* Border radius */
-  --radius-default: 0.5rem;
+  --radius-default: 0.75rem;
 }
 
 @layer base {
   :root {
-    /* Keep original CSS variables for compatibility */
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 210 25% 97%;
+    --foreground: 224 30% 12%;
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 224 30% 12%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
+    --popover-foreground: 224 30% 12%;
+    --primary: 212 90% 44%;
     --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222.2 84% 4.9%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96%;
-    --accent-foreground: 222.2 84% 4.9%;
-    --destructive: 0 84.2% 60.2%;
+    --secondary: 214 28% 92%;
+    --secondary-foreground: 224 30% 12%;
+    --muted: 214 20% 93%;
+    --muted-foreground: 215 13% 40%;
+    --accent: 210 30% 91%;
+    --accent-foreground: 224 30% 12%;
+    --destructive: 0 75% 50%;
     --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
-    --radius: 0.5rem;
+    --border: 215 20% 84%;
+    --input: 215 20% 84%;
+    --ring: 212 90% 44%;
+    --radius: 0.75rem;
+    --font-ui: "Aptos", "Segoe UI Variable Text", "SF Pro Text", "IBM Plex Sans", "Noto Sans", sans-serif;
+    --font-reading: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", "Libre Baskerville", serif;
+    --ui-font-size: 14px;
+    --titlebar-height: 74px;
+    --footer-height: 0px;
+    --workspace-padding: 0.75rem;
+    --workspace-padding-y: 0.5rem;
+    --workspace-gap: 0.75rem;
+    --surface-radius: 1rem;
+    --control-height: 32px;
+    --control-radius: 10px;
+    --control-padding-x: 0.75rem;
+    --window-controls-left: 0px;
+    --window-controls-right: 0px;
+    --status-font-size: 11px;
+  }
+
+  :root[data-platform="windows"] {
+    --font-ui: "Segoe UI Variable Text", "Segoe UI", "Aptos", "Noto Sans", sans-serif;
+    --font-reading: "Cambria", "Constantia", "Georgia", serif;
+    --titlebar-height: 74px;
+    --footer-height: 0px;
+    --workspace-padding: 0.625rem;
+    --workspace-padding-y: 0.5rem;
+    --workspace-gap: 0.625rem;
+    --surface-radius: 0.875rem;
+    --control-height: 30px;
+    --control-radius: 8px;
+    --control-padding-x: 0.6875rem;
+    --window-controls-right: 138px;
+    --status-font-size: 11px;
+  }
+
+  :root[data-platform="macos"] {
+    --font-ui: "SF Pro Text", "SF Pro Display", "Helvetica Neue", "Aptos", sans-serif;
+    --font-reading: "Iowan Old Style", "Baskerville", "Palatino", serif;
+    --titlebar-height: 80px;
+    --footer-height: 0px;
+    --workspace-padding: 0.875rem;
+    --workspace-padding-y: 0.625rem;
+    --workspace-gap: 0.75rem;
+    --surface-radius: 1.125rem;
+    --control-height: 30px;
+    --control-radius: 11px;
+    --control-padding-x: 0.75rem;
+    --window-controls-left: 78px;
+    --status-font-size: 10.5px;
+  }
+
+  :root[data-platform="linux"] {
+    --font-ui: "Noto Sans", "Ubuntu", "Cantarell", "Aptos", sans-serif;
+    --font-reading: "Noto Serif", "Liberation Serif", "Georgia", serif;
+    --titlebar-height: 72px;
+    --footer-height: 0px;
+    --workspace-padding: 0.75rem;
+    --workspace-padding-y: 0.5rem;
+    --workspace-gap: 0.75rem;
+    --surface-radius: 0.875rem;
+    --control-height: 30px;
+    --control-radius: 8px;
+    --control-padding-x: 0.75rem;
+    --status-font-size: 11px;
   }
 
   .dark {
-    --background: 0 0% 0%;
-    --foreground: 210 20% 98%;
-    --card: 0 0% 3%;
-    --card-foreground: 210 20% 98%;
-    --popover: 0 0% 3%;
-    --popover-foreground: 210 20% 98%;
-    --primary: 217 91% 60%;
+    --background: 222 24% 11%;
+    --foreground: 210 20% 96%;
+    --card: 222 22% 13%;
+    --card-foreground: 210 20% 96%;
+    --popover: 222 24% 12%;
+    --popover-foreground: 210 20% 96%;
+    --primary: 212 88% 62%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 217 30% 10%;
+    --secondary: 220 18% 18%;
     --secondary-foreground: 210 20% 98%;
-    --muted: 220 15% 8%;
-    --muted-foreground: 215 15% 55%;
-    --accent: 217 30% 10%;
+    --muted: 221 18% 16%;
+    --muted-foreground: 216 12% 65%;
+    --accent: 219 15% 21%;
     --accent-foreground: 210 20% 98%;
-    --destructive: 0 62.8% 30.6%;
+    --destructive: 0 62% 44%;
     --destructive-foreground: 210 20% 98%;
-    --border: 220 15% 12%;
-    --input: 220 15% 12%;
-    --ring: 217 91% 60%;
+    --border: 220 15% 26%;
+    --input: 220 15% 26%;
+    --ring: 212 88% 62%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply text-foreground antialiased;
+    background:
+      radial-gradient(1200px 450px at 15% -20%, hsl(var(--primary) / 0.1), transparent 55%),
+      radial-gradient(1100px 420px at 85% -15%, hsl(var(--accent-foreground) / 0.06), transparent 50%),
+      hsl(var(--background));
+    font-family: var(--font-ui);
+    font-size: var(--ui-font-size);
+    font-feature-settings: "rlig" 1, "calt" 1;
+    overflow: hidden;
+  }
+
+  ::selection {
+    background: hsl(var(--primary) / 0.28);
+    color: hsl(var(--foreground));
+  }
+
+  input,
+  textarea,
+  select {
+    @apply border border-input bg-background/90 text-foreground shadow-sm;
+    border-radius: 0.625rem;
+  }
+
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    @apply outline-none ring-2 ring-ring/40;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.35);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.5);
+    border: 2px solid transparent;
+    background-clip: padding-box;
   }
 }
 
-@layer base {
-  body {
-    @apply bg-background text-foreground;
-    font-feature-settings: "rlig" 1, "calt" 1;
+@layer components {
+  .drag-region {
+    -webkit-app-region: drag;
+  }
+
+  .no-drag {
+    -webkit-app-region: no-drag;
+  }
+
+  .desktop-surface {
+    @apply border border-border/70 bg-card/85 shadow-sm backdrop-blur-sm;
+    border-radius: var(--surface-radius);
+  }
+
+  .desktop-divider {
+    @apply border-border/70;
+  }
+
+  .platform-status-text {
+    font-size: var(--status-font-size);
+  }
+}
+
+@layer utilities {
+  .scrollbar-subtle {
+    scrollbar-gutter: stable;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
   }
 }

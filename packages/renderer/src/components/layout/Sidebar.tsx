@@ -50,8 +50,8 @@ export function Sidebar() {
   const { isOpen, close, width } = useSidebar()
 
   const NavSection = ({ title, items }: { title: string; items: NavItem[] }) => (
-    <div className="space-y-1">
-      <h3 className="px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+    <div className="space-y-1.5">
+      <h3 className="px-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.14em]">
         {title}
       </h3>
       {items.map((item) => {
@@ -61,8 +61,8 @@ export function Sidebar() {
             key={item.label}
             variant={isActive ? "secondary" : "ghost"}
             className={cn(
-              "w-full justify-start gap-3 h-9",
-              isActive && "bg-secondary"
+              "h-8 w-full justify-start gap-2.5 rounded-lg px-2.5 text-[13px]",
+              isActive && "border border-border/65 bg-secondary shadow-sm"
             )}
             onClick={() => setCurrentView(item.view)}
           >
@@ -81,7 +81,6 @@ export function Sidebar() {
 
   return (
     <>
-      {/* Mobile overlay */}
       {isOpen && (
         <div
           className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm lg:hidden"
@@ -89,30 +88,31 @@ export function Sidebar() {
         />
       )}
 
-      {/* Sidebar */}
       <aside
         className={cn(
-          "border-r bg-background transition-all duration-300 ease-in-out",
-          // Base: hidden on mobile, conditional on desktop
-          "hidden",
-          // Desktop: show when open, hide when closed
+          "desktop-surface transition-all duration-300 ease-in-out",
+          "hidden overflow-hidden lg:block",
           isOpen && "lg:block",
-          // Mobile: fixed positioning when open
-          isOpen && "block fixed left-0 top-16 z-50 h-[calc(100vh-4rem)] lg:relative lg:top-0 lg:h-auto lg:z-auto"
+          isOpen &&
+            "block fixed left-[var(--workspace-padding)] top-[calc(var(--titlebar-height)+var(--workspace-padding-y))] z-50 h-[calc(100vh-var(--titlebar-height)-var(--footer-height)-1rem)] lg:relative lg:left-0 lg:top-0 lg:h-auto lg:z-auto"
         )}
         style={{ width: isOpen ? `${width}px` : '0px' }}
       >
         <div className="flex h-full flex-col">
-          {/* Close button for mobile */}
-          <div className="flex items-center justify-between p-4 lg:hidden">
-            <span className="text-sm font-medium">Navigation</span>
+          <div className="flex items-center justify-between border-b border-border/60 px-3 py-2 lg:hidden">
+            <span className="text-sm font-semibold">Navigation</span>
             <Button variant="ghost" size="icon" onClick={close} className="h-6 w-6">
               <X className="h-4 w-4" />
             </Button>
           </div>
-          
-          {/* Navigation Content */}
-          <div className="flex-1 space-y-6 p-4">
+
+          <div className="border-b border-border/60 px-3 py-2.5">
+            <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
+              Workspace
+            </p>
+          </div>
+
+          <div className="flex-1 space-y-5 overflow-y-auto p-3">
             <NavSection title="Main" items={navigationItems} />
             <Separator />
             <NavSection title="Study Tools" items={studyItems} />

@@ -3,6 +3,7 @@ import { Search, X, Filter } from 'lucide-react'
 import Fuse from 'fuse.js'
 import { useRepositoryStore, useReadingStore, useSearch } from '@/stores'
 import { useNavigation } from '@/components/layout/Navigation'
+import { Button } from '@/components/ui/button'
 import { repository } from '@app/preload'
 
 interface SearchFilters {
@@ -259,11 +260,9 @@ export function SearchInterface() {
 
   return (
     <div className="h-full flex flex-col">
-      {/* Search Header */}
-      <div className="border-b border-border p-4">
-        <h2 className="text-lg font-semibold mb-4">Search Bible</h2>
-        
-        {/* Search Input */}
+      <div className="border-b border-border/70 bg-muted/20 p-4">
+        <h2 className="mb-4 text-lg font-semibold tracking-tight">Search Bible</h2>
+
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
@@ -271,37 +270,39 @@ export function SearchInterface() {
             value={query}
             onChange={(e) => handleSearchChange(e.target.value)}
             placeholder="Search for verses..."
-            className="w-full pl-10 pr-20 py-2 bg-background border border-border focus:outline-none focus:ring-1 focus:ring-primary"
+            className="w-full rounded-lg border border-border/70 bg-background/90 py-2 pl-10 pr-20 text-sm"
           />
           <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
             {query && (
-              <button
+              <Button
                 onClick={handleClearSearch}
-                className="p-1 hover:bg-accent rounded transition-colors"
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
               >
                 <X className="w-4 h-4" />
-              </button>
+              </Button>
             )}
-            <button
+            <Button
               onClick={() => setShowFilters(!showFilters)}
-              className={`p-1 hover:bg-accent rounded transition-colors ${showFilters ? 'bg-accent' : ''}`}
+              variant={showFilters ? 'secondary' : 'ghost'}
+              size="icon"
+              className="h-7 w-7"
             >
               <Filter className="w-4 h-4" />
-            </button>
+            </Button>
           </div>
         </div>
 
-        {/* Filters */}
         {showFilters && (
-          <div className="mt-3 p-3 bg-muted border border-border">
+          <div className="mt-3 rounded-lg border border-border/70 bg-muted/50 p-3">
             <div className="space-y-3">
-              {/* Testament Filter */}
               <div>
                 <label className="text-sm font-medium mb-1 block">Testament</label>
                 <select
                   value={filters.testament}
                   onChange={(e) => setFilters({ ...filters, testament: e.target.value as any })}
-                  className="w-full px-2 py-1 bg-background border border-border text-sm"
+                  className="w-full px-2 py-1 bg-background/90 border border-border/70 text-sm"
                 >
                   <option value="all">All</option>
                   <option value="old">Old Testament</option>
@@ -309,7 +310,6 @@ export function SearchInterface() {
                 </select>
               </div>
 
-              {/* Repository Filter */}
               {repositories.length > 1 && (
                 <div>
                   <label className="text-sm font-medium mb-1 block">Translations</label>
@@ -322,30 +322,30 @@ export function SearchInterface() {
           </div>
         )}
 
-        {/* Search History */}
         {searchHistory.length > 0 && !query && (
           <div className="mt-3">
             <div className="text-xs font-medium text-muted-foreground mb-1">Recent Searches</div>
             <div className="flex flex-wrap gap-1">
               {searchHistory.map((term, i) => (
-                <button
+                <Button
                   key={i}
                   onClick={() => {
                     setQuery(term)
                     performSearch(term)
                   }}
-                  className="px-2 py-1 text-xs bg-accent hover:bg-accent/80 transition-colors"
+                  variant="secondary"
+                  size="sm"
+                  className="h-6 px-2 text-xs"
                 >
                   {term}
-                </button>
+                </Button>
               ))}
             </div>
           </div>
         )}
       </div>
 
-      {/* Results */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="scrollbar-subtle flex-1 overflow-y-auto">
         {loading && (
           <div className="p-4 text-center text-muted-foreground">
             Searching...
@@ -360,15 +360,15 @@ export function SearchInterface() {
 
         {!loading && results.length > 0 && (
           <div>
-            <div className="px-4 py-2 text-sm text-muted-foreground border-b border-border">
+            <div className="px-4 py-2 text-sm text-muted-foreground border-b border-border/70 bg-muted/15">
               {results.length} result{results.length !== 1 ? 's' : ''} found
             </div>
-            <div className="divide-y divide-border">
+            <div className="divide-y divide-border/70">
               {results.map((result) => (
                 <button
                   key={result.id}
                   onClick={() => handleResultClick(result)}
-                  className="w-full px-4 py-3 text-left hover:bg-accent/50 transition-colors"
+                  className="w-full px-4 py-3 text-left hover:bg-accent/45 transition-colors"
                 >
                   <div className="flex items-baseline gap-2 mb-1">
                     <span className="text-sm font-medium">

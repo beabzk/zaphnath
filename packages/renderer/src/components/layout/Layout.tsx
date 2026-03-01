@@ -1,6 +1,4 @@
 import { Header } from './Header'
-import { Sidebar } from './Sidebar'
-import { Footer } from './Footer'
 
 interface LayoutProps {
   children: React.ReactNode
@@ -9,25 +7,15 @@ interface LayoutProps {
 export function Layout({ children }: LayoutProps) {
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col">
-      {/* Header */}
+    <div className="h-screen bg-background text-foreground flex flex-col overflow-hidden">
       <Header />
-
-      {/* Main Content Area with Sidebar */}
-      <div className="flex flex-1">
-        {/* Sidebar */}
-        <Sidebar />
-
-        {/* Main Content */}
-        <main className="flex-1 overflow-auto">
-          <div className="p-6 min-h-full">
+      <div className="flex flex-1 min-h-0 px-[var(--workspace-padding)] py-[var(--workspace-padding-y)]">
+        <main className="flex-1 min-w-0">
+          <div className="desktop-surface h-full min-h-0 overflow-hidden">
             {children}
           </div>
         </main>
       </div>
-
-      {/* Footer */}
-      <Footer />
     </div>
   )
 }

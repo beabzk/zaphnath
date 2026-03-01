@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Type, AlignLeft, Eye, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
 interface ReadingPreferences {
   fontFamily: string
@@ -12,17 +13,17 @@ interface ReadingPreferences {
 }
 
 const FONT_FAMILIES = [
-  { name: 'System', value: 'system-ui' },
+  { name: 'Native Reading', value: 'var(--font-reading)' },
+  { name: 'Native UI', value: 'var(--font-ui)' },
   { name: 'Georgia', value: 'Georgia, serif' },
   { name: 'Times New Roman', value: '"Times New Roman", serif' },
-  { name: 'Arial', value: 'Arial, sans-serif' },
-  { name: 'Verdana', value: 'Verdana, sans-serif' },
+  { name: 'Helvetica', value: '"Helvetica Neue", Arial, sans-serif' },
 ]
 
 const PRESETS = {
   reading: {
     name: 'Reading',
-    fontFamily: 'Georgia, serif',
+    fontFamily: 'var(--font-reading)',
     fontSize: 16,
     lineHeight: 1.8,
     textAlign: 'left' as const,
@@ -32,7 +33,7 @@ const PRESETS = {
   },
   study: {
     name: 'Study',
-    fontFamily: 'system-ui',
+    fontFamily: 'var(--font-ui)',
     fontSize: 15,
     lineHeight: 1.6,
     textAlign: 'left' as const,
@@ -42,7 +43,7 @@ const PRESETS = {
   },
   presentation: {
     name: 'Presentation',
-    fontFamily: 'Arial, sans-serif',
+    fontFamily: '"Helvetica Neue", Arial, sans-serif',
     fontSize: 20,
     lineHeight: 2,
     textAlign: 'justify' as const,
@@ -82,58 +83,64 @@ export function ReadingControls({ preferences, onChange }: ReadingControlsProps)
         <div className="flex items-center gap-2">
           {/* Font Size Controls */}
           <div className="flex items-center gap-1 border-r border-border pr-2">
-            <button
+            <Button
               onClick={() => adjustFontSize(-1)}
-              className="p-1 hover:bg-accent rounded transition-colors"
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
               title="Decrease font size"
             >
               <ZoomOut className="w-4 h-4" />
-            </button>
+            </Button>
             <span className="text-sm min-w-[3ch] text-center">{preferences.fontSize}</span>
-            <button
+            <Button
               onClick={() => adjustFontSize(1)}
-              className="p-1 hover:bg-accent rounded transition-colors"
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
               title="Increase font size"
             >
               <ZoomIn className="w-4 h-4" />
-            </button>
+            </Button>
           </div>
 
           {/* Presets */}
           <div className="flex items-center gap-1">
             {Object.entries(PRESETS).map(([key, preset]) => (
-              <button
+              <Button
                 key={key}
                 onClick={() => handlePresetChange(key as keyof typeof PRESETS)}
-                className={`px-3 py-1 text-xs transition-colors ${
-                  JSON.stringify(preferences) === JSON.stringify(preset)
-                    ? 'bg-primary text-primary-foreground'
-                    : 'hover:bg-accent'
-                }`}
+                variant={JSON.stringify(preferences) === JSON.stringify(preset) ? 'default' : 'ghost'}
+                size="sm"
+                className="px-3"
               >
                 {preset.name}
-              </button>
+              </Button>
             ))}
           </div>
         </div>
 
         <div className="flex items-center gap-1">
           {/* Reset Button */}
-          <button
+          <Button
             onClick={handleReset}
-            className="p-1 hover:bg-accent rounded transition-colors"
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
             title="Reset to defaults"
           >
             <RotateCcw className="w-4 h-4" />
-          </button>
+          </Button>
 
           {/* Expand/Collapse */}
-          <button
+          <Button
             onClick={() => setIsExpanded(!isExpanded)}
-            className="px-3 py-1 text-xs hover:bg-accent transition-colors"
+            variant="ghost"
+            size="sm"
+            className="px-3"
           >
             {isExpanded ? 'Less' : 'More'}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -224,26 +231,22 @@ export function ReadingControls({ preferences, onChange }: ReadingControlsProps)
             <div>
               <label className="text-sm font-medium mb-2 block">Text Alignment</label>
               <div className="flex gap-2">
-                <button
+                <Button
                   onClick={() => onChange({ ...preferences, textAlign: 'left' })}
-                  className={`flex-1 px-3 py-1 text-xs transition-colors ${
-                    preferences.textAlign === 'left'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-background border border-border hover:bg-accent'
-                  }`}
+                  variant={preferences.textAlign === 'left' ? 'default' : 'outline'}
+                  size="sm"
+                  className="flex-1"
                 >
                   Left
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={() => onChange({ ...preferences, textAlign: 'justify' })}
-                  className={`flex-1 px-3 py-1 text-xs transition-colors ${
-                    preferences.textAlign === 'justify'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-background border border-border hover:bg-accent'
-                  }`}
+                  variant={preferences.textAlign === 'justify' ? 'default' : 'outline'}
+                  size="sm"
+                  className="flex-1"
                 >
                   Justify
-                </button>
+                </Button>
               </div>
             </div>
 

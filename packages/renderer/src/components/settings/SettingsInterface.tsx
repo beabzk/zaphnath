@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { useSettings } from './SettingsProvider'
 import { AppearanceSettings } from './AppearanceSettings'
 import { ReadingSettings } from './ReadingSettings'
@@ -131,19 +132,21 @@ export function SettingsInterface() {
             </div>
 
             <div className="flex items-center gap-2">
-              <button
-                className="px-3 py-1 text-sm border border-border hover:bg-accent transition-colors inline-flex items-center gap-2"
+              <Button
+                variant="outline"
+                size="sm"
+                className="inline-flex items-center gap-2"
                 onClick={() => setShowImportExport(!showImportExport)}
               >
                 <Download className="h-4 w-4" />
                 Import/Export
-              </button>
+              </Button>
 
               {hasUnsavedChanges && (
-                <button onClick={saveSettings} className="px-3 py-1 text-sm bg-primary text-primary-foreground hover:bg-primary/90 transition-colors inline-flex items-center gap-2">
+                <Button onClick={saveSettings} size="sm" className="inline-flex items-center gap-2">
                   <Save className="h-4 w-4" />
                   Save Changes
-                </button>
+                </Button>
               )}
             </div>
           </div>
@@ -151,11 +154,11 @@ export function SettingsInterface() {
 
         {showImportExport && (
           <div className="px-6 pb-4">
-            <div className="flex items-center gap-2 p-3 bg-muted/30 border border-border">
-              <button onClick={handleExportSettings} className="px-3 py-1 text-sm border border-border hover:bg-accent transition-colors inline-flex items-center gap-2">
+            <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-muted/30 p-3">
+              <Button onClick={handleExportSettings} variant="outline" size="sm" className="inline-flex items-center gap-2">
                 <Download className="h-4 w-4" />
                 Export Settings
-              </button>
+              </Button>
 
               <div className="relative">
                 <input
@@ -164,21 +167,23 @@ export function SettingsInterface() {
                   onChange={handleImportSettings}
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 />
-                <button className="px-3 py-1 text-sm border border-border hover:bg-accent transition-colors inline-flex items-center gap-2">
+                <Button variant="outline" size="sm" className="inline-flex items-center gap-2">
                   <Upload className="h-4 w-4" />
                   Import Settings
-                </button>
+                </Button>
               </div>
 
               <div className="h-6 w-px bg-border" />
 
-              <button
+              <Button
                 onClick={resetSettings}
-                className="px-3 py-1 text-sm border border-border hover:bg-destructive/10 text-destructive transition-colors inline-flex items-center gap-2"
+                variant="outline"
+                size="sm"
+                className="inline-flex items-center gap-2 border-destructive/40 text-destructive hover:bg-destructive/10"
               >
                 <RotateCcw className="h-4 w-4" />
                 Reset All
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -197,15 +202,16 @@ export function SettingsInterface() {
               const isActive = activeCategory === category.id
 
               return (
-                <button
+                <Button
                   key={category.id}
-                  className={`w-full text-left px-4 py-2 inline-flex items-center gap-3 text-sm transition-colors ${isActive ? 'bg-accent text-accent-foreground' : 'hover:bg-accent/50'
+                  variant={isActive ? 'secondary' : 'ghost'}
+                  className={`h-9 w-full justify-start px-3 text-sm ${isActive ? 'border border-border/60 bg-accent/80 text-accent-foreground' : 'hover:bg-accent/50'
                     }`}
                   onClick={() => setActiveCategory(category.id)}
                 >
                   <Icon className="h-4 w-4" />
                   <span className="font-medium">{category.name}</span>
-                </button>
+                </Button>
               )
             })}
           </div>
@@ -233,7 +239,7 @@ export function SettingsInterface() {
                 </p>
               </div>
 
-              <button
+              <Button
                 onClick={() => {
                   if (activeCategory === 'updates') {
                     updateSetting('advanced', 'updatePolicy', defaultSettings.advanced.updatePolicy)
@@ -241,11 +247,13 @@ export function SettingsInterface() {
                   }
                   resetCategory(activeCategory)
                 }}
-                className="px-3 py-1 text-sm border border-border hover:bg-destructive/10 text-destructive transition-colors inline-flex items-center gap-2"
+                variant="outline"
+                size="sm"
+                className="inline-flex items-center gap-2 border-destructive/40 text-destructive hover:bg-destructive/10"
               >
                 <RotateCcw className="h-4 w-4" />
                 Reset Category
-              </button>
+              </Button>
             </div>
           </div>
           <div className="flex-1 overflow-y-auto px-6 py-4">

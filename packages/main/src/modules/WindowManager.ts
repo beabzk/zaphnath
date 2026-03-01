@@ -95,13 +95,21 @@ class WindowManager implements AppModule {
 
   async createWindow(): Promise<BrowserWindow> {
     const isMac = process.platform === "darwin";
+    const isWindows = process.platform === "win32";
     const browserWindow = new BrowserWindow({
       show: false, // Use the 'ready-to-show' event to show the instantiated BrowserWindow.
       width: 1200, // Optimal width for Bible reading with sidebar
       height: 800, // Good height for reading content
       minWidth: 800, // Minimum width to ensure usability
       minHeight: 600, // Minimum height for proper layout
-      titleBarStyle: isMac ? "hiddenInset" : "default",
+      titleBarStyle: isMac ? "hiddenInset" : isWindows ? "hidden" : "default",
+      titleBarOverlay: isWindows
+        ? {
+            color: "#00000000",
+            symbolColor: "#9ca3af",
+            height: 42,
+          }
+        : false,
       autoHideMenuBar: !isMac,
       // Use app icon on Windows/Linux (macOS uses .icns from bundle metadata).
       icon:

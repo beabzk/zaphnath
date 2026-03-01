@@ -8,14 +8,19 @@ import { StoreDebuggerWrapper } from '@/components/debug/StoreDebugger'
 import { ErrorBoundary } from '@/components/error/ErrorBoundary'
 import { logger } from '@/services/logger'
 import { performanceMonitor } from '@/services/performanceMonitor'
+import { getDesktopPlatform } from '@/lib/platform'
 
 function App() {
   // Initialize logging and performance monitoring
   React.useEffect(() => {
+    const platform = getDesktopPlatform()
+    document.documentElement.dataset.platform = platform
+
     logger.info('Application started', {
       timestamp: new Date().toISOString(),
       userAgent: navigator.userAgent,
-      url: window.location.href
+      url: window.location.href,
+      platform,
     }, 'app')
 
     // Log user actions for debugging
@@ -37,6 +42,7 @@ function App() {
     }, 100)
 
     return () => {
+      delete document.documentElement.dataset.platform
       logger.info('Application unmounting', {}, 'app')
     }
   }, [])

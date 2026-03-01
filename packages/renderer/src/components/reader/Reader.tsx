@@ -301,14 +301,13 @@ export function Reader() {
   const percent = Math.round(progress * 100)
 
   return (
-    <div className="h-full flex">
-      {/* Books list - minimal sidebar */}
-      <div className="w-52 border-r border-border flex flex-col h-full">
-        <div className="px-3 py-2 border-b border-border">
-          <h3 className="text-sm font-medium mb-2">{currentRepository.name}</h3>
+    <div className="h-full min-h-0 flex bg-background/25">
+      <div className="w-56 border-r border-border/70 bg-muted/25 flex flex-col h-full">
+        <div className="px-3 py-3 border-b border-border/70">
+          <h3 className="text-sm font-semibold mb-2 tracking-tight">{currentRepository.name}</h3>
           <div className="flex gap-1">
             <button
-              className={`flex-1 px-2 py-1 text-xs rounded transition-colors ${
+              className={`flex-1 rounded-md px-2 py-1 text-xs transition-colors ${
                 testament === 'old' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent/50'
               }`}
               onClick={() => setTestament('old')}
@@ -325,12 +324,12 @@ export function Reader() {
             </button>
           </div>
         </div>
-        <div className="flex-1 overflow-y-auto">
+        <div className="scrollbar-subtle flex-1 overflow-y-auto p-1.5">
           {filteredBooks.map(b => (
             <button
               key={b.id}
-              className={`w-full text-left px-3 py-1.5 hover:bg-accent/50 transition-colors flex items-center gap-2 text-sm ${
-                currentBook?.id === b.id ? 'bg-accent text-accent-foreground' : ''
+              className={`w-full rounded-md text-left px-2.5 py-1.5 hover:bg-accent/60 transition-colors flex items-center gap-2 text-sm ${
+                currentBook?.id === b.id ? 'bg-accent text-accent-foreground shadow-sm' : ''
               }`}
               onClick={() => handleSelectBook(b.id)}
             >
@@ -344,11 +343,8 @@ export function Reader() {
         </div>
       </div>
 
-      {/* Reading area - maximized */}
       <div className="flex-1 flex flex-col h-full">
-        {/* Header with breadcrumb navigation */}
-        <div className="px-4 py-3 border-b border-border min-h-[56px]">
-          {/* Breadcrumb */}
+        <div className="px-4 py-3 border-b border-border/70 bg-card/70 min-h-[64px]">
           {currentBook && currentChapter && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
               <span className="hover:text-foreground cursor-pointer transition-colors">
@@ -373,12 +369,11 @@ export function Reader() {
             </div>
           )}
 
-          {/* Navigation controls */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               {currentBook && currentChapter ? (
                 <>
-                  <h1 className="text-base font-medium">{currentBook.name} {currentChapter.number}</h1>
+                  <h1 className="text-base font-semibold tracking-tight">{currentBook.name} {currentChapter.number}</h1>
                   <span className="text-xs text-muted-foreground">({verses.length} verses)</span>
                 </>
               ) : (
@@ -389,14 +384,14 @@ export function Reader() {
             {currentBook && (
               <div className="flex items-center gap-1">
               <button
-                className="px-3 py-1 text-sm hover:bg-accent/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="rounded-md px-3 py-1 text-sm hover:bg-accent/60 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 onClick={() => handleChangeChapter(Math.max(1, (chapterSelect || 1) - 1))}
                 disabled={!chapterSelect || chapterSelect <= 1}
               >
                 ←
               </button>
               <select
-                className="bg-background text-foreground border border-border rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"
+                className="bg-background/90 text-foreground border border-border/70 rounded-md px-2 py-1 text-sm cursor-pointer"
                 value={chapterSelect ?? ''}
                 onChange={(e) => handleChangeChapter(Number(e.target.value))}
               >
@@ -405,7 +400,7 @@ export function Reader() {
                 ))}
               </select>
               <button
-                className="px-3 py-1 text-sm hover:bg-accent/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="rounded-md px-3 py-1 text-sm hover:bg-accent/60 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 onClick={() => handleChangeChapter(Math.min((currentBook?.chapter_count || 1), (chapterSelect || 1) + 1))}
                 disabled={!chapterSelect || (currentBook ? chapterSelect >= currentBook.chapter_count : true)}
               >
@@ -415,26 +410,23 @@ export function Reader() {
             )}
           </div>
         </div>
-        
-        {/* Progress indicator - thin line */}
+
         {currentBook && currentChapter && (
-          <div className="h-0.5 bg-muted relative">
+          <div className="h-0.5 bg-muted/80 relative">
             <div className="h-full bg-primary/60 transition-all duration-300" style={{ width: `${percent}%` }} />
           </div>
         )}
 
-        {/* Reading Controls */}
         {currentBook && currentChapter && (
           <ReadingControls preferences={readingPrefs} onChange={setReadingPrefs} />
         )}
-        
-        {/* Main reading content */}
+
         {!currentBook ? (
           <div className="flex-1 flex items-center justify-center">
             <p className="text-muted-foreground">Choose a book from the sidebar to start reading</p>
           </div>
         ) : (
-          <div ref={scrollRef} className="flex-1 overflow-y-auto px-8 py-6">
+          <div ref={scrollRef} className="scrollbar-subtle flex-1 overflow-y-auto px-8 py-6">
             <div 
               className="mx-auto"
               style={{ 
@@ -570,9 +562,9 @@ function VerseItem({ domId, verse, highlight, isSelected, isBookmarked, hasNote,
     <div
       id={domId}
       ref={ref}
-      className={`flex items-start gap-3 px-2 py-1 -mx-2 rounded transition-colors ${
+      className={`flex items-start gap-3 px-2.5 py-1.5 -mx-2 rounded-lg transition-colors ${
         highlight ? highlight.color : ''
-      } ${isSelected ? 'ring-1 ring-primary' : ''} cursor-pointer hover:bg-accent/30`}
+      } ${isSelected ? 'ring-1 ring-primary/60' : ''} cursor-pointer hover:bg-accent/40`}
       style={{ marginBottom: `${spacing * 4}px` }}
       onContextMenu={onContextMenu}
     >
@@ -581,7 +573,7 @@ function VerseItem({ domId, verse, highlight, isSelected, isBookmarked, hasNote,
           {verse.number}
         </span>
       )}
-      <p className={showNumber ? 'flex-1' : 'flex-1'}>{verse.text}</p>
+              <p className={showNumber ? 'flex-1' : 'flex-1'}>{verse.text}</p>
       {hasNote && (
         <StickyNote className="w-3.5 h-3.5 text-amber-500 flex-shrink-0 mt-1" />
       )}
