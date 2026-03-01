@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { useInView } from 'react-intersection-observer'
 import { useRepositoryStore, useReadingStore } from '@/stores'
 import { ChevronRight, Bookmark as BookmarkIcon, StickyNote } from 'lucide-react'
+import { repository } from '@app/preload'
+import { useSettings } from '@/components/settings/SettingsProvider'
 import { VerseContextMenu } from './VerseContextMenu'
 import { ReadingControls, ReadingPreferences, PRESETS } from './ReadingControls'
 import { VerseComparison } from './VerseComparison'
@@ -11,15 +13,19 @@ import { NoteDialog } from './NoteDialog'
 
 export function Reader() {
   const {
+    repositories,
     currentRepository,
     books,
     currentBook,
     currentChapter,
     verses,
+    setCurrentRepository,
     loadBooks,
+    loadRepositories,
     setCurrentBook,
     loadChapter,
   } = useRepositoryStore()
+  const { settings, isLoading: isSettingsLoading } = useSettings()
 
   const [chapterSelect, setChapterSelect] = useState<number | null>(null)
   const [testament, setTestament] = useState<'old' | 'new'>('old')
@@ -138,6 +144,91 @@ export function Reader() {
       verse: contextMenu.verseNumber
     })
   }, [contextMenu, currentBook, currentChapter])
+
+  // Ensure the configured default repository is selected when entering Reader.
+  useEffect(() => {
+    if (currentRepository || isSettingsLoading) {
+      return
+    }
+
+    const defaultRepositoryId = settings.reading.defaultRepository
+    if (!defaultRepositoryId) {
+      return
+    }
+
+    let cancelled = false
+
+    const restoreDefaultRepository = async () => {
+      if (repositories.length === 0) {
+        await loadRepositories()
+      }
+
+      const latestRepositories = useRepositoryStore.getState().repositories
+      const directRepository = latestRepositories.find(
+        (repo) => repo.id === defaultRepositoryId
+      )
+
+      if (directRepository) {
+        if (!cancelled) {
+          setCurrentRepository(directRepository)
+        }
+        return
+      }
+
+      const parentRepositories = latestRepositories.filter(
+        (repo) => repo.type === 'parent'
+      )
+
+      for (const parent of parentRepositories) {
+        const translations = (await repository.getTranslations(parent.id)) || []
+        const translation = (translations as Record<string, unknown>[]).find(
+          (item) => String(item.translation_id ?? item.id ?? '') === defaultRepositoryId
+        )
+
+        if (!translation) {
+          continue
+        }
+
+        if (cancelled) {
+          return
+        }
+
+        const now = new Date().toISOString()
+        setCurrentRepository({
+          id: String(translation.translation_id ?? translation.id ?? defaultRepositoryId),
+          name: String(translation.translation_name ?? translation.name ?? defaultRepositoryId),
+          description: String(
+            translation.translation_description ??
+              `${String(translation.translation_name ?? translation.name ?? defaultRepositoryId)} from ${parent.name}`
+          ),
+          language: String(translation.language_code ?? translation.language ?? parent.language ?? 'en'),
+          version: String(translation.translation_version ?? parent.version ?? '1.0.0'),
+          created_at: String(translation.created_at ?? parent.created_at ?? now),
+          updated_at: String(translation.updated_at ?? parent.updated_at ?? now),
+          type: 'translation',
+          parent_id: parent.id,
+          book_count: typeof translation.book_count === 'number' ? translation.book_count : undefined,
+          verse_count: typeof translation.verse_count === 'number' ? translation.verse_count : undefined,
+        })
+        return
+      }
+    }
+
+    restoreDefaultRepository().catch((error) => {
+      console.error('[Reader] Failed to restore default repository:', error)
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [
+    currentRepository,
+    isSettingsLoading,
+    settings.reading.defaultRepository,
+    repositories,
+    loadRepositories,
+    setCurrentRepository,
+  ])
 
   // When repository changes and books are empty, load books
   useEffect(() => {

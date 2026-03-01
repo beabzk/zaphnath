@@ -233,17 +233,123 @@ export const useRepositoryStore = create<RepositoryState>()(
 
             // @ts-ignore - APIs will be available at runtime
             const repositories = await repository.list();
-            setRepositories(repositories || []);
+            const normalizedRepositories = repositories || [];
+            setRepositories(normalizedRepositories);
 
-            // Validate currentRepository still exists
+            // Validate currentRepository still exists.
+            // Parent manifests store translations in `repository_translations`,
+            // so selected translation ids may not appear in repository:list.
             const { currentRepository, setCurrentRepository } = get();
-            if (currentRepository && repositories) {
-              const exists = repositories.some(
+            if (currentRepository) {
+              const directMatch = normalizedRepositories.find(
                 (r: Repository) => r.id === currentRepository.id
               );
-              if (!exists) {
-                setCurrentRepository(null);
+
+              if (directMatch) {
+                return;
               }
+
+              const isTranslationSelection =
+                currentRepository.type === "translation" ||
+                Boolean(currentRepository.parent_id);
+
+              if (!isTranslationSelection) {
+                setCurrentRepository(null);
+                return;
+              }
+
+              const parentCandidates = normalizedRepositories.filter(
+                (r: Repository) =>
+                  r.type === "parent" &&
+                  (!currentRepository.parent_id ||
+                    r.id === currentRepository.parent_id)
+              );
+
+              let matchedTranslation:
+                | {
+                    parent: Repository;
+                    row: Record<string, unknown>;
+                  }
+                | null = null;
+
+              for (const parent of parentCandidates) {
+                // @ts-ignore - APIs will be available at runtime
+                const translations = (await repository.getTranslations(parent.id)) || [];
+                const row = (translations as Record<string, unknown>[]).find(
+                  (translation) =>
+                    String(translation.translation_id ?? translation.id ?? "") ===
+                    currentRepository.id
+                );
+
+                if (row) {
+                  matchedTranslation = { parent, row };
+                  break;
+                }
+              }
+
+              if (!matchedTranslation) {
+                setCurrentRepository(null);
+                return;
+              }
+
+              const { parent, row } = matchedTranslation;
+
+              set(
+                (state) => ({
+                  currentRepository: {
+                    ...(state.currentRepository || currentRepository),
+                    id: String(row.translation_id ?? row.id ?? currentRepository.id),
+                    name: String(
+                      row.translation_name ??
+                        row.name ??
+                        state.currentRepository?.name ??
+                        currentRepository.name
+                    ),
+                    description: String(
+                      row.translation_description ??
+                        state.currentRepository?.description ??
+                        `${String(row.translation_name ?? row.name ?? currentRepository.id)} from ${parent.name}`
+                    ),
+                    language: String(
+                      row.language_code ??
+                        row.language ??
+                        state.currentRepository?.language ??
+                        parent.language ??
+                        "en"
+                    ),
+                    version: String(
+                      row.translation_version ??
+                        state.currentRepository?.version ??
+                        parent.version ??
+                        "1.0.0"
+                    ),
+                    type: "translation" as const,
+                    parent_id: parent.id,
+                    created_at: String(
+                      row.created_at ??
+                        state.currentRepository?.created_at ??
+                        parent.created_at ??
+                        new Date().toISOString()
+                    ),
+                    updated_at: String(
+                      row.updated_at ??
+                        state.currentRepository?.updated_at ??
+                        parent.updated_at ??
+                        new Date().toISOString()
+                    ),
+                    book_count:
+                      typeof row.book_count === "number"
+                        ? row.book_count
+                        : state.currentRepository?.book_count,
+                    verse_count:
+                      typeof row.verse_count === "number"
+                        ? row.verse_count
+                        : state.currentRepository?.verse_count,
+                  },
+                }),
+                false,
+                "syncCurrentTranslation"
+              );
             }
           } catch (error) {
             setError({
