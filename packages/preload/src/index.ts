@@ -60,6 +60,7 @@ const updater: Zaphnath.UpdaterAPI = {
   getPolicy: () => ipcRenderer.invoke("updater:getPolicy"),
   setPolicy: (policy: "auto" | "notify" | "manual") =>
     ipcRenderer.invoke("updater:setPolicy", policy),
+  checkForUpdates: () => ipcRenderer.invoke("updater:checkForUpdates"),
 };
 
 export { sha256sum, versions, send, database, repository, filesystem, updater };

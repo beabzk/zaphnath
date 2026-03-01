@@ -1,11 +1,17 @@
+import { useCallback, useState } from 'react'
 import { useSettings } from './SettingsProvider'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Download, Info, RefreshCw } from 'lucide-react'
 
+type UpdateCheckResult = Awaited<ReturnType<Zaphnath.UpdaterAPI['checkForUpdates']>>
+
 export function UpdatesSettings() {
   const { settings, updateSetting } = useSettings()
   const { updatePolicy } = settings.advanced
+  const [isChecking, setIsChecking] = useState(false)
+  const [checkResult, setCheckResult] = useState<UpdateCheckResult | null>(null)
+  const [checkError, setCheckError] = useState<string | null>(null)
 
   const updatePolicies: Array<{
     value: typeof updatePolicy
@@ -30,6 +36,21 @@ export function UpdatesSettings() {
   ]
 
   const currentPolicy = updatePolicies.find((policy) => policy.value === updatePolicy)
+
+  const handleManualCheck = useCallback(async () => {
+    setIsChecking(true)
+    setCheckError(null)
+    setCheckResult(null)
+
+    try {
+      const result = await window.updater.checkForUpdates()
+      setCheckResult(result)
+    } catch (error) {
+      setCheckError(error instanceof Error ? error.message : 'Failed to check for updates.')
+    } finally {
+      setIsChecking(false)
+    }
+  }, [])
 
   return (
     <div className="space-y-6">
@@ -78,11 +99,33 @@ export function UpdatesSettings() {
           </div>
         </div>
         <div className="mt-3">
-          <Button variant="outline" size="sm" disabled>
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Check for updates
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleManualCheck}
+            disabled={isChecking}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${isChecking ? 'animate-spin' : ''}`} />
+            {isChecking ? 'Checking...' : 'Check for updates'}
           </Button>
         </div>
+        {checkResult && (
+          <div className="mt-2 space-y-1">
+            <p className="text-xs text-muted-foreground">
+              Current version: {checkResult.currentVersion} | Latest version: {checkResult.latestVersion}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {checkResult.isUpdateAvailable
+                ? 'An update is available.'
+                : 'You are up to date.'}
+            </p>
+          </div>
+        )}
+        {checkError && (
+          <p className="mt-2 text-xs text-destructive">
+            {checkError}
+          </p>
+        )}
       </div>
     </div>
   )

@@ -59,6 +59,7 @@ export class IpcHandlers implements AppModule {
     ipcMain.removeAllListeners("filesystem:showOpenDialog");
     ipcMain.removeAllListeners("updater:getPolicy");
     ipcMain.removeAllListeners("updater:setPolicy");
+    ipcMain.removeAllListeners("updater:checkForUpdates");
 
     // Shutdown database service
     await this.databaseService.shutdown();
@@ -456,5 +457,20 @@ export class IpcHandlers implements AppModule {
         }
       }
     );
+
+    ipcMain.handle("updater:checkForUpdates", async (event) => {
+      this.assertTrustedIpcSender(event, "updater:checkForUpdates");
+      try {
+        const updater = getAutoUpdaterModuleInstance();
+        if (!updater) {
+          throw new Error("Auto updater module is not available");
+        }
+
+        return await updater.checkForUpdatesNow();
+      } catch (error) {
+        console.error("Manual updater check error:", error);
+        throw error;
+      }
+    });
   }
 }

@@ -133,6 +133,13 @@ declare namespace Zaphnath {
     setPolicy: (
       policy: "auto" | "notify" | "manual"
     ) => Promise<{ success: boolean; policy: "auto" | "notify" | "manual" }>;
+    checkForUpdates: () => Promise<{
+      checkedAt: string;
+      policy: "auto" | "notify" | "manual";
+      isUpdateAvailable: boolean;
+      currentVersion: string;
+      latestVersion: string;
+    }>;
   }
 
   // ZBRS Types

@@ -1,12 +1,19 @@
 import {AppModule} from '../AppModule.js';
 import electronUpdater, {type AppUpdater, type Logger} from 'electron-updater';
-import {Notification} from 'electron';
+import {Notification, app} from 'electron';
 import {DatabaseService} from '../services/database/index.js';
 
 type DownloadNotification = Parameters<AppUpdater['checkForUpdatesAndNotify']>[0];
 const UPDATE_POLICY_SETTING_KEY = 'update_policy';
 
 export type UpdatePolicy = 'auto' | 'notify' | 'manual';
+export type UpdateCheckResult = {
+  checkedAt: string;
+  policy: UpdatePolicy;
+  isUpdateAvailable: boolean;
+  currentVersion: string;
+  latestVersion: string;
+};
 
 let autoUpdaterInstance: AutoUpdater | null = null;
 
@@ -87,6 +94,53 @@ export class AutoUpdater implements AppModule {
         if (error.message.includes('No published versions')) {
           return null;
         }
+      }
+
+      throw error;
+    }
+  }
+
+  async checkForUpdatesNow(): Promise<UpdateCheckResult> {
+    const policy = this.#policy;
+    const checkedAt = new Date().toISOString();
+    const currentVersion = app.getVersion();
+
+    try {
+      let result:
+        | Awaited<ReturnType<AppUpdater['checkForUpdates']>>
+        | Awaited<ReturnType<AppUpdater['checkForUpdatesAndNotify']>>
+        | null;
+
+      if (policy === 'auto') {
+        result = await this.runAutoUpdater('auto');
+      } else {
+        const updater = this.configureUpdater(policy);
+        result = await updater.checkForUpdates();
+
+        if (policy === 'notify' && result?.isUpdateAvailable) {
+          new Notification({
+            title: 'Update Available',
+            body: `A new version (${result.updateInfo.version}) is available for download.`,
+          }).show();
+        }
+      }
+
+      return {
+        checkedAt,
+        policy,
+        isUpdateAvailable: Boolean(result?.isUpdateAvailable),
+        currentVersion,
+        latestVersion: result?.updateInfo?.version || currentVersion,
+      };
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('No published versions')) {
+        return {
+          checkedAt,
+          policy,
+          isUpdateAvailable: false,
+          currentVersion,
+          latestVersion: currentVersion,
+        };
       }
 
       throw error;
