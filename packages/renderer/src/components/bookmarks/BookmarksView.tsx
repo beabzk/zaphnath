@@ -14,8 +14,16 @@ import { BookmarkDialog } from '@/components/reader/BookmarkDialog'
 import type { Bookmark as BookmarkType } from '@/types/store'
 
 export function BookmarksView() {
-  const { bookmarks, removeBookmark } = useReadingStore()
-  const { books, loadBooks, setCurrentBook, loadChapter } =
+  const { bookmarks, removeBookmark, setCurrentLocation } = useReadingStore()
+  const {
+    books,
+    repositories,
+    currentRepository,
+    loadBooks,
+    setCurrentRepository,
+    setCurrentBook,
+    loadChapter,
+  } =
     useRepositoryStore()
   const { setCurrentView } = useNavigation()
 
@@ -82,21 +90,53 @@ export function BookmarksView() {
   // Navigate to the verse in the reader
   const handleNavigate = useCallback(
     async (bookmark: BookmarkType) => {
-      // If the books aren't loaded for this repository, load them first
-      if (books.length === 0 && bookmark.repository_id) {
-        await loadBooks(bookmark.repository_id)
+      const repositoryId = bookmark.repository_id
+      const isCurrentRepository = currentRepository?.id === repositoryId
+
+      if (!isCurrentRepository) {
+        const targetRepository = repositories.find((repo) => repo.id === repositoryId) ?? {
+          id: repositoryId,
+          name: repositoryId,
+          description: `Translation ${repositoryId}`,
+          language: 'en',
+          version: '1.0.0',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          type: 'translation' as const,
+        }
+        setCurrentRepository(targetRepository)
       }
 
-      // Find the book object to set as current
-      const book = books.find((b) => b.id === bookmark.book_id)
+      if (!isCurrentRepository || books.length === 0) {
+        await loadBooks(repositoryId)
+      }
+
+      const latestBooks = useRepositoryStore.getState().books
+      const book = latestBooks.find((b) => b.id === bookmark.book_id)
       if (book) {
         setCurrentBook(book)
         await loadChapter(book.id, bookmark.chapter_number)
       }
 
+      setCurrentLocation({
+        repository_id: repositoryId,
+        book_id: bookmark.book_id,
+        chapter_number: bookmark.chapter_number,
+        verse_number: bookmark.verse_number,
+      })
       setCurrentView('reader')
     },
-    [books, loadBooks, setCurrentBook, loadChapter, setCurrentView]
+    [
+      books.length,
+      currentRepository?.id,
+      loadBooks,
+      loadChapter,
+      repositories,
+      setCurrentBook,
+      setCurrentLocation,
+      setCurrentRepository,
+      setCurrentView,
+    ]
   )
 
   const handleDelete = (id: string) => {

@@ -24,8 +24,16 @@ function getColorName(colorValue: string): string {
 }
 
 export function HighlightsView() {
-  const { highlights, removeHighlight, updateHighlight } = useReadingStore()
-  const { books, loadBooks, setCurrentBook, loadChapter } =
+  const { highlights, removeHighlight, updateHighlight, setCurrentLocation } = useReadingStore()
+  const {
+    books,
+    repositories,
+    currentRepository,
+    loadBooks,
+    setCurrentRepository,
+    setCurrentBook,
+    loadChapter,
+  } =
     useRepositoryStore()
   const { setCurrentView } = useNavigation()
 
@@ -88,19 +96,53 @@ export function HighlightsView() {
   // Navigate to the verse in the reader
   const handleNavigate = useCallback(
     async (highlight: Highlight) => {
-      if (books.length === 0 && highlight.repository_id) {
-        await loadBooks(highlight.repository_id)
+      const repositoryId = highlight.repository_id
+      const isCurrentRepository = currentRepository?.id === repositoryId
+
+      if (!isCurrentRepository) {
+        const targetRepository = repositories.find((repo) => repo.id === repositoryId) ?? {
+          id: repositoryId,
+          name: repositoryId,
+          description: `Translation ${repositoryId}`,
+          language: 'en',
+          version: '1.0.0',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          type: 'translation' as const,
+        }
+        setCurrentRepository(targetRepository)
       }
 
-      const book = books.find((b) => b.id === highlight.book_id)
+      if (!isCurrentRepository || books.length === 0) {
+        await loadBooks(repositoryId)
+      }
+
+      const latestBooks = useRepositoryStore.getState().books
+      const book = latestBooks.find((b) => b.id === highlight.book_id)
       if (book) {
         setCurrentBook(book)
         await loadChapter(book.id, highlight.chapter_number)
       }
 
+      setCurrentLocation({
+        repository_id: repositoryId,
+        book_id: highlight.book_id,
+        chapter_number: highlight.chapter_number,
+        verse_number: highlight.verse_number,
+      })
       setCurrentView('reader')
     },
-    [books, loadBooks, setCurrentBook, loadChapter, setCurrentView]
+    [
+      books.length,
+      currentRepository?.id,
+      loadBooks,
+      loadChapter,
+      repositories,
+      setCurrentBook,
+      setCurrentLocation,
+      setCurrentRepository,
+      setCurrentView,
+    ]
   )
 
   const handleDelete = (id: string) => {

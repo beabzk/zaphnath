@@ -17,8 +17,16 @@ import type { Note } from '@/types/store'
 type SortMode = 'newest' | 'oldest' | 'updated'
 
 export function NotesView() {
-  const { notes, removeNote } = useReadingStore()
-  const { books, loadBooks, setCurrentBook, loadChapter } = useRepositoryStore()
+  const { notes, removeNote, setCurrentLocation } = useReadingStore()
+  const {
+    books,
+    repositories,
+    currentRepository,
+    loadBooks,
+    setCurrentRepository,
+    setCurrentBook,
+    loadChapter,
+  } = useRepositoryStore()
   const { setCurrentView } = useNavigation()
 
   const [searchQuery, setSearchQuery] = useState('')
@@ -92,19 +100,53 @@ export function NotesView() {
   // Navigate to the verse in the reader
   const handleNavigate = useCallback(
     async (note: Note) => {
-      if (books.length === 0 && note.repository_id) {
-        await loadBooks(note.repository_id)
+      const repositoryId = note.repository_id
+      const isCurrentRepository = currentRepository?.id === repositoryId
+
+      if (!isCurrentRepository) {
+        const targetRepository = repositories.find((repo) => repo.id === repositoryId) ?? {
+          id: repositoryId,
+          name: repositoryId,
+          description: `Translation ${repositoryId}`,
+          language: 'en',
+          version: '1.0.0',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          type: 'translation' as const,
+        }
+        setCurrentRepository(targetRepository)
       }
 
-      const book = books.find((b) => b.id === note.book_id)
+      if (!isCurrentRepository || books.length === 0) {
+        await loadBooks(repositoryId)
+      }
+
+      const latestBooks = useRepositoryStore.getState().books
+      const book = latestBooks.find((b) => b.id === note.book_id)
       if (book) {
         setCurrentBook(book)
         await loadChapter(book.id, note.chapter_number)
       }
 
+      setCurrentLocation({
+        repository_id: repositoryId,
+        book_id: note.book_id,
+        chapter_number: note.chapter_number,
+        verse_number: note.verse_number,
+      })
       setCurrentView('reader')
     },
-    [books, loadBooks, setCurrentBook, loadChapter, setCurrentView]
+    [
+      books.length,
+      currentRepository?.id,
+      loadBooks,
+      loadChapter,
+      repositories,
+      setCurrentBook,
+      setCurrentLocation,
+      setCurrentRepository,
+      setCurrentView,
+    ]
   )
 
   const handleDelete = (id: string) => {
