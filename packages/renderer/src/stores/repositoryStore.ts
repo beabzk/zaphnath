@@ -1,6 +1,6 @@
-import { create } from "zustand";
-import { devtools, persist } from "zustand/middleware";
-import { repository } from "@app/preload";
+import { create } from 'zustand';
+import { devtools, persist } from 'zustand/middleware';
+import { repository } from '@app/preload';
 import {
   RepositoryState,
   Repository,
@@ -10,7 +10,7 @@ import {
   ErrorState,
   ImportProgress,
   ValidationResult,
-} from "@/types/store";
+} from '@/types/store';
 
 const initialState = {
   repositories: [],
@@ -33,7 +33,7 @@ export const useRepositoryStore = create<RepositoryState>()(
 
         // Repository Actions
         setRepositories: (repositories: Repository[]) => {
-          set({ repositories }, false, "setRepositories");
+          set({ repositories }, false, 'setRepositories');
         },
 
         setCurrentRepository: (repository: Repository | null) => {
@@ -46,7 +46,7 @@ export const useRepositoryStore = create<RepositoryState>()(
               verses: [],
             },
             false,
-            "setCurrentRepository"
+            'setCurrentRepository'
           );
 
           // Load books for the new repository
@@ -61,41 +61,32 @@ export const useRepositoryStore = create<RepositoryState>()(
               repositories: [...state.repositories, repository],
             }),
             false,
-            "addRepository"
+            'addRepository'
           );
         },
 
         removeRepository: (repositoryId: string) => {
           set(
             (state) => {
-              const newRepositories = state.repositories.filter(
-                (r) => r.id !== repositoryId
-              );
+              const newRepositories = state.repositories.filter((r) => r.id !== repositoryId);
               const newCurrentRepository =
-                state.currentRepository?.id === repositoryId
-                  ? null
-                  : state.currentRepository;
+                state.currentRepository?.id === repositoryId ? null : state.currentRepository;
 
               return {
                 repositories: newRepositories,
                 currentRepository: newCurrentRepository,
                 books: newCurrentRepository ? state.books : [],
                 currentBook: newCurrentRepository ? state.currentBook : null,
-                currentChapter: newCurrentRepository
-                  ? state.currentChapter
-                  : null,
+                currentChapter: newCurrentRepository ? state.currentChapter : null,
                 verses: newCurrentRepository ? state.verses : [],
               };
             },
             false,
-            "removeRepository"
+            'removeRepository'
           );
         },
 
-        updateRepository: (
-          repositoryId: string,
-          updates: Partial<Repository>
-        ) => {
+        updateRepository: (repositoryId: string, updates: Partial<Repository>) => {
           set(
             (state) => ({
               repositories: state.repositories.map((r) =>
@@ -107,13 +98,13 @@ export const useRepositoryStore = create<RepositoryState>()(
                   : state.currentRepository,
             }),
             false,
-            "updateRepository"
+            'updateRepository'
           );
         },
 
         // Book Actions
         setBooks: (books: Book[]) => {
-          set({ books }, false, "setBooks");
+          set({ books }, false, 'setBooks');
         },
 
         setCurrentBook: (book: Book | null) => {
@@ -124,34 +115,34 @@ export const useRepositoryStore = create<RepositoryState>()(
               verses: [],
             },
             false,
-            "setCurrentBook"
+            'setCurrentBook'
           );
         },
 
         // Chapter Actions
         setCurrentChapter: (chapter: Chapter | null) => {
-          set({ currentChapter: chapter }, false, "setCurrentChapter");
+          set({ currentChapter: chapter }, false, 'setCurrentChapter');
         },
 
         setVerses: (verses: Verse[]) => {
-          set({ verses }, false, "setVerses");
+          set({ verses }, false, 'setVerses');
         },
 
         // UI State Actions
         setLoading: (isLoading: boolean) => {
-          set({ isLoading }, false, "setLoading");
+          set({ isLoading }, false, 'setLoading');
         },
 
         setError: (error: ErrorState | null) => {
-          set({ error }, false, "setError");
+          set({ error }, false, 'setError');
         },
 
         setImportProgress: (progress: ImportProgress | null) => {
-          set({ importProgress: progress }, false, "setImportProgress");
+          set({ importProgress: progress }, false, 'setImportProgress');
         },
 
         setValidationResult: (result: ValidationResult | null) => {
-          set({ validationResult: result }, false, "setValidationResult");
+          set({ validationResult: result }, false, 'setValidationResult');
         },
 
         // Hierarchical Repository Actions
@@ -165,18 +156,12 @@ export const useRepositoryStore = create<RepositoryState>()(
             const parentRepositories = await repository.getParentRepositories();
 
             // Update repositories with parent repositories
-            set(
-              { repositories: parentRepositories || [] },
-              false,
-              "loadParentRepositories"
-            );
+            set({ repositories: parentRepositories || [] }, false, 'loadParentRepositories');
           } catch (error) {
             setError({
               hasError: true,
               message:
-                error instanceof Error
-                  ? error.message
-                  : "Failed to load parent repositories",
+                error instanceof Error ? error.message : 'Failed to load parent repositories',
               timestamp: new Date().toISOString(),
             });
           } finally {
@@ -197,24 +182,15 @@ export const useRepositoryStore = create<RepositoryState>()(
             // Update the parent repository with its translations
             const { repositories } = get();
             const updatedRepositories = repositories.map((repo) =>
-              repo.id === parentId
-                ? { ...repo, translations: translations || [] }
-                : repo
+              repo.id === parentId ? { ...repo, translations: translations || [] } : repo
             );
 
-            set(
-              { repositories: updatedRepositories },
-              false,
-              "loadTranslations"
-            );
+            set({ repositories: updatedRepositories }, false, 'loadTranslations');
             return translations || [];
           } catch (error) {
             setError({
               hasError: true,
-              message:
-                error instanceof Error
-                  ? error.message
-                  : "Failed to load translations",
+              message: error instanceof Error ? error.message : 'Failed to load translations',
               timestamp: new Date().toISOString(),
             });
             return [];
@@ -250,8 +226,7 @@ export const useRepositoryStore = create<RepositoryState>()(
               }
 
               const isTranslationSelection =
-                currentRepository.type === "translation" ||
-                Boolean(currentRepository.parent_id);
+                currentRepository.type === 'translation' || Boolean(currentRepository.parent_id);
 
               if (!isTranslationSelection) {
                 setCurrentRepository(null);
@@ -260,24 +235,21 @@ export const useRepositoryStore = create<RepositoryState>()(
 
               const parentCandidates = normalizedRepositories.filter(
                 (r: Repository) =>
-                  r.type === "parent" &&
-                  (!currentRepository.parent_id ||
-                    r.id === currentRepository.parent_id)
+                  r.type === 'parent' &&
+                  (!currentRepository.parent_id || r.id === currentRepository.parent_id)
               );
 
-              let matchedTranslation:
-                | {
-                    parent: Repository;
-                    row: Record<string, unknown>;
-                  }
-                | null = null;
+              let matchedTranslation: {
+                parent: Repository;
+                row: Record<string, unknown>;
+              } | null = null;
 
               for (const parent of parentCandidates) {
                 // @ts-ignore - APIs will be available at runtime
                 const translations = (await repository.getTranslations(parent.id)) || [];
                 const row = (translations as Record<string, unknown>[]).find(
                   (translation) =>
-                    String(translation.translation_id ?? translation.id ?? "") ===
+                    String(translation.translation_id ?? translation.id ?? '') ===
                     currentRepository.id
                 );
 
@@ -315,15 +287,15 @@ export const useRepositoryStore = create<RepositoryState>()(
                         row.language ??
                         state.currentRepository?.language ??
                         parent.language ??
-                        "en"
+                        'en'
                     ),
                     version: String(
                       row.translation_version ??
                         state.currentRepository?.version ??
                         parent.version ??
-                        "1.0.0"
+                        '1.0.0'
                     ),
-                    type: "translation" as const,
+                    type: 'translation' as const,
                     parent_id: parent.id,
                     created_at: String(
                       row.created_at ??
@@ -338,26 +310,23 @@ export const useRepositoryStore = create<RepositoryState>()(
                         new Date().toISOString()
                     ),
                     book_count:
-                      typeof row.book_count === "number"
+                      typeof row.book_count === 'number'
                         ? row.book_count
                         : state.currentRepository?.book_count,
                     verse_count:
-                      typeof row.verse_count === "number"
+                      typeof row.verse_count === 'number'
                         ? row.verse_count
                         : state.currentRepository?.verse_count,
                   },
                 }),
                 false,
-                "syncCurrentTranslation"
+                'syncCurrentTranslation'
               );
             }
           } catch (error) {
             setError({
               hasError: true,
-              message:
-                error instanceof Error
-                  ? error.message
-                  : "Failed to load repositories",
+              message: error instanceof Error ? error.message : 'Failed to load repositories',
               timestamp: new Date().toISOString(),
             });
           } finally {
@@ -379,8 +348,7 @@ export const useRepositoryStore = create<RepositoryState>()(
               repository_id: b.repository_id,
               name: b.name,
               abbreviation: b.abbreviation,
-              testament:
-                b.testament === "OT" ? ("old" as const) : ("new" as const),
+              testament: b.testament === 'OT' ? ('old' as const) : ('new' as const),
               order: b.order,
               chapter_count: b.chapter_count,
             }));
@@ -388,8 +356,7 @@ export const useRepositoryStore = create<RepositoryState>()(
           } catch (error) {
             setError({
               hasError: true,
-              message:
-                error instanceof Error ? error.message : "Failed to load books",
+              message: error instanceof Error ? error.message : 'Failed to load books',
               timestamp: new Date().toISOString(),
             });
           } finally {
@@ -405,10 +372,7 @@ export const useRepositoryStore = create<RepositoryState>()(
             setError(null);
 
             // @ts-ignore - APIs will be available at runtime
-            const chapterData = await repository.getChapter(
-              bookId,
-              chapterNumber
-            );
+            const chapterData = await repository.getChapter(bookId, chapterNumber);
 
             if (chapterData) {
               const verses = chapterData.verses || [];
@@ -430,10 +394,7 @@ export const useRepositoryStore = create<RepositoryState>()(
           } catch (error) {
             setError({
               hasError: true,
-              message:
-                error instanceof Error
-                  ? error.message
-                  : "Failed to load chapter",
+              message: error instanceof Error ? error.message : 'Failed to load chapter',
               timestamp: new Date().toISOString(),
             });
           } finally {
@@ -442,13 +403,12 @@ export const useRepositoryStore = create<RepositoryState>()(
         },
 
         importRepository: async (url: string, options?: any) => {
-          const { setLoading, setError, setImportProgress, loadRepositories } =
-            get();
+          const { setLoading, setError, setImportProgress, loadRepositories } = get();
 
           try {
             setLoading(true);
             setError(null);
-            setImportProgress({ stage: "Starting import...", progress: 0 });
+            setImportProgress({ stage: 'Starting import...', progress: 0 });
 
             // @ts-ignore - APIs will be available at runtime
             // Note: progress_callback cannot be passed through IPC, so we remove it
@@ -460,7 +420,7 @@ export const useRepositoryStore = create<RepositoryState>()(
 
             if (result?.success) {
               setImportProgress({
-                stage: "Import completed successfully",
+                stage: 'Import completed successfully',
                 progress: 100,
                 message: `Imported ${result.books_imported} books`,
               });
@@ -477,7 +437,7 @@ export const useRepositoryStore = create<RepositoryState>()(
             } else {
               setError({
                 hasError: true,
-                message: result?.errors?.join(", ") || "Import failed",
+                message: result?.errors?.join(', ') || 'Import failed',
                 timestamp: new Date().toISOString(),
               });
               setImportProgress(null);
@@ -486,7 +446,7 @@ export const useRepositoryStore = create<RepositoryState>()(
           } catch (error) {
             setError({
               hasError: true,
-              message: error instanceof Error ? error.message : "Import failed",
+              message: error instanceof Error ? error.message : 'Import failed',
               timestamp: new Date().toISOString(),
             });
             setImportProgress(null);
@@ -510,12 +470,12 @@ export const useRepositoryStore = create<RepositoryState>()(
               errors: (result.errors || []).map((e: any) => ({
                 code: e.code,
                 message: e.message,
-                severity: e.severity ?? "error",
+                severity: e.severity ?? 'error',
               })),
               warnings: (result.warnings || []).map((w: any) => ({
                 code: w.code,
                 message: w.message,
-                severity: "warning",
+                severity: 'warning',
               })),
             };
             setValidationResult(mappedResult);
@@ -526,12 +486,9 @@ export const useRepositoryStore = create<RepositoryState>()(
               valid: false,
               errors: [
                 {
-                  code: "VALIDATION_ERROR",
-                  message:
-                    error instanceof Error
-                      ? error.message
-                      : "Validation failed",
-                  severity: "error",
+                  code: 'VALIDATION_ERROR',
+                  message: error instanceof Error ? error.message : 'Validation failed',
+                  severity: 'error',
                 },
               ],
               warnings: [],
@@ -545,7 +502,7 @@ export const useRepositoryStore = create<RepositoryState>()(
         },
       }),
       {
-        name: "zaphnath-repository-store",
+        name: 'zaphnath-repository-store',
         version: 2,
         migrate: (persistedState: any, version: number) => {
           if (version < 2) {
@@ -565,7 +522,7 @@ export const useRepositoryStore = create<RepositoryState>()(
       }
     ),
     {
-      name: "repository-store",
+      name: 'repository-store',
     }
   )
 );

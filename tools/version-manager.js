@@ -7,21 +7,21 @@
  * It supports semantic bumps, custom versions, and release tag creation.
  */
 
-import { readFileSync } from "fs";
-import { execSync } from "child_process";
-import { join, dirname } from "path";
-import { fileURLToPath } from "url";
+import { readFileSync } from 'fs';
+import { execSync } from 'child_process';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const rootDir = join(__dirname, "..");
-const packageJsonPath = join(rootDir, "package.json");
+const rootDir = join(__dirname, '..');
+const packageJsonPath = join(rootDir, 'package.json');
 
 /**
  * Read and parse package.json
  */
 function getPackageJson() {
-  const content = readFileSync(packageJsonPath, "utf-8");
+  const content = readFileSync(packageJsonPath, 'utf-8');
   return JSON.parse(content);
 }
 
@@ -31,7 +31,7 @@ function getPackageJson() {
 function runCommand(command) {
   return execSync(command, {
     cwd: rootDir,
-    encoding: "utf-8",
+    encoding: 'utf-8',
   }).trim();
 }
 
@@ -64,7 +64,7 @@ function validateBumpType(current, target, bumpType) {
   const targetVer = parseVersion(target);
 
   switch (bumpType) {
-    case "major":
+    case 'major':
       return (
         targetVer.major === currentVer.major + 1 &&
         targetVer.minor === 0 &&
@@ -72,7 +72,7 @@ function validateBumpType(current, target, bumpType) {
         !targetVer.prerelease
       );
 
-    case "minor":
+    case 'minor':
       return (
         targetVer.major === currentVer.major &&
         targetVer.minor === currentVer.minor + 1 &&
@@ -80,7 +80,7 @@ function validateBumpType(current, target, bumpType) {
         !targetVer.prerelease
       );
 
-    case "patch":
+    case 'patch':
       return (
         targetVer.major === currentVer.major &&
         targetVer.minor === currentVer.minor &&
@@ -88,7 +88,7 @@ function validateBumpType(current, target, bumpType) {
         !targetVer.prerelease
       );
 
-    case "prerelease":
+    case 'prerelease':
       return targetVer.prerelease !== null;
 
     default:
@@ -100,12 +100,12 @@ function validateBumpType(current, target, bumpType) {
  * Generate changelog entry
  */
 function generateChangelogEntry(version, bumpType, previousVersion = null) {
-  const date = new Date().toISOString().split("T")[0];
+  const date = new Date().toISOString().split('T')[0];
   const versionType = bumpType.charAt(0).toUpperCase() + bumpType.slice(1);
   const commits = getChangelogCommits(previousVersion);
   const commitLines = commits.length
-    ? commits.map(({ subject, hash }) => `- ${subject} (${hash})`).join("\n")
-    : "- No user-facing changes listed since the previous version.";
+    ? commits.map(({ subject, hash }) => `- ${subject} (${hash})`).join('\n')
+    : '- No user-facing changes listed since the previous version.';
 
   return `## [${version}] - ${date}
 
@@ -122,8 +122,7 @@ ${commitLines}
  * Build changelog commit list from git history
  */
 function getChangelogCommits(previousVersion = null) {
-  let command =
-    "git log --pretty=format:%s:::%h --no-merges -n 20";
+  let command = 'git log --pretty=format:%s:::%h --no-merges -n 20';
 
   if (previousVersion) {
     const previousTag = `v${previousVersion}`;
@@ -132,7 +131,7 @@ function getChangelogCommits(previousVersion = null) {
     }
   }
 
-  let output = "";
+  let output = '';
   try {
     output = runCommand(command);
   } catch {
@@ -144,11 +143,11 @@ function getChangelogCommits(previousVersion = null) {
   }
 
   return output
-    .split("\n")
+    .split('\n')
     .map((line) => line.trim())
     .filter(Boolean)
     .map((line) => {
-      const [subject = "", hash = ""] = line.split(":::");
+      const [subject = '', hash = ''] = line.split(':::');
       return { subject, hash };
     })
     .filter(({ subject }) => !isVersionBumpCommit(subject));
@@ -158,10 +157,7 @@ function getChangelogCommits(previousVersion = null) {
  * Filter out auto-generated version bump commits
  */
 function isVersionBumpCommit(subject) {
-  return (
-    /^chore\(release\): bump version to /i.test(subject) ||
-    /^v\d+\.\d+\.\d+/.test(subject)
-  );
+  return /^chore\(release\): bump version to /i.test(subject) || /^v\d+\.\d+\.\d+/.test(subject);
 }
 
 /**
@@ -169,7 +165,7 @@ function isVersionBumpCommit(subject) {
  */
 function tagExists(tagName) {
   const result = runCommand(`git tag --list ${tagName}`);
-  return result.split("\n").includes(tagName);
+  return result.split('\n').includes(tagName);
 }
 
 /**
@@ -202,8 +198,8 @@ function showVersionInfo() {
   const pkg = getPackageJson();
   const version = parseVersion(pkg.version);
 
-  console.log("📦 Zaphnath Bible Reader Version Information");
-  console.log("==========================================");
+  console.log('📦 Zaphnath Bible Reader Version Information');
+  console.log('==========================================');
   console.log(`Current Version: ${pkg.version}`);
   console.log(`Tag: v${pkg.version}`);
   console.log(`Major: ${version.major}`);
@@ -212,8 +208,8 @@ function showVersionInfo() {
   if (version.prerelease) {
     console.log(`Prerelease: ${version.prerelease}`);
   }
-  console.log(`Is Prerelease: ${version.prerelease ? "Yes" : "No"}`);
-  console.log("");
+  console.log(`Is Prerelease: ${version.prerelease ? 'Yes' : 'No'}`);
+  console.log('');
 }
 
 /**
@@ -238,17 +234,15 @@ function bumpVersion(bumpType, customVersion = null, options = {}) {
     if (customVersion === currentVersion) {
       console.log(`ℹ️ Version unchanged: ${currentVersion}`);
       if (gitTag) {
-        console.log("ℹ️ No version bump performed; run `pnpm run version:tag` to tag current version.");
+        console.log(
+          'ℹ️ No version bump performed; run `pnpm run version:tag` to tag current version.'
+        );
       }
 
       if (changelog) {
-        const changelogEntry = generateChangelogEntry(
-          currentVersion,
-          "custom",
-          null
-        );
-        console.log("\n📝 Suggested changelog entry:");
-        console.log("================================");
+        const changelogEntry = generateChangelogEntry(currentVersion, 'custom', null);
+        console.log('\n📝 Suggested changelog entry:');
+        console.log('================================');
         console.log(changelogEntry);
       }
 
@@ -257,12 +251,12 @@ function bumpVersion(bumpType, customVersion = null, options = {}) {
   }
 
   const packageManagerVersionTarget = customVersion || bumpType;
-  const noTagArg = gitTag ? "" : " --no-git-tag-version";
+  const noTagArg = gitTag ? '' : ' --no-git-tag-version';
 
   let newVersion;
   try {
     const result = runCommand(`pnpm version ${packageManagerVersionTarget}${noTagArg}`);
-    newVersion = result.replace(/^v/, "");
+    newVersion = result.replace(/^v/, '');
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error(`❌ Failed to bump version: ${message}`);
@@ -270,9 +264,7 @@ function bumpVersion(bumpType, customVersion = null, options = {}) {
   }
 
   if (!customVersion && !validateBumpType(currentVersion, newVersion, bumpType)) {
-    console.error(
-      `❌ Invalid version bump: ${currentVersion} → ${newVersion} (${bumpType})`
-    );
+    console.error(`❌ Invalid version bump: ${currentVersion} → ${newVersion} (${bumpType})`);
     process.exit(1);
   }
 
@@ -280,17 +272,17 @@ function bumpVersion(bumpType, customVersion = null, options = {}) {
   if (gitTag) {
     console.log(`🏷️ Created release commit and tag: v${newVersion}`);
   } else {
-    console.log("ℹ️ No git tag created (--no-tag)");
+    console.log('ℹ️ No git tag created (--no-tag)');
   }
 
   if (changelog) {
     const changelogEntry = generateChangelogEntry(
       newVersion,
-      customVersion ? "custom" : bumpType,
+      customVersion ? 'custom' : bumpType,
       currentVersion
     );
-    console.log("\n📝 Suggested changelog entry:");
-    console.log("================================");
+    console.log('\n📝 Suggested changelog entry:');
+    console.log('================================');
     console.log(changelogEntry);
   }
 
@@ -303,84 +295,84 @@ function bumpVersion(bumpType, customVersion = null, options = {}) {
 function main() {
   const args = process.argv.slice(2);
   const command = args[0];
-  const noTag = args.includes("--no-tag");
-  const withChangelog = args.includes("--changelog");
-  const push = args.includes("--push");
+  const noTag = args.includes('--no-tag');
+  const withChangelog = args.includes('--changelog');
+  const push = args.includes('--push');
 
   switch (command) {
-    case "show":
-    case "info":
+    case 'show':
+    case 'info':
       showVersionInfo();
       break;
 
-    case "patch":
-      bumpVersion("patch", null, { changelog: withChangelog, gitTag: !noTag });
+    case 'patch':
+      bumpVersion('patch', null, { changelog: withChangelog, gitTag: !noTag });
       break;
 
-    case "minor":
-      bumpVersion("minor", null, { changelog: withChangelog, gitTag: !noTag });
+    case 'minor':
+      bumpVersion('minor', null, { changelog: withChangelog, gitTag: !noTag });
       break;
 
-    case "major":
-      bumpVersion("major", null, { changelog: withChangelog, gitTag: !noTag });
+    case 'major':
+      bumpVersion('major', null, { changelog: withChangelog, gitTag: !noTag });
       break;
 
-    case "prerelease":
-      bumpVersion("prerelease", null, {
+    case 'prerelease':
+      bumpVersion('prerelease', null, {
         changelog: withChangelog,
         gitTag: !noTag,
       });
       break;
 
-    case "set": {
+    case 'set': {
       const customVersion = args[1];
       if (!customVersion) {
         console.error(
-          "❌ Please provide a version number: node tools/version-manager.js set 1.0.0"
+          '❌ Please provide a version number: node tools/version-manager.js set 1.0.0'
         );
         process.exit(1);
       }
-      bumpVersion("custom", customVersion, {
+      bumpVersion('custom', customVersion, {
         changelog: withChangelog,
         gitTag: !noTag,
       });
       break;
     }
 
-    case "tag":
+    case 'tag':
       createCurrentVersionTag({ push });
       break;
 
-    case "help":
-    case "--help":
-    case "-h":
+    case 'help':
+    case '--help':
+    case '-h':
     default:
-      console.log("🔧 Zaphnath Version Manager");
-      console.log("===========================");
-      console.log("");
-      console.log("Usage: node tools/version-manager.js <command> [options]");
-      console.log("");
-      console.log("Commands:");
-      console.log("  show, info          Show current version information");
-      console.log("  patch               Bump patch version (0.1.0 → 0.1.1)");
-      console.log("  minor               Bump minor version (0.1.0 → 0.2.0)");
-      console.log("  major               Bump major version (0.1.0 → 1.0.0)");
-      console.log("  prerelease          Bump prerelease version (0.1.0 → 0.1.1-0)");
-      console.log("  set <version>       Set specific version (e.g., 1.0.0-beta.1)");
-      console.log("  tag                 Create annotated tag for current version");
-      console.log("  help                Show this help message");
-      console.log("");
-      console.log("Options:");
-      console.log("  --changelog         Generate changelog entry suggestion");
-      console.log("  --no-tag            Bump version without creating git tag/commit");
-      console.log("  --push              Push tag when used with `tag` command");
-      console.log("");
-      console.log("Examples:");
-      console.log("  node tools/version-manager.js show");
-      console.log("  node tools/version-manager.js patch --changelog");
-      console.log("  node tools/version-manager.js set 1.0.0-beta.1");
-      console.log("  node tools/version-manager.js tag --push");
-      console.log("");
+      console.log('🔧 Zaphnath Version Manager');
+      console.log('===========================');
+      console.log('');
+      console.log('Usage: node tools/version-manager.js <command> [options]');
+      console.log('');
+      console.log('Commands:');
+      console.log('  show, info          Show current version information');
+      console.log('  patch               Bump patch version (0.1.0 → 0.1.1)');
+      console.log('  minor               Bump minor version (0.1.0 → 0.2.0)');
+      console.log('  major               Bump major version (0.1.0 → 1.0.0)');
+      console.log('  prerelease          Bump prerelease version (0.1.0 → 0.1.1-0)');
+      console.log('  set <version>       Set specific version (e.g., 1.0.0-beta.1)');
+      console.log('  tag                 Create annotated tag for current version');
+      console.log('  help                Show this help message');
+      console.log('');
+      console.log('Options:');
+      console.log('  --changelog         Generate changelog entry suggestion');
+      console.log('  --no-tag            Bump version without creating git tag/commit');
+      console.log('  --push              Push tag when used with `tag` command');
+      console.log('');
+      console.log('Examples:');
+      console.log('  node tools/version-manager.js show');
+      console.log('  node tools/version-manager.js patch --changelog');
+      console.log('  node tools/version-manager.js set 1.0.0-beta.1');
+      console.log('  node tools/version-manager.js tag --push');
+      console.log('');
       break;
   }
 }

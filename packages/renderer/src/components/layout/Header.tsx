@@ -1,16 +1,27 @@
-import type { ComponentType } from 'react'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { ThemeToggleDropdown } from '@/components/theme/ThemeToggleDropdown'
-import { useNavigation, getViewTitle, type AppView } from './Navigation'
-import { BookOpen, Library, Search, Bookmark, StickyNote, Highlighter, Calendar, Download, Settings, Bug } from 'lucide-react'
-import { getAppVersionWithPrefix } from '@/lib/version'
-import { getDesktopPlatform } from '@/lib/platform'
+import type { ComponentType } from 'react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { ThemeToggleDropdown } from '@/components/theme/ThemeToggleDropdown';
+import { useNavigation, getViewTitle, type AppView } from './Navigation';
+import {
+  BookOpen,
+  Library,
+  Search,
+  Bookmark,
+  StickyNote,
+  Highlighter,
+  Calendar,
+  Download,
+  Settings,
+  Bug,
+} from 'lucide-react';
+import { getAppVersionWithPrefix } from '@/lib/version';
+import { getDesktopPlatform } from '@/lib/platform';
 
 interface WorkspaceTab {
-  view: AppView
-  label: string
-  icon: ComponentType<{ className?: string }>
+  view: AppView;
+  label: string;
+  icon: ComponentType<{ className?: string }>;
 }
 
 const workspaceTabs: WorkspaceTab[] = [
@@ -24,23 +35,19 @@ const workspaceTabs: WorkspaceTab[] = [
   { view: 'downloads', label: 'Downloads', icon: Download },
   { view: 'settings', label: 'Settings', icon: Settings },
   { view: 'debug', label: 'Debug', icon: Bug },
-]
+];
 
 export function Header() {
-  const { currentView, setCurrentView } = useNavigation()
-  const platform = getDesktopPlatform()
-  const isMac = platform === 'macos'
-  const isWindows = platform === 'windows'
+  const { currentView, setCurrentView } = useNavigation();
+  const platform = getDesktopPlatform();
+  const isMac = platform === 'macos';
+  const isWindows = platform === 'windows';
 
   return (
     <header className="drag-region h-[var(--titlebar-height)] border-b border-border/70 bg-background/90 backdrop-blur-md">
       <div className="flex h-[42px] items-center gap-2 px-[var(--workspace-padding)]">
         {isMac && (
-          <div
-            aria-hidden
-            className="shrink-0"
-            style={{ width: 'var(--window-controls-left)' }}
-          />
+          <div aria-hidden className="shrink-0" style={{ width: 'var(--window-controls-left)' }} />
         )}
 
         <div className="no-drag flex min-w-0 flex-1 items-center gap-2">
@@ -62,18 +69,14 @@ export function Header() {
         </div>
 
         {isWindows && (
-          <div
-            aria-hidden
-            className="shrink-0"
-            style={{ width: 'var(--window-controls-right)' }}
-          />
+          <div aria-hidden className="shrink-0" style={{ width: 'var(--window-controls-right)' }} />
         )}
       </div>
 
       <div className="no-drag border-t border-border/60 bg-muted/20">
         <div className="scrollbar-subtle no-scrollbar flex h-[calc(var(--titlebar-height)-42px)] items-center gap-1 overflow-x-auto overflow-y-hidden px-[var(--workspace-padding)] py-1">
           {workspaceTabs.map((tab) => {
-            const isActive = currentView === tab.view
+            const isActive = currentView === tab.view;
 
             return (
               <Button
@@ -86,10 +89,10 @@ export function Header() {
                 <tab.icon className="h-3.5 w-3.5" />
                 <span>{tab.label}</span>
               </Button>
-            )
+            );
           })}
         </div>
       </div>
     </header>
-  )
+  );
 }

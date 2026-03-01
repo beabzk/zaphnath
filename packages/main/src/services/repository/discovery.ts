@@ -1,8 +1,8 @@
-import { net } from "electron";
-import { createHash } from "crypto";
-import { readFile, access, readdir, stat } from "fs/promises";
-import { join } from "path";
-import { fileURLToPath, pathToFileURL } from "url";
+import { net } from 'electron';
+import { createHash } from 'crypto';
+import { readFile, access, readdir, stat } from 'fs/promises';
+import { join } from 'path';
+import { fileURLToPath, pathToFileURL } from 'url';
 import type {
   RepositoryIndex,
   RepositoryIndexEntry,
@@ -13,11 +13,11 @@ import type {
   TranslationReference,
   ValidationResult,
   SecurityPolicy,
-} from "./types.js";
-import { isParentManifest, isTranslationManifest } from "./types.js";
-import { NetworkError } from "./types.js";
-import { ZBRSValidator } from "./validator.js";
-import { normalizeRepositoryUrl } from "./pathUtils.js";
+} from './types.js';
+import { isParentManifest, isTranslationManifest } from './types.js';
+import { NetworkError } from './types.js';
+import { ZBRSValidator } from './validator.js';
+import { normalizeRepositoryUrl } from './pathUtils.js';
 
 export class RepositoryDiscoveryService {
   private validator: ZBRSValidator;
@@ -33,17 +33,17 @@ export class RepositoryDiscoveryService {
   private initializeDefaultSources(): void {
     // Official Zaphnath repository registry
     this.repositorySources.push({
-      type: "official",
-      url: "https://raw.githubusercontent.com/beabzk/zbrs-registry/main/manifest.json",
-      name: "Official Zaphnath Repositories",
+      type: 'official',
+      url: 'https://raw.githubusercontent.com/beabzk/zbrs-registry/main/manifest.json',
+      name: 'Official Zaphnath Repositories',
       enabled: true,
     });
 
     // Example third-party sources (would be configurable)
     this.repositorySources.push({
-      type: "third-party",
-      url: "https://bible-repositories.example.com/index.json",
-      name: "Community Bible Repositories",
+      type: 'third-party',
+      url: 'https://bible-repositories.example.com/index.json',
+      name: 'Community Bible Repositories',
       enabled: false,
     });
   }
@@ -74,9 +74,7 @@ export class RepositoryDiscoveryService {
     return uniqueRepositories;
   }
 
-  public async fetchRepositoryIndex(
-    indexUrl: string
-  ): Promise<RepositoryIndexEntry[]> {
+  public async fetchRepositoryIndex(indexUrl: string): Promise<RepositoryIndexEntry[]> {
     const normalizedIndexUrl = normalizeRepositoryUrl(indexUrl);
 
     // Check cache first
@@ -89,9 +87,7 @@ export class RepositoryDiscoveryService {
     const urlValidation = this.validator.validateRepositoryUrl(normalizedIndexUrl);
     if (!urlValidation.valid) {
       throw new NetworkError(
-        `Invalid repository index URL: ${urlValidation.errors
-          .map((e) => e.message)
-          .join(", ")}`,
+        `Invalid repository index URL: ${urlValidation.errors.map((e) => e.message).join(', ')}`,
         normalizedIndexUrl
       );
     }
@@ -110,7 +106,7 @@ export class RepositoryDiscoveryService {
           verified: repo.verified || false,
           last_updated: repo.last_updated,
           description: repo.description,
-          tags: repo.tags || []
+          tags: repo.tags || [],
         }));
 
         // Cache the result
@@ -125,7 +121,7 @@ export class RepositoryDiscoveryService {
       // Handle legacy format
       const index = response as RepositoryIndex;
       if (!index.version || !Array.isArray(index.repositories)) {
-        throw new Error("Invalid repository index format");
+        throw new Error('Invalid repository index format');
       }
 
       // Cache the result
@@ -136,25 +132,20 @@ export class RepositoryDiscoveryService {
 
       return index.repositories;
     } catch (error) {
-      throw new NetworkError(
-        `Failed to fetch repository index: ${error}`,
-        normalizedIndexUrl
-      );
+      throw new NetworkError(`Failed to fetch repository index: ${error}`, normalizedIndexUrl);
     }
   }
 
-  public async fetchRepositoryManifest(
-    repositoryUrl: string
-  ): Promise<ZBRSManifest> {
+  public async fetchRepositoryManifest(repositoryUrl: string): Promise<ZBRSManifest> {
     const normalizedRepositoryUrl = normalizeRepositoryUrl(repositoryUrl);
 
     // Handle URLs that already point to manifest.json
     let manifestUrl: string;
-    if (normalizedRepositoryUrl.endsWith("manifest.json")) {
+    if (normalizedRepositoryUrl.endsWith('manifest.json')) {
       manifestUrl = normalizedRepositoryUrl;
     } else {
       // Ensure URL ends with manifest.json
-      manifestUrl = normalizedRepositoryUrl.endsWith("/")
+      manifestUrl = normalizedRepositoryUrl.endsWith('/')
         ? `${normalizedRepositoryUrl}manifest.json`
         : `${normalizedRepositoryUrl}/manifest.json`;
     }
@@ -165,9 +156,7 @@ export class RepositoryDiscoveryService {
     const urlValidation = this.validator.validateRepositoryUrl(manifestUrl);
     if (!urlValidation.valid) {
       throw new NetworkError(
-        `Invalid repository URL: ${urlValidation.errors
-          .map((e) => e.message)
-          .join(", ")}`,
+        `Invalid repository URL: ${urlValidation.errors.map((e) => e.message).join(', ')}`,
         manifestUrl
       );
     }
@@ -178,25 +167,16 @@ export class RepositoryDiscoveryService {
       // Validate manifest
       const validation = this.validator.validateManifest(manifest);
       if (!validation.valid) {
-        throw new Error(
-          `Invalid manifest: ${validation.errors
-            .map((e) => e.message)
-            .join(", ")}`
-        );
+        throw new Error(`Invalid manifest: ${validation.errors.map((e) => e.message).join(', ')}`);
       }
 
       return manifest;
     } catch (error) {
-      throw new NetworkError(
-        `Failed to fetch repository manifest: ${error}`,
-        manifestUrl
-      );
+      throw new NetworkError(`Failed to fetch repository manifest: ${error}`, manifestUrl);
     }
   }
 
-  public async validateRepository(
-    repositoryUrl: string
-  ): Promise<ValidationResult> {
+  public async validateRepository(repositoryUrl: string): Promise<ValidationResult> {
     try {
       const manifest = await this.fetchRepositoryManifest(repositoryUrl);
       return this.validator.validateManifest(manifest);
@@ -205,10 +185,10 @@ export class RepositoryDiscoveryService {
         valid: false,
         errors: [
           {
-            code: "FETCH_ERROR",
+            code: 'FETCH_ERROR',
             message: `Failed to validate repository: ${error}`,
-            severity: "error",
-            name: "ValidationError",
+            severity: 'error',
+            name: 'ValidationError',
           },
         ],
         warnings: [],
@@ -224,42 +204,36 @@ export class RepositoryDiscoveryService {
   ): Promise<ZBRSTranslationManifest> {
     try {
       // Construct the translation manifest URL
-      const baseUrl = repositoryUrl.endsWith("/")
-        ? repositoryUrl
-        : `${repositoryUrl}/`;
+      const baseUrl = repositoryUrl.endsWith('/') ? repositoryUrl : `${repositoryUrl}/`;
       const manifestUrl = `${baseUrl}${translationDirectory}/manifest.json`;
 
       // For local file paths, use direct file reading
-      if (repositoryUrl.startsWith("file://")) {
-        const { fileURLToPath } = await import("url");
-        const { readFile } = await import("fs/promises");
-        const { join } = await import("path");
+      if (repositoryUrl.startsWith('file://')) {
+        const { fileURLToPath } = await import('url');
+        const { readFile } = await import('fs/promises');
+        const { join } = await import('path');
 
         const localPath = fileURLToPath(repositoryUrl);
-        const manifestPath = join(
-          localPath,
-          translationDirectory,
-          "manifest.json"
-        );
+        const manifestPath = join(localPath, translationDirectory, 'manifest.json');
 
-        const manifestContent = await readFile(manifestPath, "utf-8");
+        const manifestContent = await readFile(manifestPath, 'utf-8');
         // Remove BOM if present
         const cleanContent = manifestContent.replace(/^\uFEFF/, '');
         const manifest = JSON.parse(cleanContent) as ZBRSManifest;
 
         if (!isTranslationManifest(manifest)) {
-          throw new Error("Invalid translation manifest structure");
+          throw new Error('Invalid translation manifest structure');
         }
 
         return manifest;
       } else {
         // For HTTP URLs, use the existing fetch logic
         const manifest = await this.fetchRepositoryManifest(
-          manifestUrl.replace("/manifest.json", "")
+          manifestUrl.replace('/manifest.json', '')
         );
 
         if (!isTranslationManifest(manifest)) {
-          throw new Error("Invalid translation manifest structure");
+          throw new Error('Invalid translation manifest structure');
         }
 
         return manifest;
@@ -272,9 +246,7 @@ export class RepositoryDiscoveryService {
     }
   }
 
-  public async discoverTranslations(
-    repositoryUrl: string
-  ): Promise<TranslationReference[]> {
+  public async discoverTranslations(repositoryUrl: string): Promise<TranslationReference[]> {
     try {
       const manifest = await this.fetchRepositoryManifest(repositoryUrl);
 
@@ -285,25 +257,20 @@ export class RepositoryDiscoveryService {
             {
               id: manifest.repository.id,
               name: manifest.repository.name,
-              directory: ".", // Current directory
+              directory: '.', // Current directory
               language: manifest.repository.language,
-              status: "active" as const,
+              status: 'active' as const,
               checksum: manifest.technical.checksum,
               size_bytes: manifest.technical.size_bytes,
             },
           ];
         }
-        throw new Error(
-          "Repository is neither a parent nor a translation manifest"
-        );
+        throw new Error('Repository is neither a parent nor a translation manifest');
       }
 
       return manifest.translations;
     } catch (error) {
-      throw new NetworkError(
-        `Failed to discover translations: ${error}`,
-        repositoryUrl
-      );
+      throw new NetworkError(`Failed to discover translations: ${error}`, repositoryUrl);
     }
   }
 
@@ -312,20 +279,17 @@ export class RepositoryDiscoveryService {
     translationDirectory: string
   ): Promise<ValidationResult> {
     try {
-      const manifest = await this.fetchTranslationManifest(
-        repositoryUrl,
-        translationDirectory
-      );
+      const manifest = await this.fetchTranslationManifest(repositoryUrl, translationDirectory);
       return this.validator.validateManifest(manifest);
     } catch (error) {
       return {
         valid: false,
         errors: [
           {
-            code: "TRANSLATION_FETCH_ERROR",
+            code: 'TRANSLATION_FETCH_ERROR',
             message: `Failed to validate translation: ${error}`,
-            severity: "error",
-            name: "ValidationError",
+            severity: 'error',
+            name: 'ValidationError',
           },
         ],
         warnings: [],
@@ -354,7 +318,7 @@ export class RepositoryDiscoveryService {
 
     try {
       const directoryUrl = normalizeRepositoryUrl(directoryPath);
-      if (!directoryUrl.startsWith("file://")) {
+      if (!directoryUrl.startsWith('file://')) {
         errors.push(`Directory scan only supports local file paths: ${directoryPath}`);
         return { repositories, errors };
       }
@@ -368,7 +332,7 @@ export class RepositoryDiscoveryService {
         return { repositories, errors };
       }
 
-      const rootManifestPath = join(localPath, "manifest.json");
+      const rootManifestPath = join(localPath, 'manifest.json');
       let hasRootManifest = false;
 
       try {
@@ -381,8 +345,8 @@ export class RepositoryDiscoveryService {
       // If the selected directory itself is a repository, prioritize it.
       if (hasRootManifest) {
         try {
-          const manifestContent = await readFile(rootManifestPath, "utf-8");
-          const cleanContent = manifestContent.replace(/^\uFEFF/, "");
+          const manifestContent = await readFile(rootManifestPath, 'utf-8');
+          const cleanContent = manifestContent.replace(/^\uFEFF/, '');
           const manifest = JSON.parse(cleanContent) as ZBRSManifest;
           const validation = this.validator.validateManifest(manifest);
 
@@ -408,16 +372,16 @@ export class RepositoryDiscoveryService {
         }
 
         const subDirPath = join(localPath, entry.name);
-        const manifestPath = join(subDirPath, "manifest.json");
+        const manifestPath = join(subDirPath, 'manifest.json');
 
         try {
           // Check if manifest.json exists
           await access(manifestPath);
 
           // Try to read and validate the manifest
-          const manifestContent = await readFile(manifestPath, "utf-8");
+          const manifestContent = await readFile(manifestPath, 'utf-8');
           // Remove BOM if present
-          const cleanContent = manifestContent.replace(/^\uFEFF/, "");
+          const cleanContent = manifestContent.replace(/^\uFEFF/, '');
           const manifest = JSON.parse(cleanContent) as ZBRSManifest;
 
           // Validate the manifest
@@ -438,7 +402,7 @@ export class RepositoryDiscoveryService {
       }
 
       if (repositories.length === 0) {
-        errors.push("No repositories found in selected directory");
+        errors.push('No repositories found in selected directory');
       }
     } catch (error) {
       errors.push(`Failed to scan directory: ${error}`);
@@ -474,16 +438,16 @@ export class RepositoryDiscoveryService {
     const errors: string[] = [];
     let parentRepository:
       | {
-        path: string;
-        manifest: ZBRSParentManifest;
-        validation: ValidationResult;
-      }
+          path: string;
+          manifest: ZBRSParentManifest;
+          validation: ValidationResult;
+        }
       | undefined;
 
     try {
-      const directoryUrl = directoryPath.startsWith("file://")
+      const directoryUrl = directoryPath.startsWith('file://')
         ? directoryPath
-        : `file://${directoryPath.replace(/\\/g, "/")}`;
+        : `file://${directoryPath.replace(/\\/g, '/')}`;
 
       const localPath = fileURLToPath(directoryUrl);
 
@@ -495,10 +459,10 @@ export class RepositoryDiscoveryService {
       }
 
       // First, check if this directory has a parent manifest
-      const parentManifestPath = join(localPath, "manifest.json");
+      const parentManifestPath = join(localPath, 'manifest.json');
       try {
         await access(parentManifestPath);
-        const manifestContent = await readFile(parentManifestPath, "utf-8");
+        const manifestContent = await readFile(parentManifestPath, 'utf-8');
         // Remove BOM if present
         const cleanContent = manifestContent.replace(/^\uFEFF/, '');
         const manifest = JSON.parse(cleanContent) as ZBRSManifest;
@@ -514,30 +478,18 @@ export class RepositoryDiscoveryService {
           // Now scan for translations based on the parent manifest
           for (const translationRef of manifest.translations) {
             const translationPath = join(localPath, translationRef.directory);
-            const translationManifestPath = join(
-              translationPath,
-              "manifest.json"
-            );
+            const translationManifestPath = join(translationPath, 'manifest.json');
 
             try {
               await access(translationManifestPath);
-              const translationContent = await readFile(
-                translationManifestPath,
-                "utf-8"
-              );
+              const translationContent = await readFile(translationManifestPath, 'utf-8');
               // Remove BOM if present
               const cleanTranslationContent = translationContent.replace(/^\uFEFF/, '');
-              const translationManifest = JSON.parse(
-                cleanTranslationContent
-              ) as ZBRSManifest;
+              const translationManifest = JSON.parse(cleanTranslationContent) as ZBRSManifest;
 
               if (isTranslationManifest(translationManifest)) {
-                const translationValidation =
-                  this.validator.validateManifest(translationManifest);
-                const translationUrl = `file://${translationPath.replace(
-                  /\\/g,
-                  "/"
-                )}`;
+                const translationValidation = this.validator.validateManifest(translationManifest);
+                const translationUrl = `file://${translationPath.replace(/\\/g, '/')}`;
 
                 translations.push({
                   path: translationUrl,
@@ -546,14 +498,10 @@ export class RepositoryDiscoveryService {
                   validation: translationValidation,
                 });
               } else {
-                errors.push(
-                  `Invalid translation manifest in ${translationRef.directory}`
-                );
+                errors.push(`Invalid translation manifest in ${translationRef.directory}`);
               }
             } catch (error) {
-              errors.push(
-                `Failed to load translation ${translationRef.directory}: ${error}`
-              );
+              errors.push(`Failed to load translation ${translationRef.directory}: ${error}`);
             }
           }
         }
@@ -569,21 +517,18 @@ export class RepositoryDiscoveryService {
         for (const entry of entries) {
           if (entry.isDirectory()) {
             const subDirPath = join(localPath, entry.name);
-            const manifestPath = join(subDirPath, "manifest.json");
+            const manifestPath = join(subDirPath, 'manifest.json');
 
             try {
               await access(manifestPath);
-              const manifestContent = await readFile(manifestPath, "utf-8");
+              const manifestContent = await readFile(manifestPath, 'utf-8');
               // Remove BOM if present
               const cleanContent = manifestContent.replace(/^\uFEFF/, '');
               const manifest = JSON.parse(cleanContent) as ZBRSManifest;
 
               if (isTranslationManifest(manifest)) {
                 const validation = this.validator.validateManifest(manifest);
-                const translationUrl = `file://${subDirPath.replace(
-                  /\\/g,
-                  "/"
-                )}`;
+                const translationUrl = `file://${subDirPath.replace(/\\/g, '/')}`;
 
                 translations.push({
                   path: translationUrl,
@@ -607,9 +552,7 @@ export class RepositoryDiscoveryService {
 
   public addRepositorySource(source: RepositorySource): void {
     // Check if source already exists
-    const existingIndex = this.repositorySources.findIndex(
-      (s) => s.url === source.url
-    );
+    const existingIndex = this.repositorySources.findIndex((s) => s.url === source.url);
     if (existingIndex >= 0) {
       this.repositorySources[existingIndex] = source;
     } else {
@@ -645,42 +588,40 @@ export class RepositoryDiscoveryService {
 
   private async fetchJson(url: string): Promise<any> {
     // Handle local file:// URLs
-    if (url.startsWith("file://")) {
+    if (url.startsWith('file://')) {
       return this.fetchLocalJson(url);
     }
 
     // Handle HTTP/HTTPS URLs
     return new Promise((resolve, reject) => {
       const request = net.request({
-        method: "GET",
+        method: 'GET',
         url: url,
         headers: {
-          "User-Agent": "Zaphnath Bible Reader/1.0",
-          Accept: "application/json",
-          "Cache-Control": "no-cache",
+          'User-Agent': 'Zaphnath Bible Reader/1.0',
+          Accept: 'application/json',
+          'Cache-Control': 'no-cache',
         },
       });
 
-      let responseData = "";
+      let responseData = '';
 
-      request.on("response", (response) => {
+      request.on('response', (response) => {
         if (response.statusCode !== 200) {
-          reject(
-            new Error(`HTTP ${response.statusCode}: ${response.statusMessage}`)
-          );
+          reject(new Error(`HTTP ${response.statusCode}: ${response.statusMessage}`));
           return;
         }
 
-        const contentType = response.headers["content-type"];
-        if (contentType && !contentType.includes("application/json")) {
+        const contentType = response.headers['content-type'];
+        if (contentType && !contentType.includes('application/json')) {
           console.warn(`Unexpected content type: ${contentType}`);
         }
 
-        response.on("data", (chunk) => {
+        response.on('data', (chunk) => {
           responseData += chunk.toString();
         });
 
-        response.on("end", () => {
+        response.on('end', () => {
           clearTimeout(timeout);
           try {
             // Remove BOM (Byte Order Mark) if present - common with GitHub raw content
@@ -693,7 +634,7 @@ export class RepositoryDiscoveryService {
         });
       });
 
-      request.on("error", (error) => {
+      request.on('error', (error) => {
         clearTimeout(timeout);
         reject(new Error(`Network error: ${error.message}`));
       });
@@ -701,7 +642,7 @@ export class RepositoryDiscoveryService {
       // Set timeout
       const timeout = setTimeout(() => {
         request.abort();
-        reject(new Error("Request timeout"));
+        reject(new Error('Request timeout'));
       }, 30000);
 
       request.end();
@@ -717,7 +658,7 @@ export class RepositoryDiscoveryService {
       await access(filePath);
 
       // Read and parse JSON file
-      const fileContent = await readFile(filePath, "utf-8");
+      const fileContent = await readFile(filePath, 'utf-8');
       // Remove BOM (Byte Order Mark) if present
       const cleanContent = fileContent.replace(/^\uFEFF/, '');
       return JSON.parse(cleanContent);
@@ -726,49 +667,38 @@ export class RepositoryDiscoveryService {
     }
   }
 
-  public async downloadFile(
-    url: string,
-    maxSize: number = 100 * 1024 * 1024
-  ): Promise<Buffer> {
+  public async downloadFile(url: string, maxSize: number = 100 * 1024 * 1024): Promise<Buffer> {
     // Handle local file:// URLs
-    if (url.startsWith("file://")) {
+    if (url.startsWith('file://')) {
       return this.downloadLocalFile(url, maxSize);
     }
 
     // Handle HTTP/HTTPS URLs
     return new Promise((resolve, reject) => {
       const request = net.request({
-        method: "GET",
+        method: 'GET',
         url: url,
         headers: {
-          "User-Agent": "Zaphnath Bible Reader/1.0",
+          'User-Agent': 'Zaphnath Bible Reader/1.0',
         },
       });
 
       const chunks: Buffer[] = [];
       let totalSize = 0;
 
-      request.on("response", (response) => {
+      request.on('response', (response) => {
         if (response.statusCode !== 200) {
-          reject(
-            new Error(`HTTP ${response.statusCode}: ${response.statusMessage}`)
-          );
+          reject(new Error(`HTTP ${response.statusCode}: ${response.statusMessage}`));
           return;
         }
 
-        const contentLength = parseInt(
-          (response.headers["content-length"] as string) || "0"
-        );
+        const contentLength = parseInt((response.headers['content-length'] as string) || '0');
         if (contentLength > maxSize) {
-          reject(
-            new Error(
-              `File too large: ${contentLength} bytes (max: ${maxSize})`
-            )
-          );
+          reject(new Error(`File too large: ${contentLength} bytes (max: ${maxSize})`));
           return;
         }
 
-        response.on("data", (chunk) => {
+        response.on('data', (chunk) => {
           totalSize += chunk.length;
           if (totalSize > maxSize) {
             request.abort();
@@ -778,31 +708,28 @@ export class RepositoryDiscoveryService {
           chunks.push(chunk);
         });
 
-        response.on("end", () => {
+        response.on('end', () => {
           clearTimeout(timeout);
           const buffer = Buffer.concat(chunks);
           resolve(buffer);
         });
       });
 
-      request.on("error", (error) => {
+      request.on('error', (error) => {
         clearTimeout(timeout);
         reject(new Error(`Download error: ${error.message}`));
       });
 
       const timeout = setTimeout(() => {
         request.abort();
-        reject(new Error("Download timeout"));
+        reject(new Error('Download timeout'));
       }, 60000);
 
       request.end();
     });
   }
 
-  private async downloadLocalFile(
-    fileUrl: string,
-    maxSize: number
-  ): Promise<Buffer> {
+  private async downloadLocalFile(fileUrl: string, maxSize: number): Promise<Buffer> {
     try {
       // Convert file:// URL to local path
       const filePath = fileURLToPath(fileUrl);
@@ -815,9 +742,7 @@ export class RepositoryDiscoveryService {
 
       // Check file size
       if (fileBuffer.length > maxSize) {
-        throw new Error(
-          `File too large: ${fileBuffer.length} bytes (max: ${maxSize})`
-        );
+        throw new Error(`File too large: ${fileBuffer.length} bytes (max: ${maxSize})`);
       }
 
       return fileBuffer;
@@ -827,8 +752,8 @@ export class RepositoryDiscoveryService {
   }
 
   public calculateChecksum(data: Buffer): string {
-    const hash = createHash("sha256");
+    const hash = createHash('sha256');
     hash.update(data);
-    return `sha256:${hash.digest("hex")}`;
+    return `sha256:${hash.digest('hex')}`;
   }
 }

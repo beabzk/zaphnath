@@ -1,41 +1,41 @@
-import { useNavigation, getViewTitle } from './Navigation'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
-import { RepositoryManagement } from '@/components/repository/RepositoryManagement'
-import { SettingsInterface } from '@/components/settings/SettingsInterface'
-import { ErrorReportingPanel } from '@/components/debug/ErrorReportingPanel'
-import { SearchInterface } from '@/components/search/SearchInterface'
-import { BookmarksView as BookmarksViewComponent } from '@/components/bookmarks/BookmarksView'
-import { NotesView as NotesViewComponent } from '@/components/notes/NotesView'
-import { HighlightsView as HighlightsViewComponent } from '@/components/highlights/HighlightsView'
-import { ArrowLeft, PanelTopClose } from 'lucide-react'
-import { Reader } from '@/components/reader/Reader'
-import { getPlatformDisplayName } from '@/lib/platform'
+import { useNavigation, getViewTitle } from './Navigation';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import { RepositoryManagement } from '@/components/repository/RepositoryManagement';
+import { SettingsInterface } from '@/components/settings/SettingsInterface';
+import { ErrorReportingPanel } from '@/components/debug/ErrorReportingPanel';
+import { SearchInterface } from '@/components/search/SearchInterface';
+import { BookmarksView as BookmarksViewComponent } from '@/components/bookmarks/BookmarksView';
+import { NotesView as NotesViewComponent } from '@/components/notes/NotesView';
+import { HighlightsView as HighlightsViewComponent } from '@/components/highlights/HighlightsView';
+import { ArrowLeft, PanelTopClose } from 'lucide-react';
+import { Reader } from '@/components/reader/Reader';
+import { getPlatformDisplayName } from '@/lib/platform';
 
 // Reader view
 function ReaderView() {
-  return <Reader />
+  return <Reader />;
 }
 
 function RepositoriesView() {
-  return <RepositoryManagement />
+  return <RepositoryManagement />;
 }
 
 function SearchView() {
-  return <SearchInterface />
+  return <SearchInterface />;
 }
 
 function BookmarksView() {
-  return <BookmarksViewComponent />
+  return <BookmarksViewComponent />;
 }
 
 function NotesView() {
-  return <NotesViewComponent />
+  return <NotesViewComponent />;
 }
 
 function HighlightsView() {
-  return <HighlightsViewComponent />
+  return <HighlightsViewComponent />;
 }
 
 function ReadingPlansView() {
@@ -43,9 +43,7 @@ function ReadingPlansView() {
     <Card>
       <CardHeader>
         <CardTitle>Reading Plans</CardTitle>
-        <CardDescription>
-          Follow structured Bible reading plans
-        </CardDescription>
+        <CardDescription>Follow structured Bible reading plans</CardDescription>
       </CardHeader>
       <CardContent>
         <p className="text-muted-foreground">
@@ -53,7 +51,7 @@ function ReadingPlansView() {
         </p>
       </CardContent>
     </Card>
-  )
+  );
 }
 
 function DownloadsView() {
@@ -61,9 +59,7 @@ function DownloadsView() {
     <Card>
       <CardHeader>
         <CardTitle>Downloads</CardTitle>
-        <CardDescription>
-          Manage audio downloads and offline content
-        </CardDescription>
+        <CardDescription>Manage audio downloads and offline content</CardDescription>
       </CardHeader>
       <CardContent>
         <p className="text-muted-foreground">
@@ -71,48 +67,48 @@ function DownloadsView() {
         </p>
       </CardContent>
     </Card>
-  )
+  );
 }
 
 function SettingsView() {
-  return <SettingsInterface />
+  return <SettingsInterface />;
 }
 
 function DebugView() {
-  return <ErrorReportingPanel />
+  return <ErrorReportingPanel />;
 }
 
 export function ViewRouter() {
-  const { currentView, goBack, canGoBack } = useNavigation()
-  const isReaderView = currentView === 'reader'
-  const platformLabel = getPlatformDisplayName()
+  const { currentView, goBack, canGoBack } = useNavigation();
+  const isReaderView = currentView === 'reader';
+  const platformLabel = getPlatformDisplayName();
 
   const renderView = () => {
     switch (currentView) {
       case 'reader':
-        return <ReaderView />
+        return <ReaderView />;
       case 'repositories':
-        return <RepositoriesView />
+        return <RepositoriesView />;
       case 'search':
-        return <SearchView />
+        return <SearchView />;
       case 'bookmarks':
-        return <BookmarksView />
+        return <BookmarksView />;
       case 'notes':
-        return <NotesView />
+        return <NotesView />;
       case 'highlights':
-        return <HighlightsView />
+        return <HighlightsView />;
       case 'reading-plans':
-        return <ReadingPlansView />
+        return <ReadingPlansView />;
       case 'downloads':
-        return <DownloadsView />
+        return <DownloadsView />;
       case 'settings':
-        return <SettingsView />
+        return <SettingsView />;
       case 'debug':
-        return <DebugView />
+        return <DebugView />;
       default:
-        return <ReaderView />
+        return <ReaderView />;
     }
-  }
+  };
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -133,14 +129,9 @@ export function ViewRouter() {
         </div>
       )}
 
-      <div
-        className={cn(
-          "min-h-0 flex-1",
-          isReaderView ? "h-full" : "overflow-auto p-4"
-        )}
-      >
+      <div className={cn('min-h-0 flex-1', isReaderView ? 'h-full' : 'overflow-auto p-4')}>
         {renderView()}
       </div>
     </div>
-  )
+  );
 }

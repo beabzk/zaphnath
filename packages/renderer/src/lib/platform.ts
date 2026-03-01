@@ -1,61 +1,66 @@
-export type DesktopPlatform = 'windows' | 'macos' | 'linux' | 'unknown'
+export type DesktopPlatform = 'windows' | 'macos' | 'linux' | 'unknown';
 
 function normalizePlatform(value: string): DesktopPlatform {
-  const source = value.toLowerCase()
+  const source = value.toLowerCase();
 
   if (source.includes('mac') || source.includes('darwin')) {
-    return 'macos'
+    return 'macos';
   }
 
   if (source.includes('win')) {
-    return 'windows'
+    return 'windows';
   }
 
   if (source.includes('linux') || source.includes('x11')) {
-    return 'linux'
+    return 'linux';
   }
 
-  return 'unknown'
+  return 'unknown';
 }
 
 export function getDesktopPlatform(): DesktopPlatform {
   if (typeof navigator === 'undefined') {
-    return 'unknown'
+    return 'unknown';
   }
 
   const navWithUserAgentData = navigator as Navigator & {
-    userAgentData?: { platform?: string }
-  }
+    userAgentData?: { platform?: string };
+  };
 
-  const userAgentPlatform = navWithUserAgentData.userAgentData?.platform
+  const userAgentPlatform = navWithUserAgentData.userAgentData?.platform;
   if (userAgentPlatform) {
-    return normalizePlatform(userAgentPlatform)
+    return normalizePlatform(userAgentPlatform);
   }
 
   if (navigator.platform) {
-    return normalizePlatform(navigator.platform)
+    return normalizePlatform(navigator.platform);
   }
 
-  return normalizePlatform(navigator.userAgent || '')
+  return normalizePlatform(navigator.userAgent || '');
 }
 
 export function getPlatformDisplayName(platform: DesktopPlatform = getDesktopPlatform()): string {
   switch (platform) {
     case 'windows':
-      return 'Windows'
+      return 'Windows';
     case 'macos':
-      return 'macOS'
+      return 'macOS';
     case 'linux':
-      return 'Linux'
+      return 'Linux';
     default:
-      return 'Desktop'
+      return 'Desktop';
   }
 }
 
-export function getPlatformModifierKey(platform: DesktopPlatform = getDesktopPlatform()): 'Ctrl' | 'Cmd' {
-  return platform === 'macos' ? 'Cmd' : 'Ctrl'
+export function getPlatformModifierKey(
+  platform: DesktopPlatform = getDesktopPlatform()
+): 'Ctrl' | 'Cmd' {
+  return platform === 'macos' ? 'Cmd' : 'Ctrl';
 }
 
-export function getShortcutLabel(key: string, platform: DesktopPlatform = getDesktopPlatform()): string {
-  return `${getPlatformModifierKey(platform)}+${key.toUpperCase()}`
+export function getShortcutLabel(
+  key: string,
+  platform: DesktopPlatform = getDesktopPlatform()
+): string {
+  return `${getPlatformModifierKey(platform)}+${key.toUpperCase()}`;
 }

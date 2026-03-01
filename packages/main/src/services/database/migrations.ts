@@ -1,4 +1,4 @@
-import type Database from "better-sqlite3";
+import type Database from 'better-sqlite3';
 
 export interface Migration {
   version: number;
@@ -13,7 +13,7 @@ export interface Migration {
 export const migrations: Migration[] = [
   {
     version: 9,
-    name: "baseline_schema",
+    name: 'baseline_schema',
     up: `
       CREATE TABLE IF NOT EXISTS repositories (
         id TEXT PRIMARY KEY,
@@ -138,9 +138,9 @@ export class MigrationRunner {
   }
 
   public getCurrentVersion(): number {
-    const result = this.db
-      .prepare("SELECT MAX(version) as version FROM migrations")
-      .get() as { version: number | null };
+    const result = this.db.prepare('SELECT MAX(version) as version FROM migrations').get() as {
+      version: number | null;
+    };
     return result.version || 0;
   }
 
@@ -149,7 +149,7 @@ export class MigrationRunner {
     const pendingMigrations = migrations.filter((m) => m.version > currentVersion);
 
     if (pendingMigrations.length === 0) {
-      console.log("Database is up to date");
+      console.log('Database is up to date');
       return;
     }
 
@@ -162,7 +162,7 @@ export class MigrationRunner {
         const transaction = this.db.transaction(() => {
           this.db.exec(migration.up);
           this.db
-            .prepare("INSERT INTO migrations (version, name) VALUES (?, ?)")
+            .prepare('INSERT INTO migrations (version, name) VALUES (?, ?)')
             .run(migration.version, migration.name);
         });
 
@@ -174,14 +174,14 @@ export class MigrationRunner {
       }
     }
 
-    console.log("All migrations completed successfully");
+    console.log('All migrations completed successfully');
   }
 
   public async rollback(targetVersion: number): Promise<void> {
     const currentVersion = this.getCurrentVersion();
 
     if (targetVersion >= currentVersion) {
-      console.log("Target version is not lower than current version");
+      console.log('Target version is not lower than current version');
       return;
     }
 
@@ -201,9 +201,7 @@ export class MigrationRunner {
 
         const transaction = this.db.transaction(() => {
           this.db.exec(migration.down!);
-          this.db
-            .prepare("DELETE FROM migrations WHERE version = ?")
-            .run(migration.version);
+          this.db.prepare('DELETE FROM migrations WHERE version = ?').run(migration.version);
         });
 
         transaction();
@@ -214,7 +212,7 @@ export class MigrationRunner {
       }
     }
 
-    console.log("Rollback completed successfully");
+    console.log('Rollback completed successfully');
   }
 
   public getTableSchema(tableName: string): any[] {
@@ -223,17 +221,19 @@ export class MigrationRunner {
 
   public getAllTables(): string[] {
     const result = this.db
-      .prepare(`
+      .prepare(
+        `
       SELECT name FROM sqlite_master
       WHERE type='table' AND name NOT LIKE 'sqlite_%'
       ORDER BY name
-    `)
+    `
+      )
       .all() as { name: string }[];
     return result.map((row) => row.name);
   }
 
   public debugDatabaseSchema(): void {
-    console.log("=== Database Schema Debug ===");
+    console.log('=== Database Schema Debug ===');
     const tables = this.getAllTables();
 
     for (const table of tables) {
@@ -241,19 +241,19 @@ export class MigrationRunner {
       const schema = this.getTableSchema(table);
       schema.forEach((column) => {
         console.log(
-          `  ${column.name}: ${column.type} ${column.notnull ? "NOT NULL" : ""} ${column.dflt_value ? `DEFAULT ${column.dflt_value}` : ""}`
+          `  ${column.name}: ${column.type} ${column.notnull ? 'NOT NULL' : ''} ${column.dflt_value ? `DEFAULT ${column.dflt_value}` : ''}`
         );
       });
     }
 
-    console.log("\n=== Migration Status ===");
+    console.log('\n=== Migration Status ===');
     const currentVersion = this.getCurrentVersion();
     console.log(`Current migration version: ${currentVersion}`);
 
     const appliedMigrations = this.db
-      .prepare("SELECT * FROM migrations ORDER BY version")
+      .prepare('SELECT * FROM migrations ORDER BY version')
       .all() as Array<{ version: number; name: string; applied_at: string }>;
-    console.log("Applied migrations:");
+    console.log('Applied migrations:');
     appliedMigrations.forEach((migration) => {
       console.log(`  ${migration.version}: ${migration.name} (${migration.applied_at})`);
     });

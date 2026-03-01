@@ -1,44 +1,44 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react'
-import { ErrorBoundaryState, ErrorInfo as LogErrorInfo } from '@/types/logging'
-import { logger } from '@/services/logger'
-import { ErrorFallback } from './ErrorFallback'
+import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { ErrorBoundaryState, ErrorInfo as LogErrorInfo } from '@/types/logging';
+import { logger } from '@/services/logger';
+import { ErrorFallback } from './ErrorFallback';
 
 interface ErrorBoundaryProps {
-  children: ReactNode
-  fallback?: React.ComponentType<ErrorFallbackProps>
-  onError?: (error: Error, errorInfo: ErrorInfo) => void
-  isolate?: boolean
-  name?: string
+  children: ReactNode;
+  fallback?: React.ComponentType<ErrorFallbackProps>;
+  onError?: (error: Error, errorInfo: ErrorInfo) => void;
+  isolate?: boolean;
+  name?: string;
 }
 
 export interface ErrorFallbackProps {
-  error: Error
-  errorInfo: LogErrorInfo
-  resetError: () => void
-  retryCount: number
-  canRetry: boolean
+  error: Error;
+  errorInfo: LogErrorInfo;
+  resetError: () => void;
+  retryCount: number;
+  canRetry: boolean;
 }
 
 export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  private maxRetries = 3
-  private name: string
+  private maxRetries = 3;
+  private name: string;
 
   constructor(props: ErrorBoundaryProps) {
-    super(props)
-    
-    this.name = props.name || 'ErrorBoundary'
+    super(props);
+
+    this.name = props.name || 'ErrorBoundary';
     this.state = {
       hasError: false,
-      retryCount: 0
-    }
+      retryCount: 0,
+    };
   }
 
   static getDerivedStateFromError(error: Error): Partial<ErrorBoundaryState> {
     return {
       hasError: true,
       error,
-      lastErrorTime: Date.now()
-    }
+      lastErrorTime: Date.now(),
+    };
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
@@ -53,31 +53,35 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       context: {
         boundaryName: this.name,
         retryCount: this.state.retryCount,
-        props: this.props.isolate ? {} : this.props
+        props: this.props.isolate ? {} : this.props,
       },
       sessionId: logger.getSessionId(),
       version: logger.getVersion(),
       userAgent: navigator.userAgent,
-      url: window.location.href
-    }
+      url: window.location.href,
+    };
 
     // Log the error
-    logger.error(`Error caught by ${this.name}`, {
-      error: error.message,
-      stack: error.stack,
-      componentStack: errorInfo.componentStack,
-      retryCount: this.state.retryCount
-    }, 'ui')
+    logger.error(
+      `Error caught by ${this.name}`,
+      {
+        error: error.message,
+        stack: error.stack,
+        componentStack: errorInfo.componentStack,
+        retryCount: this.state.retryCount,
+      },
+      'ui'
+    );
 
     // Update state with error info
     this.setState({
       errorInfo: logErrorInfo,
-      errorId: logErrorInfo.id
-    })
+      errorId: logErrorInfo.id,
+    });
 
     // Call custom error handler
     if (this.props.onError) {
-      this.props.onError(error, errorInfo)
+      this.props.onError(error, errorInfo);
     }
 
     // Log user action
@@ -87,24 +91,26 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       details: {
         boundaryName: this.name,
         errorMessage: error.message,
-        retryCount: this.state.retryCount
-      }
-    })
+        retryCount: this.state.retryCount,
+      },
+    });
   }
 
   resetError = () => {
-    const { retryCount, lastErrorTime } = this.state
-    const now = Date.now()
-    
-    // Reset retry count if enough time has passed
-    const newRetryCount = lastErrorTime && (now - lastErrorTime) > 30000 
-      ? 0 
-      : retryCount + 1
+    const { retryCount, lastErrorTime } = this.state;
+    const now = Date.now();
 
-    logger.info(`Resetting error boundary ${this.name}`, {
-      retryCount: newRetryCount,
-      timeSinceLastError: lastErrorTime ? now - lastErrorTime : 0
-    }, 'ui')
+    // Reset retry count if enough time has passed
+    const newRetryCount = lastErrorTime && now - lastErrorTime > 30000 ? 0 : retryCount + 1;
+
+    logger.info(
+      `Resetting error boundary ${this.name}`,
+      {
+        retryCount: newRetryCount,
+        timeSinceLastError: lastErrorTime ? now - lastErrorTime : 0,
+      },
+      'ui'
+    );
 
     // Log user action
     logger.logUserAction({
@@ -112,9 +118,9 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       target: 'error-boundary-reset',
       details: {
         boundaryName: this.name,
-        retryCount: newRetryCount
-      }
-    })
+        retryCount: newRetryCount,
+      },
+    });
 
     this.setState({
       hasError: false,
@@ -122,18 +128,18 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       errorInfo: undefined,
       errorId: undefined,
       retryCount: newRetryCount,
-      lastErrorTime: now
-    })
-  }
+      lastErrorTime: now,
+    });
+  };
 
   canRetry = (): boolean => {
-    return this.state.retryCount < this.maxRetries
-  }
+    return this.state.retryCount < this.maxRetries;
+  };
 
   render() {
     if (this.state.hasError && this.state.error && this.state.errorInfo) {
-      const FallbackComponent = this.props.fallback || ErrorFallback
-      
+      const FallbackComponent = this.props.fallback || ErrorFallback;
+
       return (
         <FallbackComponent
           error={this.state.error}
@@ -142,10 +148,10 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
           retryCount={this.state.retryCount}
           canRetry={this.canRetry()}
         />
-      )
+      );
     }
 
-    return this.props.children
+    return this.props.children;
   }
 }
 
@@ -158,61 +164,65 @@ export function withErrorBoundary<P extends object>(
     <ErrorBoundary {...errorBoundaryProps}>
       <Component {...props} />
     </ErrorBoundary>
-  )
+  );
 
-  WrappedComponent.displayName = `withErrorBoundary(${Component.displayName || Component.name})`
-  
-  return WrappedComponent
+  WrappedComponent.displayName = `withErrorBoundary(${Component.displayName || Component.name})`;
+
+  return WrappedComponent;
 }
 
 // Hook for error boundary context
 export function useErrorHandler() {
   return {
     reportError: (error: Error, context?: Record<string, any>) => {
-      logger.error('Manual error report', {
-        error: error.message,
-        stack: error.stack,
-        ...context
-      }, 'ui')
+      logger.error(
+        'Manual error report',
+        {
+          error: error.message,
+          stack: error.stack,
+          ...context,
+        },
+        'ui'
+      );
     },
-    
+
     reportWarning: (message: string, context?: Record<string, any>) => {
-      logger.warn(message, context, 'ui')
+      logger.warn(message, context, 'ui');
     },
-    
+
     reportInfo: (message: string, context?: Record<string, any>) => {
-      logger.info(message, context, 'ui')
-    }
-  }
+      logger.info(message, context, 'ui');
+    },
+  };
 }
 
 // Async error boundary for handling promise rejections
 export class AsyncErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: ErrorBoundaryProps) {
-    super(props)
-    this.state = { hasError: false, retryCount: 0 }
+    super(props);
+    this.state = { hasError: false, retryCount: 0 };
   }
 
   componentDidMount() {
-    window.addEventListener('unhandledrejection', this.handleUnhandledRejection)
+    window.addEventListener('unhandledrejection', this.handleUnhandledRejection);
   }
 
   componentWillUnmount() {
-    window.removeEventListener('unhandledrejection', this.handleUnhandledRejection)
+    window.removeEventListener('unhandledrejection', this.handleUnhandledRejection);
   }
 
   handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-    const error = new Error(event.reason?.message || 'Unhandled promise rejection')
-    error.stack = event.reason?.stack
+    const error = new Error(event.reason?.message || 'Unhandled promise rejection');
+    error.stack = event.reason?.stack;
 
     this.componentDidCatch(error, {
-      componentStack: 'Promise rejection in AsyncErrorBoundary'
-    })
-  }
+      componentStack: 'Promise rejection in AsyncErrorBoundary',
+    });
+  };
 
-  static getDerivedStateFromError = ErrorBoundary.getDerivedStateFromError
-  componentDidCatch = ErrorBoundary.prototype.componentDidCatch
-  resetError = ErrorBoundary.prototype.resetError
-  canRetry = ErrorBoundary.prototype.canRetry
-  render = ErrorBoundary.prototype.render
+  static getDerivedStateFromError = ErrorBoundary.getDerivedStateFromError;
+  componentDidCatch = ErrorBoundary.prototype.componentDidCatch;
+  resetError = ErrorBoundary.prototype.resetError;
+  canRetry = ErrorBoundary.prototype.canRetry;
+  render = ErrorBoundary.prototype.render;
 }

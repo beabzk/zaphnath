@@ -40,7 +40,7 @@ declare namespace Zaphnath {
     text: string;
     book_name?: string;
     book_abbreviation?: string;
-    testament?: "OT" | "NT";
+    testament?: 'OT' | 'NT';
   }
 
   interface BibleBook {
@@ -48,7 +48,7 @@ declare namespace Zaphnath {
     repository_id: string;
     name: string;
     abbreviation: string;
-    testament: "OT" | "NT";
+    testament: 'OT' | 'NT';
     order: number;
     chapter_count: number;
   }
@@ -61,7 +61,7 @@ declare namespace Zaphnath {
     version: string;
     created_at: string;
     updated_at: string;
-    type?: "parent" | "translation";
+    type?: 'parent' | 'translation';
     parent_id?: string;
     book_count?: number;
     verse_count?: number;
@@ -119,9 +119,7 @@ declare namespace Zaphnath {
       defaultPath?: string;
       buttonLabel?: string;
       filters?: Array<{ name: string; extensions: string[] }>;
-      properties?: Array<
-        "openFile" | "openDirectory" | "multiSelections" | "showHiddenFiles"
-      >;
+      properties?: Array<'openFile' | 'openDirectory' | 'multiSelections' | 'showHiddenFiles'>;
     }) => Promise<{
       canceled: boolean;
       filePaths: string[];
@@ -129,13 +127,13 @@ declare namespace Zaphnath {
   }
 
   interface UpdaterAPI {
-    getPolicy: () => Promise<"auto" | "notify" | "manual">;
+    getPolicy: () => Promise<'auto' | 'notify' | 'manual'>;
     setPolicy: (
-      policy: "auto" | "notify" | "manual"
-    ) => Promise<{ success: boolean; policy: "auto" | "notify" | "manual" }>;
+      policy: 'auto' | 'notify' | 'manual'
+    ) => Promise<{ success: boolean; policy: 'auto' | 'notify' | 'manual' }>;
     checkForUpdates: () => Promise<{
       checkedAt: string;
-      policy: "auto" | "notify" | "manual";
+      policy: 'auto' | 'notify' | 'manual';
       isUpdateAvailable: boolean;
       currentVersion: string;
       latestVersion: string;
@@ -156,7 +154,7 @@ declare namespace Zaphnath {
   }
 
   interface RepositorySource {
-    type: "official" | "third-party" | "local";
+    type: 'official' | 'third-party' | 'local';
     url: string;
     name: string;
     enabled: boolean;
@@ -184,7 +182,7 @@ declare namespace Zaphnath {
     code: string;
     message: string;
     path?: string;
-    severity: "error";
+    severity: 'error';
     details?: Record<string, unknown>;
     name?: string;
   }
@@ -193,7 +191,7 @@ declare namespace Zaphnath {
     code: string;
     message: string;
     path?: string;
-    severity?: "warning";
+    severity?: 'warning';
     details?: Record<string, unknown>;
     name?: string;
   }
@@ -208,11 +206,11 @@ declare namespace Zaphnath {
       language: {
         code: string;
         name: string;
-        direction: "ltr" | "rtl";
+        direction: 'ltr' | 'rtl';
         script?: string;
       };
       translation: {
-        type: "formal" | "dynamic" | "paraphrase" | "interlinear";
+        type: 'formal' | 'dynamic' | 'paraphrase' | 'interlinear';
         year: number;
         copyright: string;
         license: string;
@@ -247,8 +245,8 @@ declare namespace Zaphnath {
       }>;
     };
     technical: {
-      encoding: "UTF-8";
-      compression: "none" | "gzip" | "brotli";
+      encoding: 'UTF-8';
+      compression: 'none' | 'gzip' | 'brotli';
       checksum: string;
       size_bytes: number;
     };

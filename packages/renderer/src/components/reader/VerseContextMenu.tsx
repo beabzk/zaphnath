@@ -1,18 +1,26 @@
-import { useEffect, useRef } from 'react'
-import { Copy, Highlighter, BookmarkPlus, BookmarkMinus, StickyNote, X, GitCompare } from 'lucide-react'
+import { useEffect, useRef } from 'react';
+import {
+  Copy,
+  Highlighter,
+  BookmarkPlus,
+  BookmarkMinus,
+  StickyNote,
+  X,
+  GitCompare,
+} from 'lucide-react';
 
 interface VerseContextMenuProps {
-  x: number
-  y: number
-  onClose: () => void
-  onCopy: () => void
-  onHighlight: (color: string) => void
-  onBookmark: () => void
-  onNote: () => void
-  onClearHighlight: () => void
-  onCompare: () => void
-  hasHighlight: boolean
-  hasBookmark?: boolean
+  x: number;
+  y: number;
+  onClose: () => void;
+  onCopy: () => void;
+  onHighlight: (color: string) => void;
+  onBookmark: () => void;
+  onNote: () => void;
+  onClearHighlight: () => void;
+  onCompare: () => void;
+  hasHighlight: boolean;
+  hasBookmark?: boolean;
 }
 
 const HIGHLIGHT_COLORS = [
@@ -22,7 +30,7 @@ const HIGHLIGHT_COLORS = [
   { name: 'Purple', value: 'bg-purple-200/40 dark:bg-purple-500/20' },
   { name: 'Pink', value: 'bg-pink-200/40 dark:bg-pink-500/20' },
   { name: 'Orange', value: 'bg-orange-200/40 dark:bg-orange-500/20' },
-]
+];
 
 export function VerseContextMenu({
   x,
@@ -37,29 +45,29 @@ export function VerseContextMenu({
   hasHighlight,
   hasBookmark = false,
 }: VerseContextMenuProps) {
-  const menuRef = useRef<HTMLDivElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        onClose()
+        onClose();
       }
-    }
+    };
 
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        onClose()
+        onClose();
       }
-    }
+    };
 
-    document.addEventListener('mousedown', handleClickOutside)
-    document.addEventListener('keydown', handleEscape)
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
 
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-      document.removeEventListener('keydown', handleEscape)
-    }
-  }, [onClose])
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [onClose]);
 
   return (
     <div
@@ -70,8 +78,8 @@ export function VerseContextMenu({
       {/* Copy */}
       <button
         onClick={() => {
-          onCopy()
-          onClose()
+          onCopy();
+          onClose();
         }}
         className="w-full px-3 py-2 text-sm flex items-center gap-2 hover:bg-accent transition-colors text-left"
       >
@@ -82,8 +90,8 @@ export function VerseContextMenu({
       {/* Compare */}
       <button
         onClick={() => {
-          onCompare()
-          onClose()
+          onCompare();
+          onClose();
         }}
         className="w-full px-3 py-2 text-sm flex items-center gap-2 hover:bg-accent transition-colors text-left"
       >
@@ -102,8 +110,8 @@ export function VerseContextMenu({
             <button
               key={color.name}
               onClick={() => {
-                onHighlight(color.value)
-                onClose()
+                onHighlight(color.value);
+                onClose();
               }}
               className={`h-8 ${color.value} border border-border hover:border-foreground transition-colors`}
               title={color.name}
@@ -113,8 +121,8 @@ export function VerseContextMenu({
         {hasHighlight && (
           <button
             onClick={() => {
-              onClearHighlight()
-              onClose()
+              onClearHighlight();
+              onClose();
             }}
             className="w-full px-3 py-1.5 text-sm flex items-center gap-2 hover:bg-accent transition-colors text-left"
           >
@@ -127,23 +135,27 @@ export function VerseContextMenu({
       {/* Bookmark */}
       <button
         onClick={() => {
-          onBookmark()
-          onClose()
+          onBookmark();
+          onClose();
         }}
         className="w-full px-3 py-2 text-sm flex items-center gap-2 hover:bg-accent transition-colors text-left border-t border-border"
       >
         {hasBookmark ? (
-          <><BookmarkMinus className="w-4 h-4" /> Remove Bookmark</>
+          <>
+            <BookmarkMinus className="w-4 h-4" /> Remove Bookmark
+          </>
         ) : (
-          <><BookmarkPlus className="w-4 h-4" /> Add Bookmark</>
+          <>
+            <BookmarkPlus className="w-4 h-4" /> Add Bookmark
+          </>
         )}
       </button>
 
       {/* Note */}
       <button
         onClick={() => {
-          onNote()
-          onClose()
+          onNote();
+          onClose();
         }}
         className="w-full px-3 py-2 text-sm flex items-center gap-2 hover:bg-accent transition-colors text-left"
       >
@@ -151,5 +163,5 @@ export function VerseContextMenu({
         Add Note
       </button>
     </div>
-  )
+  );
 }

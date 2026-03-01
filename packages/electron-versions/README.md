@@ -22,7 +22,7 @@ import {
   getChromeVersion,
   getNodeVersion,
   getChromeMajorVersion,
-  getNodeMajorVersion
+  getNodeMajorVersion,
 } from '@app/electron-versions';
 
 // Example usage

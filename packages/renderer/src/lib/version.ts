@@ -1,6 +1,6 @@
 /**
  * Version Management Utilities
- * 
+ *
  * This module provides utilities for working with application version information.
  * The version is automatically injected from package.json during build time.
  */
@@ -34,13 +34,13 @@ export function parseVersion(version: string = __APP_VERSION__): {
 } {
   const versionRegex = /^(\d+)\.(\d+)\.(\d+)(?:-(.+))?$/;
   const match = version.match(versionRegex);
-  
+
   if (!match) {
     throw new Error(`Invalid version format: ${version}`);
   }
-  
+
   const [, major, minor, patch, prerelease] = match;
-  
+
   return {
     major: parseInt(major, 10),
     minor: parseInt(minor, 10),
@@ -58,26 +58,26 @@ export function parseVersion(version: string = __APP_VERSION__): {
 export function compareVersions(version1: string, version2: string): number {
   const v1 = parseVersion(version1);
   const v2 = parseVersion(version2);
-  
+
   if (v1.major !== v2.major) {
     return v1.major > v2.major ? 1 : -1;
   }
-  
+
   if (v1.minor !== v2.minor) {
     return v1.minor > v2.minor ? 1 : -1;
   }
-  
+
   if (v1.patch !== v2.patch) {
     return v1.patch > v2.patch ? 1 : -1;
   }
-  
+
   // Handle prerelease versions
   if (v1.prerelease && !v2.prerelease) return -1;
   if (!v1.prerelease && v2.prerelease) return 1;
   if (v1.prerelease && v2.prerelease) {
     return v1.prerelease.localeCompare(v2.prerelease);
   }
-  
+
   return 0;
 }
 
@@ -97,7 +97,7 @@ export function isPrerelease(): boolean {
 export function getVersionInfo() {
   const version = parseVersion();
   const isPrerel = isPrerelease();
-  
+
   return {
     version: getAppVersion(),
     versionWithPrefix: getAppVersionWithPrefix(),
@@ -106,7 +106,7 @@ export function getVersionInfo() {
     patch: version.patch,
     prerelease: version.prerelease,
     isPrerelease: isPrerel,
-    displayName: isPrerel 
+    displayName: isPrerel
       ? `${getAppVersionWithPrefix()} (${version.prerelease})`
       : getAppVersionWithPrefix(),
   };

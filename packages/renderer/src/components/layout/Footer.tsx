@@ -1,9 +1,9 @@
-import { getDesktopPlatform, getPlatformDisplayName, getShortcutLabel } from '@/lib/platform'
+import { getDesktopPlatform, getPlatformDisplayName, getShortcutLabel } from '@/lib/platform';
 
 export function Footer() {
-  const platform = getDesktopPlatform()
-  const platformLabel = getPlatformDisplayName(platform)
-  const searchShortcut = getShortcutLabel('F', platform)
+  const platform = getDesktopPlatform();
+  const platformLabel = getPlatformDisplayName(platform);
+  const searchShortcut = getShortcutLabel('F', platform);
 
   return (
     <footer className="h-[var(--footer-height)] border-t border-border/70 bg-muted/35">
@@ -14,5 +14,5 @@ export function Footer() {
         </span>
       </div>
     </footer>
-  )
+  );
 }

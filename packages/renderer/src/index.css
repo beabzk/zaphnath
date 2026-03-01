@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 /* Custom dark variant for manual dark mode toggling */
 @custom-variant dark (&:where(.dark, .dark *));
@@ -51,8 +51,10 @@
     --input: 215 20% 84%;
     --ring: 212 90% 44%;
     --radius: 0.75rem;
-    --font-ui: "Aptos", "Segoe UI Variable Text", "SF Pro Text", "IBM Plex Sans", "Noto Sans", sans-serif;
-    --font-reading: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", "Libre Baskerville", serif;
+    --font-ui:
+      'Aptos', 'Segoe UI Variable Text', 'SF Pro Text', 'IBM Plex Sans', 'Noto Sans', sans-serif;
+    --font-reading:
+      'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', 'Libre Baskerville', serif;
     --ui-font-size: 14px;
     --titlebar-height: 74px;
     --footer-height: 0px;
@@ -68,9 +70,9 @@
     --status-font-size: 11px;
   }
 
-  :root[data-platform="windows"] {
-    --font-ui: "Segoe UI Variable Text", "Segoe UI", "Aptos", "Noto Sans", sans-serif;
-    --font-reading: "Cambria", "Constantia", "Georgia", serif;
+  :root[data-platform='windows'] {
+    --font-ui: 'Segoe UI Variable Text', 'Segoe UI', 'Aptos', 'Noto Sans', sans-serif;
+    --font-reading: 'Cambria', 'Constantia', 'Georgia', serif;
     --titlebar-height: 74px;
     --footer-height: 0px;
     --workspace-padding: 0.625rem;
@@ -84,9 +86,9 @@
     --status-font-size: 11px;
   }
 
-  :root[data-platform="macos"] {
-    --font-ui: "SF Pro Text", "SF Pro Display", "Helvetica Neue", "Aptos", sans-serif;
-    --font-reading: "Iowan Old Style", "Baskerville", "Palatino", serif;
+  :root[data-platform='macos'] {
+    --font-ui: 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue', 'Aptos', sans-serif;
+    --font-reading: 'Iowan Old Style', 'Baskerville', 'Palatino', serif;
     --titlebar-height: 80px;
     --footer-height: 0px;
     --workspace-padding: 0.875rem;
@@ -100,9 +102,9 @@
     --status-font-size: 10.5px;
   }
 
-  :root[data-platform="linux"] {
-    --font-ui: "Noto Sans", "Ubuntu", "Cantarell", "Aptos", sans-serif;
-    --font-reading: "Noto Serif", "Liberation Serif", "Georgia", serif;
+  :root[data-platform='linux'] {
+    --font-ui: 'Noto Sans', 'Ubuntu', 'Cantarell', 'Aptos', sans-serif;
+    --font-reading: 'Noto Serif', 'Liberation Serif', 'Georgia', serif;
     --titlebar-height: 72px;
     --footer-height: 0px;
     --workspace-padding: 0.75rem;
@@ -151,11 +153,17 @@
     @apply text-foreground antialiased;
     background:
       radial-gradient(1200px 450px at 15% -20%, hsl(var(--primary) / 0.1), transparent 55%),
-      radial-gradient(1100px 420px at 85% -15%, hsl(var(--accent-foreground) / 0.06), transparent 50%),
+      radial-gradient(
+        1100px 420px at 85% -15%,
+        hsl(var(--accent-foreground) / 0.06),
+        transparent 50%
+      ),
       hsl(var(--background));
     font-family: var(--font-ui);
     font-size: var(--ui-font-size);
-    font-feature-settings: "rlig" 1, "calt" 1;
+    font-feature-settings:
+      'rlig' 1,
+      'calt' 1;
     overflow: hidden;
   }
 

@@ -1,15 +1,15 @@
-import { useState } from 'react'
-import { Type, AlignLeft, Eye, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { useState } from 'react';
+import { Type, AlignLeft, Eye, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface ReadingPreferences {
-  fontFamily: string
-  fontSize: number
-  lineHeight: number
-  textAlign: 'left' | 'justify'
-  verseNumbers: boolean
-  verseSpacing: number
-  maxWidth: number
+  fontFamily: string;
+  fontSize: number;
+  lineHeight: number;
+  textAlign: 'left' | 'justify';
+  verseNumbers: boolean;
+  verseSpacing: number;
+  maxWidth: number;
 }
 
 const FONT_FAMILIES = [
@@ -18,7 +18,7 @@ const FONT_FAMILIES = [
   { name: 'Georgia', value: 'Georgia, serif' },
   { name: 'Times New Roman', value: '"Times New Roman", serif' },
   { name: 'Helvetica', value: '"Helvetica Neue", Arial, sans-serif' },
-]
+];
 
 const PRESETS = {
   reading: {
@@ -51,30 +51,30 @@ const PRESETS = {
     verseSpacing: 6,
     maxWidth: 1024,
   },
-}
+};
 
 interface ReadingControlsProps {
-  preferences: ReadingPreferences
-  onChange: (preferences: ReadingPreferences) => void
+  preferences: ReadingPreferences;
+  onChange: (preferences: ReadingPreferences) => void;
 }
 
 export function ReadingControls({ preferences, onChange }: ReadingControlsProps) {
-  const [isExpanded, setIsExpanded] = useState(false)
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const handlePresetChange = (preset: keyof typeof PRESETS) => {
-    onChange(PRESETS[preset])
-  }
+    onChange(PRESETS[preset]);
+  };
 
   const handleReset = () => {
-    onChange(PRESETS.reading)
-  }
+    onChange(PRESETS.reading);
+  };
 
   const adjustFontSize = (delta: number) => {
     onChange({
       ...preferences,
       fontSize: Math.max(12, Math.min(28, preferences.fontSize + delta)),
-    })
-  }
+    });
+  };
 
   return (
     <div className="border-b border-border">
@@ -110,7 +110,9 @@ export function ReadingControls({ preferences, onChange }: ReadingControlsProps)
               <Button
                 key={key}
                 onClick={() => handlePresetChange(key as keyof typeof PRESETS)}
-                variant={JSON.stringify(preferences) === JSON.stringify(preset) ? 'default' : 'ghost'}
+                variant={
+                  JSON.stringify(preferences) === JSON.stringify(preset) ? 'default' : 'ghost'
+                }
                 size="sm"
                 className="px-3"
               >
@@ -218,9 +220,7 @@ export function ReadingControls({ preferences, onChange }: ReadingControlsProps)
                   max="1280"
                   step="64"
                   value={preferences.maxWidth}
-                  onChange={(e) =>
-                    onChange({ ...preferences, maxWidth: parseInt(e.target.value) })
-                  }
+                  onChange={(e) => onChange({ ...preferences, maxWidth: parseInt(e.target.value) })}
                   className="flex-1"
                 />
                 <span className="text-sm w-16 text-right">{preferences.maxWidth}px</span>
@@ -270,8 +270,8 @@ export function ReadingControls({ preferences, onChange }: ReadingControlsProps)
         </div>
       )}
     </div>
-  )
+  );
 }
 
-export type { ReadingPreferences }
-export { PRESETS }
+export type { ReadingPreferences };
+export { PRESETS };

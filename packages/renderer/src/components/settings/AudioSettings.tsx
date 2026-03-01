@@ -1,45 +1,45 @@
-import { useSettings } from './SettingsProvider'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
+import { useSettings } from './SettingsProvider';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import {
   Volume2,
   Play,
   Pause,
   Download,
   WifiOff,
-  HighlighterIcon as Highlight
-} from 'lucide-react'
+  HighlighterIcon as Highlight,
+} from 'lucide-react';
 
 export function AudioSettings() {
-  const { settings, updateSetting } = useSettings()
-  const { audio } = settings
+  const { settings, updateSetting } = useSettings();
+  const { audio } = settings;
 
   const SettingGroup = ({ title, children }: { title: string; children: React.ReactNode }) => (
     <div className="space-y-3">
       <h3 className="font-medium text-sm">{title}</h3>
       {children}
     </div>
-  )
+  );
 
-  const SliderSetting = ({ 
-    label, 
-    value, 
-    min, 
-    max, 
-    step = 0.1, 
-    unit = '', 
+  const SliderSetting = ({
+    label,
+    value,
+    min,
+    max,
+    step = 0.1,
+    unit = '',
     onChange,
-    disabled = false
+    disabled = false,
   }: {
-    label: string
-    value: number
-    min: number
-    max: number
-    step?: number
-    unit?: string
-    onChange: (value: number) => void
-    disabled?: boolean
+    label: string;
+    value: number;
+    min: number;
+    max: number;
+    step?: number;
+    unit?: string;
+    onChange: (value: number) => void;
+    disabled?: boolean;
   }) => (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
@@ -47,7 +47,8 @@ export function AudioSettings() {
           {label}
         </label>
         <Badge variant="secondary" className="text-xs">
-          {value}{unit}
+          {value}
+          {unit}
         </Badge>
       </div>
       <input
@@ -61,7 +62,7 @@ export function AudioSettings() {
         className="w-full h-2 bg-secondary rounded-lg appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
       />
     </div>
-  )
+  );
 
   return (
     <div className="space-y-6">
@@ -93,7 +94,9 @@ export function AudioSettings() {
       <SettingGroup title="Text-to-Speech">
         <div className="space-y-4">
           <div className="space-y-2">
-            <label className={`text-sm font-medium ${!audio.enabled ? 'text-muted-foreground' : ''}`}>
+            <label
+              className={`text-sm font-medium ${!audio.enabled ? 'text-muted-foreground' : ''}`}
+            >
               Voice
             </label>
             <select
@@ -153,7 +156,9 @@ export function AudioSettings() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Play className="h-4 w-4" />
-              <span className={`text-sm font-medium ${!audio.enabled ? 'text-muted-foreground' : ''}`}>
+              <span
+                className={`text-sm font-medium ${!audio.enabled ? 'text-muted-foreground' : ''}`}
+              >
                 Auto-play on Chapter Load
               </span>
             </div>
@@ -170,7 +175,9 @@ export function AudioSettings() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Highlight className="h-4 w-4" />
-              <span className={`text-sm font-medium ${!audio.enabled ? 'text-muted-foreground' : ''}`}>
+              <span
+                className={`text-sm font-medium ${!audio.enabled ? 'text-muted-foreground' : ''}`}
+              >
                 Highlight Spoken Text
               </span>
             </div>
@@ -178,7 +185,9 @@ export function AudioSettings() {
               variant={audio.highlightSpokenText ? 'default' : 'outline'}
               size="sm"
               disabled={!audio.enabled}
-              onClick={() => updateSetting('audio', 'highlightSpokenText', !audio.highlightSpokenText)}
+              onClick={() =>
+                updateSetting('audio', 'highlightSpokenText', !audio.highlightSpokenText)
+              }
             >
               {audio.highlightSpokenText ? 'On' : 'Off'}
             </Button>
@@ -203,7 +212,9 @@ export function AudioSettings() {
       <SettingGroup title="Audio Downloads">
         <div className="space-y-3">
           <div className="space-y-2">
-            <label className={`text-sm font-medium ${!audio.enabled ? 'text-muted-foreground' : ''}`}>
+            <label
+              className={`text-sm font-medium ${!audio.enabled ? 'text-muted-foreground' : ''}`}
+            >
               Download Quality
             </label>
             <div className="grid grid-cols-3 gap-2">
@@ -243,7 +254,9 @@ export function AudioSettings() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <WifiOff className="h-4 w-4" />
-              <span className={`text-sm font-medium ${!audio.enabled ? 'text-muted-foreground' : ''}`}>
+              <span
+                className={`text-sm font-medium ${!audio.enabled ? 'text-muted-foreground' : ''}`}
+              >
                 Offline Mode
               </span>
             </div>
@@ -256,7 +269,7 @@ export function AudioSettings() {
               {audio.offlineMode ? 'On' : 'Off'}
             </Button>
           </div>
-          
+
           {audio.offlineMode && (
             <p className="text-xs text-muted-foreground">
               Offline mode will download audio files for offline playback
@@ -272,27 +285,28 @@ export function AudioSettings() {
         <div className="space-y-3">
           <div className="p-4 bg-muted/50 rounded-lg">
             <p className="text-sm mb-3">
-              "In the beginning was the Word, and the Word was with God, and the Word was God." - John 1:1
+              "In the beginning was the Word, and the Word was with God, and the Word was God." -
+              John 1:1
             </p>
             <div className="flex gap-2">
-              <Button 
-                size="sm" 
+              <Button
+                size="sm"
                 disabled={!audio.enabled}
                 onClick={() => {
                   // TODO: Implement audio test
-                  console.log('Testing audio with current settings')
+                  console.log('Testing audio with current settings');
                 }}
               >
                 <Play className="h-4 w-4 mr-2" />
                 Test Audio
               </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
+              <Button
+                variant="outline"
+                size="sm"
                 disabled={!audio.enabled}
                 onClick={() => {
                   // TODO: Implement audio stop
-                  console.log('Stopping audio test')
+                  console.log('Stopping audio test');
                 }}
               >
                 <Pause className="h-4 w-4 mr-2" />
@@ -303,5 +317,5 @@ export function AudioSettings() {
         </div>
       </SettingGroup>
     </div>
-  )
+  );
 }

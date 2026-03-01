@@ -1,17 +1,17 @@
-import { isAbsolute } from "path";
-import { pathToFileURL } from "url";
+import { isAbsolute } from 'path';
+import { pathToFileURL } from 'url';
 
 const WINDOWS_ABSOLUTE_PATH = /^[a-zA-Z]:[\\/]/;
 const UNC_PATH = /^[\\/]{2}[^\\/]/;
 const URL_WITH_SCHEME = /^[a-zA-Z][a-zA-Z\d+.-]*:\/\//;
 
 function toWindowsFileUrl(value: string): string {
-  const normalized = value.replace(/\\/g, "/");
+  const normalized = value.replace(/\\/g, '/');
   return `file:///${encodeURI(normalized)}`;
 }
 
 function toUncFileUrl(value: string): string {
-  const normalized = value.replace(/\\/g, "/").replace(/^\/+/, "");
+  const normalized = value.replace(/\\/g, '/').replace(/^\/+/, '');
   return `file://${encodeURI(normalized)}`;
 }
 
@@ -21,8 +21,8 @@ export function normalizeRepositoryUrl(value: string): string {
     return trimmed;
   }
 
-  if (trimmed.startsWith("file://")) {
-    const withoutScheme = trimmed.slice("file://".length);
+  if (trimmed.startsWith('file://')) {
+    const withoutScheme = trimmed.slice('file://'.length);
     if (WINDOWS_ABSOLUTE_PATH.test(withoutScheme)) {
       return toWindowsFileUrl(withoutScheme);
     }

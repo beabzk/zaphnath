@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useState } from 'react'
-import { useSettings } from './SettingsProvider'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
-import { repository } from '@app/preload'
+import { useCallback, useEffect, useState } from 'react';
+import { useSettings } from './SettingsProvider';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { repository } from '@app/preload';
 import {
   BookOpen,
   Scroll,
@@ -13,97 +13,97 @@ import {
   Bookmark,
   FileText,
   Calendar,
-  ArrowDown
-} from 'lucide-react'
+  ArrowDown,
+} from 'lucide-react';
 
 type RepositoryOption = {
-  id: string
-  label: string
-}
+  id: string;
+  label: string;
+};
 
 export function ReadingSettings() {
-  const { settings, updateSetting } = useSettings()
-  const { reading } = settings
-  const [repositoryOptions, setRepositoryOptions] = useState<RepositoryOption[]>([])
-  const [repositoriesLoading, setRepositoriesLoading] = useState(false)
-  const [repositoriesError, setRepositoriesError] = useState<string | null>(null)
+  const { settings, updateSetting } = useSettings();
+  const { reading } = settings;
+  const [repositoryOptions, setRepositoryOptions] = useState<RepositoryOption[]>([]);
+  const [repositoriesLoading, setRepositoriesLoading] = useState(false);
+  const [repositoriesError, setRepositoriesError] = useState<string | null>(null);
 
   const loadRepositoryOptions = useCallback(async () => {
-    setRepositoriesLoading(true)
-    setRepositoriesError(null)
+    setRepositoriesLoading(true);
+    setRepositoriesError(null);
 
     try {
-      const listedRepositories = (await repository.list()) || []
-      const optionsById = new Map<string, RepositoryOption>()
+      const listedRepositories = (await repository.list()) || [];
+      const optionsById = new Map<string, RepositoryOption>();
 
       for (const repo of listedRepositories) {
         if (repo.type === 'parent') {
-          const translations = (await repository.getTranslations(repo.id)) || []
+          const translations = (await repository.getTranslations(repo.id)) || [];
           for (const translation of translations) {
-            const translationId = translation.translation_id || translation.id
-            const translationName = translation.translation_name || translation.name || translationId
-            if (!translationId) continue
+            const translationId = translation.translation_id || translation.id;
+            const translationName =
+              translation.translation_name || translation.name || translationId;
+            if (!translationId) continue;
 
             optionsById.set(translationId, {
               id: translationId,
               label: `${translationName} (${repo.name})`,
-            })
+            });
           }
-          continue
+          continue;
         }
 
         optionsById.set(repo.id, {
           id: repo.id,
           label: repo.name,
-        })
+        });
       }
 
-      const options = [...optionsById.values()].sort((a, b) =>
-        a.label.localeCompare(b.label)
-      )
-      setRepositoryOptions(options)
+      const options = [...optionsById.values()].sort((a, b) => a.label.localeCompare(b.label));
+      setRepositoryOptions(options);
     } catch (error) {
-      console.error('[ReadingSettings] Failed to load repository options:', error)
-      setRepositoriesError('Failed to load repositories')
-      setRepositoryOptions([])
+      console.error('[ReadingSettings] Failed to load repository options:', error);
+      setRepositoriesError('Failed to load repositories');
+      setRepositoryOptions([]);
     } finally {
-      setRepositoriesLoading(false)
+      setRepositoriesLoading(false);
     }
-  }, [])
+  }, []);
 
   useEffect(() => {
-    loadRepositoryOptions()
-  }, [loadRepositoryOptions])
+    loadRepositoryOptions();
+  }, [loadRepositoryOptions]);
 
   const SettingGroup = ({ title, children }: { title: string; children: React.ReactNode }) => (
     <div className="space-y-3">
       <h3 className="font-medium text-sm">{title}</h3>
       {children}
     </div>
-  )
+  );
 
-  const SliderSetting = ({ 
-    label, 
-    value, 
-    min, 
-    max, 
-    step = 1, 
-    unit = '', 
-    onChange 
+  const SliderSetting = ({
+    label,
+    value,
+    min,
+    max,
+    step = 1,
+    unit = '',
+    onChange,
   }: {
-    label: string
-    value: number
-    min: number
-    max: number
-    step?: number
-    unit?: string
-    onChange: (value: number) => void
+    label: string;
+    value: number;
+    min: number;
+    max: number;
+    step?: number;
+    unit?: string;
+    onChange: (value: number) => void;
   }) => (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <label className="text-sm font-medium">{label}</label>
         <Badge variant="secondary" className="text-xs">
-          {value}{unit}
+          {value}
+          {unit}
         </Badge>
       </div>
       <input
@@ -116,7 +116,7 @@ export function ReadingSettings() {
         className="w-full h-2 bg-secondary rounded-lg appearance-none cursor-pointer"
       />
     </div>
-  )
+  );
 
   return (
     <div className="space-y-6">
@@ -145,9 +145,7 @@ export function ReadingSettings() {
                 </option>
               )}
           </select>
-          {repositoriesError && (
-            <p className="text-xs text-destructive">{repositoriesError}</p>
-          )}
+          {repositoriesError && <p className="text-xs text-destructive">{repositoriesError}</p>}
           <p className="text-xs text-muted-foreground">
             Choose which Bible translation to open by default
           </p>
@@ -229,7 +227,9 @@ export function ReadingSettings() {
             <Button
               variant={reading.showCrossReferences ? 'default' : 'outline'}
               size="sm"
-              onClick={() => updateSetting('reading', 'showCrossReferences', !reading.showCrossReferences)}
+              onClick={() =>
+                updateSetting('reading', 'showCrossReferences', !reading.showCrossReferences)
+              }
             >
               {reading.showCrossReferences ? 'On' : 'Off'}
             </Button>
@@ -264,7 +264,9 @@ export function ReadingSettings() {
             <Button
               variant={reading.enableReadingPlans ? 'default' : 'outline'}
               size="sm"
-              onClick={() => updateSetting('reading', 'enableReadingPlans', !reading.enableReadingPlans)}
+              onClick={() =>
+                updateSetting('reading', 'enableReadingPlans', !reading.enableReadingPlans)
+              }
             >
               {reading.enableReadingPlans ? 'On' : 'Off'}
             </Button>
@@ -278,7 +280,9 @@ export function ReadingSettings() {
             <Button
               variant={reading.dailyReadingReminder ? 'default' : 'outline'}
               size="sm"
-              onClick={() => updateSetting('reading', 'dailyReadingReminder', !reading.dailyReadingReminder)}
+              onClick={() =>
+                updateSetting('reading', 'dailyReadingReminder', !reading.dailyReadingReminder)
+              }
             >
               {reading.dailyReadingReminder ? 'On' : 'Off'}
             </Button>
@@ -325,10 +329,12 @@ export function ReadingSettings() {
             <Button
               variant={reading.bookmarks.autoSync ? 'default' : 'outline'}
               size="sm"
-              onClick={() => updateSetting('reading', 'bookmarks', {
-                ...reading.bookmarks,
-                autoSync: !reading.bookmarks.autoSync
-              })}
+              onClick={() =>
+                updateSetting('reading', 'bookmarks', {
+                  ...reading.bookmarks,
+                  autoSync: !reading.bookmarks.autoSync,
+                })
+              }
             >
               {reading.bookmarks.autoSync ? 'On' : 'Off'}
             </Button>
@@ -340,13 +346,15 @@ export function ReadingSettings() {
             min={100}
             max={2000}
             step={100}
-            onChange={(value) => updateSetting('reading', 'bookmarks', {
-              ...reading.bookmarks,
-              maxBookmarks: value
-            })}
+            onChange={(value) =>
+              updateSetting('reading', 'bookmarks', {
+                ...reading.bookmarks,
+                maxBookmarks: value,
+              })
+            }
           />
         </div>
       </SettingGroup>
     </div>
-  )
+  );
 }

@@ -1,20 +1,12 @@
-import { useState, useMemo, useCallback } from 'react'
-import {
-  Bookmark,
-  Search,
-  Trash2,
-  Pencil,
-  BookOpen,
-  Tag,
-  X,
-} from 'lucide-react'
-import { useReadingStore, useRepositoryStore } from '@/stores'
-import { useNavigation } from '@/components/layout/Navigation'
-import { BookmarkDialog } from '@/components/reader/BookmarkDialog'
-import type { Bookmark as BookmarkType } from '@/types/store'
+import { useState, useMemo, useCallback } from 'react';
+import { Bookmark, Search, Trash2, Pencil, BookOpen, Tag, X } from 'lucide-react';
+import { useReadingStore, useRepositoryStore } from '@/stores';
+import { useNavigation } from '@/components/layout/Navigation';
+import { BookmarkDialog } from '@/components/reader/BookmarkDialog';
+import type { Bookmark as BookmarkType } from '@/types/store';
 
 export function BookmarksView() {
-  const { bookmarks, removeBookmark, setCurrentLocation } = useReadingStore()
+  const { bookmarks, removeBookmark, setCurrentLocation } = useReadingStore();
   const {
     books,
     repositories,
@@ -23,75 +15,74 @@ export function BookmarksView() {
     setCurrentRepository,
     setCurrentBook,
     loadChapter,
-  } =
-    useRepositoryStore()
-  const { setCurrentView } = useNavigation()
+  } = useRepositoryStore();
+  const { setCurrentView } = useNavigation();
 
-  const [searchQuery, setSearchQuery] = useState('')
-  const [activeTag, setActiveTag] = useState<string | null>(null)
-  const [editingBookmark, setEditingBookmark] = useState<BookmarkType | null>(null)
-  const [deletingBookmarkId, setDeletingBookmarkId] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeTag, setActiveTag] = useState<string | null>(null);
+  const [editingBookmark, setEditingBookmark] = useState<BookmarkType | null>(null);
+  const [deletingBookmarkId, setDeletingBookmarkId] = useState<string | null>(null);
 
   // Collect all unique tags across bookmarks
   const allTags = useMemo(() => {
-    const tagSet = new Set<string>()
-    bookmarks.forEach((b) => b.tags?.forEach((t) => tagSet.add(t)))
-    return Array.from(tagSet).sort()
-  }, [bookmarks])
+    const tagSet = new Set<string>();
+    bookmarks.forEach((b) => b.tags?.forEach((t) => tagSet.add(t)));
+    return Array.from(tagSet).sort();
+  }, [bookmarks]);
 
   // Filter bookmarks by search query and active tag
   const filteredBookmarks = useMemo(() => {
-    let result = [...bookmarks]
+    let result = [...bookmarks];
 
     if (activeTag) {
-      result = result.filter((b) => b.tags?.includes(activeTag))
+      result = result.filter((b) => b.tags?.includes(activeTag));
     }
 
     if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase()
+      const q = searchQuery.toLowerCase();
       result = result.filter(
         (b) =>
           (b.title && b.title.toLowerCase().includes(q)) ||
           (b.note && b.note.toLowerCase().includes(q)) ||
           b.tags?.some((t) => t.toLowerCase().includes(q))
-      )
+      );
     }
 
-    return result
-  }, [bookmarks, searchQuery, activeTag])
+    return result;
+  }, [bookmarks, searchQuery, activeTag]);
 
   // Group filtered bookmarks by book_id (we'll show the book_id as the group name
   // and resolve it to a real name if the book is currently loaded)
   const groupedBookmarks = useMemo(() => {
-    const groups = new Map<string, BookmarkType[]>()
+    const groups = new Map<string, BookmarkType[]>();
     // Sort by chapter then verse within each group
     const sorted = [...filteredBookmarks].sort((a, b) => {
-      if (a.book_id !== b.book_id) return a.book_id.localeCompare(b.book_id)
-      if (a.chapter_number !== b.chapter_number) return a.chapter_number - b.chapter_number
-      return a.verse_number - b.verse_number
-    })
+      if (a.book_id !== b.book_id) return a.book_id.localeCompare(b.book_id);
+      if (a.chapter_number !== b.chapter_number) return a.chapter_number - b.chapter_number;
+      return a.verse_number - b.verse_number;
+    });
     sorted.forEach((b) => {
-      const list = groups.get(b.book_id) ?? []
-      list.push(b)
-      groups.set(b.book_id, list)
-    })
-    return groups
-  }, [filteredBookmarks])
+      const list = groups.get(b.book_id) ?? [];
+      list.push(b);
+      groups.set(b.book_id, list);
+    });
+    return groups;
+  }, [filteredBookmarks]);
 
   // Resolve book_id to a display name using the loaded books list
   const bookNameMap = useMemo(() => {
-    const map = new Map<string, string>()
-    books.forEach((b) => map.set(b.id, b.name))
-    return map
-  }, [books])
+    const map = new Map<string, string>();
+    books.forEach((b) => map.set(b.id, b.name));
+    return map;
+  }, [books]);
 
-  const getBookName = (bookId: string) => bookNameMap.get(bookId) ?? `Book ${bookId}`
+  const getBookName = (bookId: string) => bookNameMap.get(bookId) ?? `Book ${bookId}`;
 
   // Navigate to the verse in the reader
   const handleNavigate = useCallback(
     async (bookmark: BookmarkType) => {
-      const repositoryId = bookmark.repository_id
-      const isCurrentRepository = currentRepository?.id === repositoryId
+      const repositoryId = bookmark.repository_id;
+      const isCurrentRepository = currentRepository?.id === repositoryId;
 
       if (!isCurrentRepository) {
         const targetRepository = repositories.find((repo) => repo.id === repositoryId) ?? {
@@ -103,19 +94,19 @@ export function BookmarksView() {
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
           type: 'translation' as const,
-        }
-        setCurrentRepository(targetRepository)
+        };
+        setCurrentRepository(targetRepository);
       }
 
       if (!isCurrentRepository || books.length === 0) {
-        await loadBooks(repositoryId)
+        await loadBooks(repositoryId);
       }
 
-      const latestBooks = useRepositoryStore.getState().books
-      const book = latestBooks.find((b) => b.id === bookmark.book_id)
+      const latestBooks = useRepositoryStore.getState().books;
+      const book = latestBooks.find((b) => b.id === bookmark.book_id);
       if (book) {
-        setCurrentBook(book)
-        await loadChapter(book.id, bookmark.chapter_number)
+        setCurrentBook(book);
+        await loadChapter(book.id, bookmark.chapter_number);
       }
 
       setCurrentLocation({
@@ -123,8 +114,8 @@ export function BookmarksView() {
         book_id: bookmark.book_id,
         chapter_number: bookmark.chapter_number,
         verse_number: bookmark.verse_number,
-      })
-      setCurrentView('reader')
+      });
+      setCurrentView('reader');
     },
     [
       books.length,
@@ -137,12 +128,12 @@ export function BookmarksView() {
       setCurrentRepository,
       setCurrentView,
     ]
-  )
+  );
 
   const handleDelete = (id: string) => {
-    removeBookmark(id)
-    setDeletingBookmarkId(null)
-  }
+    removeBookmark(id);
+    setDeletingBookmarkId(null);
+  };
 
   const formatDate = (iso: string) => {
     try {
@@ -150,11 +141,11 @@ export function BookmarksView() {
         year: 'numeric',
         month: 'short',
         day: 'numeric',
-      })
+      });
     } catch {
-      return iso
+      return iso;
     }
-  }
+  };
 
   // Empty state
   if (bookmarks.length === 0) {
@@ -163,11 +154,11 @@ export function BookmarksView() {
         <Bookmark className="w-12 h-12 text-muted-foreground/40 mb-4" />
         <h3 className="text-lg font-medium mb-1">No bookmarks yet</h3>
         <p className="text-sm text-muted-foreground max-w-sm">
-          Right-click on any verse in the reader and select "Add Bookmark" to save
-          verses for quick access.
+          Right-click on any verse in the reader and select "Add Bookmark" to save verses for quick
+          access.
         </p>
       </div>
-    )
+    );
   }
 
   return (
@@ -251,10 +242,7 @@ export function BookmarksView() {
                   >
                     <div className="flex items-start justify-between gap-2">
                       {/* Bookmark info - clickable to navigate */}
-                      <button
-                        className="flex-1 text-left"
-                        onClick={() => handleNavigate(bookmark)}
-                      >
+                      <button className="flex-1 text-left" onClick={() => handleNavigate(bookmark)}>
                         <div className="flex items-center gap-2">
                           <Bookmark className="w-3.5 h-3.5 text-primary fill-primary flex-shrink-0" />
                           <span className="text-sm font-medium">
@@ -337,10 +325,7 @@ export function BookmarksView() {
       )}
 
       {/* Edit dialog */}
-      <BookmarkDialog
-        editBookmark={editingBookmark}
-        onClose={() => setEditingBookmark(null)}
-      />
+      <BookmarkDialog editBookmark={editingBookmark} onClose={() => setEditingBookmark(null)} />
     </div>
-  )
+  );
 }

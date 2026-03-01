@@ -28,7 +28,7 @@ export interface ParentRepositoryInfo {
   name: string;
   description: string;
   version: string;
-  type: "parent";
+  type: 'parent';
   created_at: string;
   updated_at: string;
 }
@@ -52,7 +52,7 @@ export interface TranslationReference {
   name: string;
   directory: string;
   language: LanguageInfo;
-  status: "active" | "inactive" | "deprecated";
+  status: 'active' | 'inactive' | 'deprecated';
   checksum: string;
   size_bytes: number;
 }
@@ -60,12 +60,12 @@ export interface TranslationReference {
 export interface LanguageInfo {
   code: string;
   name: string;
-  direction: "ltr" | "rtl";
+  direction: 'ltr' | 'rtl';
   script?: string;
 }
 
 export interface TranslationInfo {
-  type: "formal" | "dynamic" | "paraphrase" | "interlinear";
+  type: 'formal' | 'dynamic' | 'paraphrase' | 'interlinear';
   year: number;
   copyright: string;
   license: string;
@@ -95,8 +95,8 @@ export interface ContentInfo {
 }
 
 export interface ParentTechnicalInfo {
-  encoding: "UTF-8";
-  compression: "none" | "gzip" | "brotli";
+  encoding: 'UTF-8';
+  compression: 'none' | 'gzip' | 'brotli';
 }
 
 export interface TranslationTechnicalInfo extends ParentTechnicalInfo {
@@ -127,17 +127,10 @@ export interface BookInfo {
   name: string;
   abbreviation: string;
   order: number;
-  testament: "old" | "new";
+  testament: 'old' | 'new';
   chapters_count: number;
   verses_count: number;
-  genre?:
-    | "law"
-    | "history"
-    | "wisdom"
-    | "prophecy"
-    | "gospel"
-    | "epistle"
-    | "apocalyptic";
+  genre?: 'law' | 'history' | 'wisdom' | 'prophecy' | 'gospel' | 'epistle' | 'apocalyptic';
   author?: string;
 }
 
@@ -160,7 +153,7 @@ export interface Verse {
 export interface Footnote {
   marker: string;
   text: string;
-  type?: "textual" | "translation" | "explanation" | "cross_reference";
+  type?: 'textual' | 'translation' | 'explanation' | 'cross_reference';
 }
 
 export interface CrossReference {
@@ -171,12 +164,7 @@ export interface CrossReference {
 export interface StudyNote {
   title: string;
   content: string;
-  type?:
-    | "historical"
-    | "cultural"
-    | "theological"
-    | "linguistic"
-    | "archaeological";
+  type?: 'historical' | 'cultural' | 'theological' | 'linguistic' | 'archaeological';
   author?: string;
 }
 
@@ -213,7 +201,7 @@ export interface RepositoryIndexEntry {
 }
 
 export interface RepositorySource {
-  type: "official" | "third-party" | "local";
+  type: 'official' | 'third-party' | 'local';
   url: string;
   name: string;
   enabled: boolean;
@@ -225,7 +213,7 @@ export interface RepositoryDbRecord {
   name: string;
   description: string | null;
   version: string;
-  type: "parent" | "translation";
+  type: 'parent' | 'translation';
   parent_id: string | null;
   language: string | null;
   created_at: string;
@@ -237,13 +225,7 @@ export interface RepositoryDbRecord {
 // Import and Validation Types
 
 export interface ImportProgress {
-  stage:
-    | "discovering"
-    | "validating"
-    | "downloading"
-    | "processing"
-    | "complete"
-    | "error";
+  stage: 'discovering' | 'validating' | 'downloading' | 'processing' | 'complete' | 'error';
   progress: number; // 0-100
   message: string;
   current_book?: string;
@@ -261,7 +243,7 @@ export interface ValidationError {
   code: string;
   message: string;
   path?: string;
-  severity: "error";
+  severity: 'error';
   details?: Record<string, unknown>;
   name?: string;
 }
@@ -270,7 +252,7 @@ export interface ValidationWarning {
   code: string;
   message: string;
   path?: string;
-  severity?: "warning";
+  severity?: 'warning';
   details?: Record<string, unknown>;
   name?: string;
 }
@@ -280,7 +262,7 @@ export interface ImportOptions {
   validate_checksums: boolean;
   download_audio: boolean;
   overwrite_existing: boolean;
-  import_type?: "full" | "selective" | "translation"; // New: specify import type
+  import_type?: 'full' | 'selective' | 'translation'; // New: specify import type
   selected_translations?: string[]; // New: for selective translation import
   progress_callback?: (progress: ImportProgress) => void;
 }
@@ -317,51 +299,55 @@ export interface IntegrityCheck {
 // Error Types
 
 export class ZBRSError extends Error {
-  constructor(message: string, public code: string, public details?: any) {
+  constructor(
+    message: string,
+    public code: string,
+    public details?: any
+  ) {
     super(message);
-    this.name = "ZBRSError";
+    this.name = 'ZBRSError';
   }
 }
 
 export class NetworkError extends ZBRSError {
-  constructor(message: string, public url: string, details?: any) {
-    super(message, "NETWORK_ERROR", details);
-    this.name = "NetworkError";
+  constructor(
+    message: string,
+    public url: string,
+    details?: any
+  ) {
+    super(message, 'NETWORK_ERROR', details);
+    this.name = 'NetworkError';
   }
 }
 
 export class IntegrityError extends ZBRSError {
-  constructor(message: string, public file_path: string, details?: any) {
-    super(message, "INTEGRITY_ERROR", details);
-    this.name = "IntegrityError";
+  constructor(
+    message: string,
+    public file_path: string,
+    details?: any
+  ) {
+    super(message, 'INTEGRITY_ERROR', details);
+    this.name = 'IntegrityError';
   }
 }
 
 // Type Guard Functions
 
-export function isParentManifest(
-  manifest: ZBRSManifest
-): manifest is ZBRSParentManifest {
+export function isParentManifest(manifest: ZBRSManifest): manifest is ZBRSParentManifest {
   return (
-    "translations" in manifest &&
-    "publisher" in manifest &&
-    "repository" in manifest &&
-    (manifest.repository as any).type === "parent"
+    'translations' in manifest &&
+    'publisher' in manifest &&
+    'repository' in manifest &&
+    (manifest.repository as any).type === 'parent'
   );
 }
 
-export function isTranslationManifest(
-  manifest: ZBRSManifest
-): manifest is ZBRSTranslationManifest {
-  return (
-    "content" in manifest &&
-    !("translations" in manifest) &&
-    !("publisher" in manifest)
-  );
+export function isTranslationManifest(manifest: ZBRSManifest): manifest is ZBRSTranslationManifest {
+  return 'content' in manifest && !('translations' in manifest) && !('publisher' in manifest);
 }
 
 export function isParentRepositoryInfo(
   repo: ParentRepositoryInfo | RepositoryInfo
 ): repo is ParentRepositoryInfo {
-  return (repo as ParentRepositoryInfo).type === "parent";
+  return (repo as ParentRepositoryInfo).type === 'parent';
 }

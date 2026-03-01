@@ -1,15 +1,14 @@
-import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
-import { useInView } from 'react-intersection-observer'
-import { useRepositoryStore, useReadingStore } from '@/stores'
-import { ChevronRight, Bookmark as BookmarkIcon, StickyNote } from 'lucide-react'
-import { repository } from '@app/preload'
-import { useSettings } from '@/components/settings/SettingsProvider'
-import { VerseContextMenu } from './VerseContextMenu'
-import { ReadingControls, ReadingPreferences, PRESETS } from './ReadingControls'
-import { VerseComparison } from './VerseComparison'
-import { BookmarkDialog } from './BookmarkDialog'
-import { NoteDialog } from './NoteDialog'
-
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import { useInView } from 'react-intersection-observer';
+import { useRepositoryStore, useReadingStore } from '@/stores';
+import { ChevronRight, Bookmark as BookmarkIcon, StickyNote } from 'lucide-react';
+import { repository } from '@app/preload';
+import { useSettings } from '@/components/settings/SettingsProvider';
+import { VerseContextMenu } from './VerseContextMenu';
+import { ReadingControls, ReadingPreferences, PRESETS } from './ReadingControls';
+import { VerseComparison } from './VerseComparison';
+import { BookmarkDialog } from './BookmarkDialog';
+import { NoteDialog } from './NoteDialog';
 
 export function Reader() {
   const {
@@ -24,92 +23,117 @@ export function Reader() {
     loadRepositories,
     setCurrentBook,
     loadChapter,
-  } = useRepositoryStore()
-  const { settings, isLoading: isSettingsLoading } = useSettings()
+  } = useRepositoryStore();
+  const { settings, isLoading: isSettingsLoading } = useSettings();
 
-  const [chapterSelect, setChapterSelect] = useState<number | null>(null)
-  const [testament, setTestament] = useState<'old' | 'new'>('old')
-  const [progress, setProgress] = useState(0)
-  const [currentVerseNumber, setCurrentVerseNumber] = useState<number>(1)
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; verseId: string; verseNumber: number } | null>(null)
-  const [selectedVerses] = useState<Set<string>>(new Set())
-  const [readingPrefs, setReadingPrefs] = useState<ReadingPreferences>(PRESETS.reading)
-  const [comparisonVerse, setComparisonVerse] = useState<{ bookId: string; chapter: number; verse: number } | null>(null)
+  const [chapterSelect, setChapterSelect] = useState<number | null>(null);
+  const [testament, setTestament] = useState<'old' | 'new'>('old');
+  const [progress, setProgress] = useState(0);
+  const [currentVerseNumber, setCurrentVerseNumber] = useState<number>(1);
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    verseId: string;
+    verseNumber: number;
+  } | null>(null);
+  const [selectedVerses] = useState<Set<string>>(new Set());
+  const [readingPrefs, setReadingPrefs] = useState<ReadingPreferences>(PRESETS.reading);
+  const [comparisonVerse, setComparisonVerse] = useState<{
+    bookId: string;
+    chapter: number;
+    verse: number;
+  } | null>(null);
   const [bookmarkDialogVerse, setBookmarkDialogVerse] = useState<{
-    repositoryId: string
-    bookId: string
-    bookName: string
-    chapterNumber: number
-    verseNumber: number
-    verseText: string
-  } | null>(null)
+    repositoryId: string;
+    bookId: string;
+    bookName: string;
+    chapterNumber: number;
+    verseNumber: number;
+    verseText: string;
+  } | null>(null);
   const [noteDialogVerse, setNoteDialogVerse] = useState<{
-    repositoryId: string
-    bookId: string
-    bookName: string
-    chapterNumber: number
-    verseNumber: number
-    verseText: string
-  } | null>(null)
-  const scrollRef = useRef<HTMLDivElement | null>(null)
+    repositoryId: string;
+    bookId: string;
+    bookName: string;
+    chapterNumber: number;
+    verseNumber: number;
+    verseText: string;
+  } | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
 
-  const { currentLocation, highlights, addHighlight, removeHighlight, bookmarks, removeBookmark, notes } = useReadingStore()
+  const {
+    currentLocation,
+    highlights,
+    addHighlight,
+    removeHighlight,
+    bookmarks,
+    removeBookmark,
+    notes,
+  } = useReadingStore();
 
   // Context menu handlers
-  const handleVerseContextMenu = useCallback((e: React.MouseEvent, verseId: string, verseNumber: number) => {
-    e.preventDefault()
-    setContextMenu({ x: e.clientX, y: e.clientY, verseId, verseNumber })
-  }, [])
+  const handleVerseContextMenu = useCallback(
+    (e: React.MouseEvent, verseId: string, verseNumber: number) => {
+      e.preventDefault();
+      setContextMenu({ x: e.clientX, y: e.clientY, verseId, verseNumber });
+    },
+    []
+  );
 
   const handleCopyVerse = useCallback(() => {
-    if (!contextMenu || !currentBook) return
-    const verse = verses.find(v => v.id === contextMenu.verseId)
+    if (!contextMenu || !currentBook) return;
+    const verse = verses.find((v) => v.id === contextMenu.verseId);
     if (verse) {
-      const reference = `${currentBook.name} ${currentChapter?.number}:${verse.number}`
-      const text = `${reference} - ${verse.text}`
-      navigator.clipboard.writeText(text)
+      const reference = `${currentBook.name} ${currentChapter?.number}:${verse.number}`;
+      const text = `${reference} - ${verse.text}`;
+      navigator.clipboard.writeText(text);
     }
-  }, [contextMenu, verses, currentBook, currentChapter])
+  }, [contextMenu, verses, currentBook, currentChapter]);
 
-  const handleHighlight = useCallback((color: string) => {
-    if (!contextMenu || !currentRepository || !currentBook || !currentChapter) return
-    
-    addHighlight({
-      repository_id: currentRepository.id,
-      book_id: currentBook.id,
-      chapter_number: currentChapter.number,
-      verse_number: contextMenu.verseNumber,
-      color
-    })
-  }, [contextMenu, currentRepository, currentBook, currentChapter, addHighlight])
+  const handleHighlight = useCallback(
+    (color: string) => {
+      if (!contextMenu || !currentRepository || !currentBook || !currentChapter) return;
+
+      addHighlight({
+        repository_id: currentRepository.id,
+        book_id: currentBook.id,
+        chapter_number: currentChapter.number,
+        verse_number: contextMenu.verseNumber,
+        color,
+      });
+    },
+    [contextMenu, currentRepository, currentBook, currentChapter, addHighlight]
+  );
 
   const handleClearHighlight = useCallback(() => {
-    if (!contextMenu || !currentRepository || !currentBook) return
-    const highlight = highlights.find(h => 
-      h.repository_id === currentRepository.id &&
-      h.book_id === currentBook.id &&
-      h.chapter_number === currentChapter?.number && 
-      h.verse_number === contextMenu.verseNumber
-    )
+    if (!contextMenu || !currentRepository || !currentBook) return;
+    const highlight = highlights.find(
+      (h) =>
+        h.repository_id === currentRepository.id &&
+        h.book_id === currentBook.id &&
+        h.chapter_number === currentChapter?.number &&
+        h.verse_number === contextMenu.verseNumber
+    );
     if (highlight) {
-      removeHighlight(highlight.id)
+      removeHighlight(highlight.id);
     }
-  }, [contextMenu, highlights, currentRepository, currentBook, currentChapter, removeHighlight])
+  }, [contextMenu, highlights, currentRepository, currentBook, currentChapter, removeHighlight]);
 
   const handleBookmark = useCallback(() => {
-    if (!contextMenu || !currentRepository || !currentBook || !currentChapter) return
+    if (!contextMenu || !currentRepository || !currentBook || !currentChapter) return;
 
     const existingBookmark = bookmarks.find(
-      b => b.repository_id === currentRepository.id &&
-           b.book_id === currentBook.id &&
-           b.chapter_number === currentChapter.number &&
-           b.verse_number === contextMenu.verseNumber
-    )
+      (b) =>
+        b.repository_id === currentRepository.id &&
+        b.book_id === currentBook.id &&
+        b.chapter_number === currentChapter.number &&
+        b.verse_number === contextMenu.verseNumber
+    );
 
     if (existingBookmark) {
-      removeBookmark(existingBookmark.id)
+      removeBookmark(existingBookmark.id);
     } else {
-      const verse = verses.find(v => v.id === contextMenu.verseId)
+      const verse = verses.find((v) => v.id === contextMenu.verseId);
       setBookmarkDialogVerse({
         repositoryId: currentRepository.id,
         bookId: currentBook.id,
@@ -117,14 +141,22 @@ export function Reader() {
         chapterNumber: currentChapter.number,
         verseNumber: contextMenu.verseNumber,
         verseText: verse?.text ?? '',
-      })
+      });
     }
-  }, [contextMenu, currentRepository, currentBook, currentChapter, bookmarks, removeBookmark, verses])
+  }, [
+    contextMenu,
+    currentRepository,
+    currentBook,
+    currentChapter,
+    bookmarks,
+    removeBookmark,
+    verses,
+  ]);
 
   const handleNote = useCallback(() => {
-    if (!contextMenu || !currentRepository || !currentBook || !currentChapter) return
+    if (!contextMenu || !currentRepository || !currentBook || !currentChapter) return;
 
-    const verse = verses.find(v => v.id === contextMenu.verseId)
+    const verse = verses.find((v) => v.id === contextMenu.verseId);
     setNoteDialogVerse({
       repositoryId: currentRepository.id,
       bookId: currentBook.id,
@@ -132,68 +164,64 @@ export function Reader() {
       chapterNumber: currentChapter.number,
       verseNumber: contextMenu.verseNumber,
       verseText: verse?.text ?? '',
-    })
-  }, [contextMenu, currentRepository, currentBook, currentChapter, verses])
+    });
+  }, [contextMenu, currentRepository, currentBook, currentChapter, verses]);
 
   const handleCompare = useCallback(() => {
-    if (!contextMenu || !currentBook || !currentChapter) return
-    
+    if (!contextMenu || !currentBook || !currentChapter) return;
+
     setComparisonVerse({
       bookId: currentBook.id,
       chapter: currentChapter.number,
-      verse: contextMenu.verseNumber
-    })
-  }, [contextMenu, currentBook, currentChapter])
+      verse: contextMenu.verseNumber,
+    });
+  }, [contextMenu, currentBook, currentChapter]);
 
   // Ensure the configured default repository is selected when entering Reader.
   useEffect(() => {
     if (currentRepository || isSettingsLoading) {
-      return
+      return;
     }
 
-    const defaultRepositoryId = settings.reading.defaultRepository
+    const defaultRepositoryId = settings.reading.defaultRepository;
     if (!defaultRepositoryId) {
-      return
+      return;
     }
 
-    let cancelled = false
+    let cancelled = false;
 
     const restoreDefaultRepository = async () => {
       if (repositories.length === 0) {
-        await loadRepositories()
+        await loadRepositories();
       }
 
-      const latestRepositories = useRepositoryStore.getState().repositories
-      const directRepository = latestRepositories.find(
-        (repo) => repo.id === defaultRepositoryId
-      )
+      const latestRepositories = useRepositoryStore.getState().repositories;
+      const directRepository = latestRepositories.find((repo) => repo.id === defaultRepositoryId);
 
       if (directRepository) {
         if (!cancelled) {
-          setCurrentRepository(directRepository)
+          setCurrentRepository(directRepository);
         }
-        return
+        return;
       }
 
-      const parentRepositories = latestRepositories.filter(
-        (repo) => repo.type === 'parent'
-      )
+      const parentRepositories = latestRepositories.filter((repo) => repo.type === 'parent');
 
       for (const parent of parentRepositories) {
-        const translations = (await repository.getTranslations(parent.id)) || []
+        const translations = (await repository.getTranslations(parent.id)) || [];
         const translation = (translations as Record<string, unknown>[]).find(
           (item) => String(item.translation_id ?? item.id ?? '') === defaultRepositoryId
-        )
+        );
 
         if (!translation) {
-          continue
+          continue;
         }
 
         if (cancelled) {
-          return
+          return;
         }
 
-        const now = new Date().toISOString()
+        const now = new Date().toISOString();
         setCurrentRepository({
           id: String(translation.translation_id ?? translation.id ?? defaultRepositoryId),
           name: String(translation.translation_name ?? translation.name ?? defaultRepositoryId),
@@ -201,26 +229,30 @@ export function Reader() {
             translation.translation_description ??
               `${String(translation.translation_name ?? translation.name ?? defaultRepositoryId)} from ${parent.name}`
           ),
-          language: String(translation.language_code ?? translation.language ?? parent.language ?? 'en'),
+          language: String(
+            translation.language_code ?? translation.language ?? parent.language ?? 'en'
+          ),
           version: String(translation.translation_version ?? parent.version ?? '1.0.0'),
           created_at: String(translation.created_at ?? parent.created_at ?? now),
           updated_at: String(translation.updated_at ?? parent.updated_at ?? now),
           type: 'translation',
           parent_id: parent.id,
-          book_count: typeof translation.book_count === 'number' ? translation.book_count : undefined,
-          verse_count: typeof translation.verse_count === 'number' ? translation.verse_count : undefined,
-        })
-        return
+          book_count:
+            typeof translation.book_count === 'number' ? translation.book_count : undefined,
+          verse_count:
+            typeof translation.verse_count === 'number' ? translation.verse_count : undefined,
+        });
+        return;
       }
-    }
+    };
 
     restoreDefaultRepository().catch((error) => {
-      console.error('[Reader] Failed to restore default repository:', error)
-    })
+      console.error('[Reader] Failed to restore default repository:', error);
+    });
 
     return () => {
-      cancelled = true
-    }
+      cancelled = true;
+    };
   }, [
     currentRepository,
     isSettingsLoading,
@@ -228,168 +260,170 @@ export function Reader() {
     repositories,
     loadRepositories,
     setCurrentRepository,
-  ])
+  ]);
 
   // When repository changes and books are empty, load books
   useEffect(() => {
     if (currentRepository && books.length === 0) {
-      loadBooks(currentRepository.id)
+      loadBooks(currentRepository.id);
     }
-  }, [currentRepository, books.length, loadBooks])
+  }, [currentRepository, books.length, loadBooks]);
 
   // When book changes, if no chapter loaded, load chapter 1
   useEffect(() => {
     if (currentBook && !currentChapter) {
-      loadChapter(currentBook.id, 1)
-      setChapterSelect(1)
+      loadChapter(currentBook.id, 1);
+      setChapterSelect(1);
     }
-  }, [currentBook, currentChapter, loadChapter])
+  }, [currentBook, currentChapter, loadChapter]);
 
   // Sync chapterSelect when chapter changes
   useEffect(() => {
     if (currentChapter?.number) {
-      setChapterSelect(currentChapter.number)
+      setChapterSelect(currentChapter.number);
       // Reset scroll to top on chapter change
-      if (scrollRef.current) scrollRef.current.scrollTop = 0
+      if (scrollRef.current) scrollRef.current.scrollTop = 0;
     }
-  }, [currentChapter?.number])
+  }, [currentChapter?.number]);
 
   // If a verse was selected from another view (e.g. search), scroll it into view.
   useEffect(() => {
-    if (
-      !currentLocation?.verse_number ||
-      !currentRepository ||
-      !currentBook ||
-      !currentChapter
-    ) {
-      return
+    if (!currentLocation?.verse_number || !currentRepository || !currentBook || !currentChapter) {
+      return;
     }
 
     const matchesCurrentContext =
       currentLocation.book_id === currentBook.id &&
-      currentLocation.chapter_number === currentChapter.number
+      currentLocation.chapter_number === currentChapter.number;
 
     if (!matchesCurrentContext) {
-      return
+      return;
     }
 
-    const verseDomId = `verse-${currentBook.id}-${currentChapter.number}-${currentLocation.verse_number}`
-    const verseElement = document.getElementById(verseDomId)
+    const verseDomId = `verse-${currentBook.id}-${currentChapter.number}-${currentLocation.verse_number}`;
+    const verseElement = document.getElementById(verseDomId);
     if (!verseElement) {
-      return
+      return;
     }
 
-    setCurrentVerseNumber(currentLocation.verse_number)
-    verseElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  }, [
-    currentBook,
-    currentChapter,
-    currentLocation,
-    currentRepository,
-    verses.length,
-  ])
+    setCurrentVerseNumber(currentLocation.verse_number);
+    verseElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [currentBook, currentChapter, currentLocation, currentRepository, verses.length]);
 
   const chaptersForCurrentBook = useMemo(() => {
-    return currentBook ? Array.from({ length: currentBook.chapter_count }, (_, i) => i + 1) : []
-  }, [currentBook])
+    return currentBook ? Array.from({ length: currentBook.chapter_count }, (_, i) => i + 1) : [];
+  }, [currentBook]);
 
   const filteredBooks = useMemo(() => {
-    return books.filter(b => b.testament === testament)
-  }, [books, testament])
+    return books.filter((b) => b.testament === testament);
+  }, [books, testament]);
 
   const handleSelectBook = (bookId: string) => {
-    const book = books.find(b => b.id === bookId)
+    const book = books.find((b) => b.id === bookId);
     if (book) {
-      setTestament(book.testament)
-      setCurrentBook(book)
-      loadChapter(book.id, 1)
-      setChapterSelect(1)
+      setTestament(book.testament);
+      setCurrentBook(book);
+      loadChapter(book.id, 1);
+      setChapterSelect(1);
     }
-  }
+  };
 
-  const handleChangeChapter = useCallback((num: number) => {
-    if (currentBook) {
-      const clamped = Math.max(1, Math.min(currentBook.chapter_count, num))
-      setChapterSelect(clamped)
-      loadChapter(currentBook.id, clamped)
-    }
-  }, [currentBook, loadChapter])
+  const handleChangeChapter = useCallback(
+    (num: number) => {
+      if (currentBook) {
+        const clamped = Math.max(1, Math.min(currentBook.chapter_count, num));
+        setChapterSelect(clamped);
+        loadChapter(currentBook.id, clamped);
+      }
+    },
+    [currentBook, loadChapter]
+  );
 
   // Keyboard navigation
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (!currentBook) return
-      const container = scrollRef.current
-      const delta = 70
-      const page = container ? Math.floor(container.clientHeight * 0.9) : 500
+      if (!currentBook) return;
+      const container = scrollRef.current;
+      const delta = 70;
+      const page = container ? Math.floor(container.clientHeight * 0.9) : 500;
 
       switch (e.key) {
         case 'ArrowRight':
-          e.preventDefault()
-          handleChangeChapter((chapterSelect || 1) + 1)
-          break
+          e.preventDefault();
+          handleChangeChapter((chapterSelect || 1) + 1);
+          break;
         case 'ArrowLeft':
-          e.preventDefault()
-          handleChangeChapter((chapterSelect || 1) - 1)
-          break
+          e.preventDefault();
+          handleChangeChapter((chapterSelect || 1) - 1);
+          break;
         case 'ArrowDown':
-          if (container) { container.scrollBy({ top: delta, behavior: 'smooth' }) }
-          break
+          if (container) {
+            container.scrollBy({ top: delta, behavior: 'smooth' });
+          }
+          break;
         case 'ArrowUp':
-          if (container) { container.scrollBy({ top: -delta, behavior: 'smooth' }) }
-          break
+          if (container) {
+            container.scrollBy({ top: -delta, behavior: 'smooth' });
+          }
+          break;
         case 'PageDown':
-          if (container) { container.scrollBy({ top: page, behavior: 'smooth' }) }
-          break
+          if (container) {
+            container.scrollBy({ top: page, behavior: 'smooth' });
+          }
+          break;
         case 'PageUp':
-          if (container) { container.scrollBy({ top: -page, behavior: 'smooth' }) }
-          break
+          if (container) {
+            container.scrollBy({ top: -page, behavior: 'smooth' });
+          }
+          break;
         case 'Home':
           if (e.ctrlKey) {
-            e.preventDefault()
-            handleChangeChapter(1)
+            e.preventDefault();
+            handleChangeChapter(1);
           } else if (container) {
-            container.scrollTo({ top: 0, behavior: 'smooth' })
+            container.scrollTo({ top: 0, behavior: 'smooth' });
           }
-          break
+          break;
         case 'End':
           if (e.ctrlKey) {
-            e.preventDefault()
-            handleChangeChapter(currentBook.chapter_count)
+            e.preventDefault();
+            handleChangeChapter(currentBook.chapter_count);
           } else if (container) {
-            container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' })
+            container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
           }
-          break
+          break;
         default:
-          break
+          break;
       }
-    }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [currentBook, chapterSelect, handleChangeChapter])
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [currentBook, chapterSelect, handleChangeChapter]);
 
   // Progress tracking by scroll position
   useEffect(() => {
-    const el = scrollRef.current
-    if (!el) return
+    const el = scrollRef.current;
+    if (!el) return;
     const onScroll = () => {
-      const max = Math.max(1, el.scrollHeight - el.clientHeight)
-      setProgress(Math.max(0, Math.min(1, el.scrollTop / max)))
-    }
-    onScroll()
-    el.addEventListener('scroll', onScroll)
-    return () => el.removeEventListener('scroll', onScroll)
-  }, [currentBook, currentChapter, verses.length])
+      const max = Math.max(1, el.scrollHeight - el.clientHeight);
+      setProgress(Math.max(0, Math.min(1, el.scrollTop / max)));
+    };
+    onScroll();
+    el.addEventListener('scroll', onScroll);
+    return () => el.removeEventListener('scroll', onScroll);
+  }, [currentBook, currentChapter, verses.length]);
 
   if (!currentRepository) {
     return (
       <div className="h-full flex items-center justify-center">
-        <p className="text-muted-foreground">Select a repository from Repositories to start reading.</p>
+        <p className="text-muted-foreground">
+          Select a repository from Repositories to start reading.
+        </p>
       </div>
-    )
+    );
   }
 
-  const percent = Math.round(progress * 100)
+  const percent = Math.round(progress * 100);
 
   return (
     <div className="h-full min-h-0 flex bg-background/25">
@@ -416,7 +450,7 @@ export function Reader() {
           </div>
         </div>
         <div className="scrollbar-subtle flex-1 overflow-y-auto p-1.5">
-          {filteredBooks.map(b => (
+          {filteredBooks.map((b) => (
             <button
               key={b.id}
               className={`w-full rounded-md text-left px-2.5 py-1.5 hover:bg-accent/60 transition-colors flex items-center gap-2 text-sm ${
@@ -424,7 +458,9 @@ export function Reader() {
               }`}
               onClick={() => handleSelectBook(b.id)}
             >
-              <span className="text-xs text-muted-foreground w-5 text-right flex-shrink-0">{b.order}</span>
+              <span className="text-xs text-muted-foreground w-5 text-right flex-shrink-0">
+                {b.order}
+              </span>
               <span className="flex-1">{b.name}</span>
             </button>
           ))}
@@ -446,15 +482,11 @@ export function Reader() {
                 {currentBook.name}
               </span>
               <ChevronRight className="w-3 h-3" />
-              <span className="text-foreground font-medium">
-                Chapter {currentChapter.number}
-              </span>
+              <span className="text-foreground font-medium">Chapter {currentChapter.number}</span>
               {currentVerseNumber > 0 && (
                 <>
                   <ChevronRight className="w-3 h-3" />
-                  <span className="text-foreground font-medium">
-                    Verse {currentVerseNumber}
-                  </span>
+                  <span className="text-foreground font-medium">Verse {currentVerseNumber}</span>
                 </>
               )}
             </div>
@@ -464,39 +496,50 @@ export function Reader() {
             <div className="flex items-center gap-3">
               {currentBook && currentChapter ? (
                 <>
-                  <h1 className="text-base font-semibold tracking-tight">{currentBook.name} {currentChapter.number}</h1>
+                  <h1 className="text-base font-semibold tracking-tight">
+                    {currentBook.name} {currentChapter.number}
+                  </h1>
                   <span className="text-xs text-muted-foreground">({verses.length} verses)</span>
                 </>
               ) : (
                 <span className="text-muted-foreground">Select a book to begin reading</span>
               )}
             </div>
-            
+
             {currentBook && (
               <div className="flex items-center gap-1">
-              <button
-                className="rounded-md px-3 py-1 text-sm hover:bg-accent/60 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                onClick={() => handleChangeChapter(Math.max(1, (chapterSelect || 1) - 1))}
-                disabled={!chapterSelect || chapterSelect <= 1}
-              >
-                ←
-              </button>
-              <select
-                className="bg-background/90 text-foreground border border-border/70 rounded-md px-2 py-1 text-sm cursor-pointer"
-                value={chapterSelect ?? ''}
-                onChange={(e) => handleChangeChapter(Number(e.target.value))}
-              >
-                {chaptersForCurrentBook.map(n => (
-                  <option key={n} value={n} className="bg-background text-foreground">{n}</option>
-                ))}
-              </select>
-              <button
-                className="rounded-md px-3 py-1 text-sm hover:bg-accent/60 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                onClick={() => handleChangeChapter(Math.min((currentBook?.chapter_count || 1), (chapterSelect || 1) + 1))}
-                disabled={!chapterSelect || (currentBook ? chapterSelect >= currentBook.chapter_count : true)}
-              >
-                →
-              </button>
+                <button
+                  className="rounded-md px-3 py-1 text-sm hover:bg-accent/60 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={() => handleChangeChapter(Math.max(1, (chapterSelect || 1) - 1))}
+                  disabled={!chapterSelect || chapterSelect <= 1}
+                >
+                  ←
+                </button>
+                <select
+                  className="bg-background/90 text-foreground border border-border/70 rounded-md px-2 py-1 text-sm cursor-pointer"
+                  value={chapterSelect ?? ''}
+                  onChange={(e) => handleChangeChapter(Number(e.target.value))}
+                >
+                  {chaptersForCurrentBook.map((n) => (
+                    <option key={n} value={n} className="bg-background text-foreground">
+                      {n}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  className="rounded-md px-3 py-1 text-sm hover:bg-accent/60 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={() =>
+                    handleChangeChapter(
+                      Math.min(currentBook?.chapter_count || 1, (chapterSelect || 1) + 1)
+                    )
+                  }
+                  disabled={
+                    !chapterSelect ||
+                    (currentBook ? chapterSelect >= currentBook.chapter_count : true)
+                  }
+                >
+                  →
+                </button>
               </div>
             )}
           </div>
@@ -504,7 +547,10 @@ export function Reader() {
 
         {currentBook && currentChapter && (
           <div className="h-0.5 bg-muted/80 relative">
-            <div className="h-full bg-primary/60 transition-all duration-300" style={{ width: `${percent}%` }} />
+            <div
+              className="h-full bg-primary/60 transition-all duration-300"
+              style={{ width: `${percent}%` }}
+            />
           </div>
         )}
 
@@ -518,9 +564,9 @@ export function Reader() {
           </div>
         ) : (
           <div ref={scrollRef} className="scrollbar-subtle flex-1 overflow-y-auto px-8 py-6">
-            <div 
+            <div
               className="mx-auto"
-              style={{ 
+              style={{
                 maxWidth: `${readingPrefs.maxWidth}px`,
                 fontFamily: readingPrefs.fontFamily,
                 fontSize: `${readingPrefs.fontSize}px`,
@@ -528,23 +574,26 @@ export function Reader() {
                 textAlign: readingPrefs.textAlign,
               }}
             >
-            {verses.map((v) => {
-                const highlight = highlights.find(h => 
-                  h.repository_id === currentRepository?.id &&
-                  h.book_id === currentBook?.id &&
-                  h.chapter_number === currentChapter?.number && 
-                  h.verse_number === v.number
-                )
+              {verses.map((v) => {
+                const highlight = highlights.find(
+                  (h) =>
+                    h.repository_id === currentRepository?.id &&
+                    h.book_id === currentBook?.id &&
+                    h.chapter_number === currentChapter?.number &&
+                    h.verse_number === v.number
+                );
                 const isBookmarked = bookmarks.some(
-                  b => b.book_id === currentBook?.id &&
-                       b.chapter_number === currentChapter?.number &&
-                       b.verse_number === v.number
-                )
+                  (b) =>
+                    b.book_id === currentBook?.id &&
+                    b.chapter_number === currentChapter?.number &&
+                    b.verse_number === v.number
+                );
                 const hasNote = notes.some(
-                  n => n.book_id === currentBook?.id &&
-                       n.chapter_number === currentChapter?.number &&
-                       n.verse_number === v.number
-                )
+                  (n) =>
+                    n.book_id === currentBook?.id &&
+                    n.chapter_number === currentChapter?.number &&
+                    n.verse_number === v.number
+                );
                 return (
                   <VerseItem
                     key={v.id}
@@ -558,12 +607,12 @@ export function Reader() {
                     spacing={readingPrefs.verseSpacing}
                     onInView={(inView) => {
                       if (inView) {
-                        setCurrentVerseNumber(v.number)
+                        setCurrentVerseNumber(v.number);
                       }
                     }}
                     onContextMenu={(e) => handleVerseContextMenu(e, v.id, v.number)}
                   />
-                )
+                );
               })}
               {verses.length === 0 && (
                 <div className="text-sm text-muted-foreground">Loading verses...</div>
@@ -571,7 +620,7 @@ export function Reader() {
             </div>
           </div>
         )}
-        
+
         {/* Context Menu */}
         {contextMenu && (
           <VerseContextMenu
@@ -584,31 +633,27 @@ export function Reader() {
             onNote={handleNote}
             onClearHighlight={handleClearHighlight}
             onCompare={handleCompare}
-            hasHighlight={highlights.some(h => 
-              h.repository_id === currentRepository?.id &&
-              h.book_id === currentBook?.id &&
-              h.chapter_number === currentChapter?.number && 
-              h.verse_number === contextMenu.verseNumber
+            hasHighlight={highlights.some(
+              (h) =>
+                h.repository_id === currentRepository?.id &&
+                h.book_id === currentBook?.id &&
+                h.chapter_number === currentChapter?.number &&
+                h.verse_number === contextMenu.verseNumber
             )}
             hasBookmark={bookmarks.some(
-              b => b.book_id === currentBook?.id &&
-                   b.chapter_number === currentChapter?.number &&
-                   b.verse_number === contextMenu.verseNumber
+              (b) =>
+                b.book_id === currentBook?.id &&
+                b.chapter_number === currentChapter?.number &&
+                b.verse_number === contextMenu.verseNumber
             )}
           />
         )}
 
         {/* Bookmark Dialog */}
-        <BookmarkDialog
-          verse={bookmarkDialogVerse}
-          onClose={() => setBookmarkDialogVerse(null)}
-        />
+        <BookmarkDialog verse={bookmarkDialogVerse} onClose={() => setBookmarkDialogVerse(null)} />
 
         {/* Note Dialog */}
-        <NoteDialog
-          verse={noteDialogVerse}
-          onClose={() => setNoteDialogVerse(null)}
-        />
+        <NoteDialog verse={noteDialogVerse} onClose={() => setNoteDialogVerse(null)} />
 
         {/* Verse Comparison Modal */}
         {comparisonVerse && (
@@ -621,33 +666,44 @@ export function Reader() {
         )}
       </div>
     </div>
-  )
+  );
 }
 
 // Individual verse component with intersection observer
 interface VerseItemProps {
-  domId: string
-  verse: { id: string; number: number; text: string }
-  highlight?: { color: string }
-  isSelected: boolean
-  isBookmarked: boolean
-  hasNote: boolean
-  showNumber: boolean
-  spacing: number
-  onInView: (inView: boolean) => void
-  onContextMenu: (e: React.MouseEvent) => void
+  domId: string;
+  verse: { id: string; number: number; text: string };
+  highlight?: { color: string };
+  isSelected: boolean;
+  isBookmarked: boolean;
+  hasNote: boolean;
+  showNumber: boolean;
+  spacing: number;
+  onInView: (inView: boolean) => void;
+  onContextMenu: (e: React.MouseEvent) => void;
 }
 
-function VerseItem({ domId, verse, highlight, isSelected, isBookmarked, hasNote, showNumber, spacing, onInView, onContextMenu }: VerseItemProps) {
+function VerseItem({
+  domId,
+  verse,
+  highlight,
+  isSelected,
+  isBookmarked,
+  hasNote,
+  showNumber,
+  spacing,
+  onInView,
+  onContextMenu,
+}: VerseItemProps) {
   const { ref, inView } = useInView({
     threshold: 0.5,
     trackVisibility: true,
     delay: 100,
-  })
+  });
 
   useEffect(() => {
-    onInView(inView)
-  }, [inView, onInView])
+    onInView(inView);
+  }, [inView, onInView]);
 
   return (
     <div
@@ -664,13 +720,11 @@ function VerseItem({ domId, verse, highlight, isSelected, isBookmarked, hasNote,
           {verse.number}
         </span>
       )}
-              <p className={showNumber ? 'flex-1' : 'flex-1'}>{verse.text}</p>
-      {hasNote && (
-        <StickyNote className="w-3.5 h-3.5 text-amber-500 flex-shrink-0 mt-1" />
-      )}
+      <p className={showNumber ? 'flex-1' : 'flex-1'}>{verse.text}</p>
+      {hasNote && <StickyNote className="w-3.5 h-3.5 text-amber-500 flex-shrink-0 mt-1" />}
       {isBookmarked && (
         <BookmarkIcon className="w-3.5 h-3.5 text-primary flex-shrink-0 mt-1 fill-primary" />
       )}
     </div>
-  )
+  );
 }

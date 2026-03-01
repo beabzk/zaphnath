@@ -1,72 +1,70 @@
-import { useState, useEffect, useRef } from 'react'
-import { X, Bookmark } from 'lucide-react'
-import { useReadingStore } from '@/stores'
-import type { Bookmark as BookmarkType } from '@/types/store'
+import { useState, useEffect, useRef } from 'react';
+import { X, Bookmark } from 'lucide-react';
+import { useReadingStore } from '@/stores';
+import type { Bookmark as BookmarkType } from '@/types/store';
 
 interface BookmarkDialogProps {
   /** When set, the dialog opens in "add" mode for this verse */
   verse?: {
-    repositoryId: string
-    bookId: string
-    bookName: string
-    chapterNumber: number
-    verseNumber: number
-    verseText: string
-  } | null
+    repositoryId: string;
+    bookId: string;
+    bookName: string;
+    chapterNumber: number;
+    verseNumber: number;
+    verseText: string;
+  } | null;
   /** When set, the dialog opens in "edit" mode for this bookmark */
-  editBookmark?: BookmarkType | null
-  onClose: () => void
+  editBookmark?: BookmarkType | null;
+  onClose: () => void;
 }
 
 export function BookmarkDialog({ verse, editBookmark, onClose }: BookmarkDialogProps) {
-  const { addBookmark, updateBookmark } = useReadingStore()
-  const isEdit = !!editBookmark
-  const dialogRef = useRef<HTMLDivElement>(null)
+  const { addBookmark, updateBookmark } = useReadingStore();
+  const isEdit = !!editBookmark;
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   const defaultTitle = verse
     ? `${verse.bookName} ${verse.chapterNumber}:${verse.verseNumber}`
-    : editBookmark?.title ?? ''
+    : (editBookmark?.title ?? '');
 
-  const [title, setTitle] = useState(isEdit ? (editBookmark?.title ?? '') : defaultTitle)
-  const [note, setNote] = useState(isEdit ? (editBookmark?.note ?? '') : '')
-  const [tagsInput, setTagsInput] = useState(
-    isEdit ? (editBookmark?.tags?.join(', ') ?? '') : ''
-  )
+  const [title, setTitle] = useState(isEdit ? (editBookmark?.title ?? '') : defaultTitle);
+  const [note, setNote] = useState(isEdit ? (editBookmark?.note ?? '') : '');
+  const [tagsInput, setTagsInput] = useState(isEdit ? (editBookmark?.tags?.join(', ') ?? '') : '');
 
   // Reset fields when dialog opens with new data
   useEffect(() => {
     if (verse) {
-      setTitle(`${verse.bookName} ${verse.chapterNumber}:${verse.verseNumber}`)
-      setNote('')
-      setTagsInput('')
+      setTitle(`${verse.bookName} ${verse.chapterNumber}:${verse.verseNumber}`);
+      setNote('');
+      setTagsInput('');
     } else if (editBookmark) {
-      setTitle(editBookmark.title ?? '')
-      setNote(editBookmark.note ?? '')
-      setTagsInput(editBookmark.tags?.join(', ') ?? '')
+      setTitle(editBookmark.title ?? '');
+      setNote(editBookmark.note ?? '');
+      setTagsInput(editBookmark.tags?.join(', ') ?? '');
     }
-  }, [verse, editBookmark])
+  }, [verse, editBookmark]);
 
   // Close on Escape
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [onClose])
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
 
   // Close on backdrop click
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (dialogRef.current && !dialogRef.current.contains(e.target as Node)) {
-      onClose()
+      onClose();
     }
-  }
+  };
 
   const parseTags = (input: string): string[] =>
     input
       .split(',')
-      .map(t => t.trim())
-      .filter(Boolean)
+      .map((t) => t.trim())
+      .filter(Boolean);
 
   const handleSave = () => {
     if (isEdit && editBookmark) {
@@ -74,7 +72,7 @@ export function BookmarkDialog({ verse, editBookmark, onClose }: BookmarkDialogP
         title: title.trim() || undefined,
         note: note.trim() || undefined,
         tags: parseTags(tagsInput),
-      })
+      });
     } else if (verse) {
       addBookmark({
         repository_id: verse.repositoryId,
@@ -84,13 +82,13 @@ export function BookmarkDialog({ verse, editBookmark, onClose }: BookmarkDialogP
         title: title.trim() || undefined,
         note: note.trim() || undefined,
         tags: parseTags(tagsInput),
-      })
+      });
     }
-    onClose()
-  }
+    onClose();
+  };
 
-  const isOpen = !!(verse || editBookmark)
-  if (!isOpen) return null
+  const isOpen = !!(verse || editBookmark);
+  if (!isOpen) return null;
 
   return (
     <div
@@ -105,14 +103,9 @@ export function BookmarkDialog({ verse, editBookmark, onClose }: BookmarkDialogP
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <div className="flex items-center gap-2">
             <Bookmark className="w-4 h-4" />
-            <h3 className="text-sm font-medium">
-              {isEdit ? 'Edit Bookmark' : 'Add Bookmark'}
-            </h3>
+            <h3 className="text-sm font-medium">{isEdit ? 'Edit Bookmark' : 'Add Bookmark'}</h3>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1 hover:bg-accent rounded transition-colors"
-          >
+          <button onClick={onClose} className="p-1 hover:bg-accent rounded transition-colors">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -131,9 +124,7 @@ export function BookmarkDialog({ verse, editBookmark, onClose }: BookmarkDialogP
         <div className="px-4 py-3 space-y-3">
           {/* Title */}
           <div>
-            <label className="text-xs font-medium text-muted-foreground block mb-1">
-              Title
-            </label>
+            <label className="text-xs font-medium text-muted-foreground block mb-1">Title</label>
             <input
               type="text"
               value={title}
@@ -145,9 +136,7 @@ export function BookmarkDialog({ verse, editBookmark, onClose }: BookmarkDialogP
 
           {/* Note */}
           <div>
-            <label className="text-xs font-medium text-muted-foreground block mb-1">
-              Note
-            </label>
+            <label className="text-xs font-medium text-muted-foreground block mb-1">Note</label>
             <textarea
               value={note}
               onChange={(e) => setNote(e.target.value)}
@@ -201,5 +190,5 @@ export function BookmarkDialog({ verse, editBookmark, onClose }: BookmarkDialogP
         </div>
       </div>
     </div>
-  )
+  );
 }

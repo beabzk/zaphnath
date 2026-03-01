@@ -198,6 +198,7 @@ Each translation directory contains its own manifest with translation-specific m
 Each Bible book within a translation directory is stored as a separate JSON file with standardized naming:
 
 **Naming Convention**: `{order:02d}-{name}.json`
+
 - `01-genesis.json`, `02-exodus.json`, etc.
 - Order follows traditional Protestant canon (Genesis=1, Revelation=66)
 
@@ -232,6 +233,7 @@ Each Bible book within a translation directory is stored as a separate JSON file
 ## Schema Definitions
 
 ### Language Object
+
 ```json
 {
   "code": "string (ISO 639-1/639-3)",
@@ -242,6 +244,7 @@ Each Bible book within a translation directory is stored as a separate JSON file
 ```
 
 ### Translation Object
+
 ```json
 {
   "type": "formal|dynamic|paraphrase|interlinear",
@@ -254,13 +257,16 @@ Each Bible book within a translation directory is stored as a separate JSON file
 ```
 
 ### Audio Reference Format
+
 Audio files are referenced using Media Fragment URIs:
+
 - `audio/01-genesis/chapter-01.mp3#t=0,5.2` (verse 1: 0-5.2 seconds)
 - `audio/01-genesis/chapter-01.mp3#t=5.2,10.8` (verse 2: 5.2-10.8 seconds)
 
 ## Validation Rules
 
 ### Required Fields
+
 - Repository root `manifest.json` must be present and valid with `type: "parent"`
 - Each translation directory must have its own `manifest.json` and `README.md`
 - All translation directories referenced in the repository manifest must exist
@@ -269,17 +275,20 @@ Audio files are referenced using Media Fragment URIs:
 - All verses must have non-empty text
 
 ### Directory Structure Requirements
+
 - Translation directories must follow the naming convention specified in the repository manifest
 - Each translation directory must contain a `books/` subdirectory
 - Book files must be located within the translation's `books/` directory
 
 ### Optional Features
+
 - Audio files and references
 - Cross-references and footnotes
 - Study notes and commentary
 - Images and additional assets
 
 ### Data Integrity
+
 - UTF-8 encoding required
 - JSON must be valid and well-formed
 - Checksums must match actual content
@@ -288,6 +297,7 @@ Audio files are referenced using Media Fragment URIs:
 ## Repository Discovery
 
 ### Official Repository Index
+
 The Zaphnath project maintains an official registry at:
 `https://raw.githubusercontent.com/beabzk/zbrs-registry/main/manifest.json`
 
@@ -317,13 +327,16 @@ The Zaphnath project maintains an official registry at:
 ```
 
 ### Repository Discovery Process
+
 When discovering a repository, applications should:
+
 1. Fetch the repository root `manifest.json`
 2. Validate that it has `type: "parent"`
 3. Parse the `translations` array to discover available translations
 4. For each translation, validate the corresponding translation directory and manifest
 
 ### Third-Party Repositories
+
 Users can add custom repository URLs that follow the same hierarchical standard.
 
 ## Security Considerations
@@ -349,7 +362,9 @@ The standard allows for extensions while maintaining compatibility:
   "extensions": {
     "zaphnath:study_notes": {
       "version": "1.0",
-      "data": { /* custom data */ }
+      "data": {
+        /* custom data */
+      }
     }
   }
 }

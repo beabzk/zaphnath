@@ -6,12 +6,12 @@ import {
   PerformanceMetric,
   UserAction,
   ErrorInfo,
-} from "@/types/logging";
-import { getAppVersion } from "@/lib/version";
+} from '@/types/logging';
+import { getAppVersion } from '@/lib/version';
 
 class LoggerService implements Logger {
   private config: LoggerConfig = {
-    level: "info",
+    level: 'info',
     enableConsole: true,
     enableFile: false,
     enableRemote: false,
@@ -32,7 +32,7 @@ class LoggerService implements Logger {
     this.version = getAppVersion();
 
     // Initialize with system info
-    this.info("Logger initialized", { sessionId: this.sessionId }, "system");
+    this.info('Logger initialized', { sessionId: this.sessionId }, 'system');
 
     // Set up error listeners
     this.setupErrorListeners();
@@ -41,28 +41,26 @@ class LoggerService implements Logger {
   private generateId(): string {
     const timestamp = Date.now();
 
-    if (typeof crypto !== "undefined") {
-      if (typeof crypto.randomUUID === "function") {
+    if (typeof crypto !== 'undefined') {
+      if (typeof crypto.randomUUID === 'function') {
         return `${timestamp}-${crypto.randomUUID()}`;
       }
 
       const bytes = new Uint8Array(16);
       crypto.getRandomValues(bytes);
-      const randomHex = Array.from(bytes, (byte) =>
-        byte.toString(16).padStart(2, "0")
-      ).join("");
+      const randomHex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
 
       return `${timestamp}-${randomHex}`;
     }
 
-    return `${timestamp}-${performance.now().toString(16).replace(".", "")}`;
+    return `${timestamp}-${performance.now().toString(16).replace('.', '')}`;
   }
 
   private setupErrorListeners(): void {
     // Global error handler
-    window.addEventListener("error", (event) => {
+    window.addEventListener('error', (event) => {
       this.error(
-        "Uncaught error",
+        'Uncaught error',
         {
           message: event.message,
           filename: event.filename,
@@ -70,19 +68,19 @@ class LoggerService implements Logger {
           colno: event.colno,
           stack: event.error?.stack,
         },
-        "ui"
+        'ui'
       );
     });
 
     // Unhandled promise rejection handler
-    window.addEventListener("unhandledrejection", (event) => {
+    window.addEventListener('unhandledrejection', (event) => {
       this.error(
-        "Unhandled promise rejection",
+        'Unhandled promise rejection',
         {
           reason: event.reason,
           stack: event.reason?.stack,
         },
-        "api"
+        'api'
       );
     });
   }
@@ -108,7 +106,7 @@ class LoggerService implements Logger {
     level: LogLevel,
     message: string,
     context?: Record<string, any>,
-    category: string = "general"
+    category: string = 'general'
   ): LogEntry {
     const entry: LogEntry = {
       id: this.generateId(),
@@ -123,7 +121,7 @@ class LoggerService implements Logger {
     };
 
     // Add stack trace for errors
-    if (level === "error") {
+    if (level === 'error') {
       entry.stack = new Error().stack;
     }
 
@@ -140,10 +138,10 @@ class LoggerService implements Logger {
 
     // Console output
     if (this.config.enableConsole) {
-      const consoleMethod = entry.level === "debug" ? "log" : entry.level;
+      const consoleMethod = entry.level === 'debug' ? 'log' : entry.level;
       console[consoleMethod](
         `[${entry.level.toUpperCase()}] ${entry.category}: ${entry.message}`,
-        entry.context || ""
+        entry.context || ''
       );
     }
 
@@ -163,7 +161,7 @@ class LoggerService implements Logger {
       // @ts-ignore - APIs will be available at runtime
       await window.logger?.writeToFile?.(entry);
     } catch (error) {
-      console.error("Failed to write log to file:", error);
+      console.error('Failed to write log to file:', error);
     }
   }
 
@@ -171,25 +169,21 @@ class LoggerService implements Logger {
     try {
       if (this.config.remoteEndpoint) {
         await fetch(this.config.remoteEndpoint, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(entry),
         });
       }
     } catch (error) {
-      console.error("Failed to send log to remote:", error);
+      console.error('Failed to send log to remote:', error);
     }
   }
 
   // Public logging methods
-  error(
-    message: string,
-    context?: Record<string, any>,
-    category: string = "general"
-  ): void {
-    if (!this.shouldLog("error", category)) return;
+  error(message: string, context?: Record<string, any>, category: string = 'general'): void {
+    if (!this.shouldLog('error', category)) return;
 
-    const entry = this.createLogEntry("error", message, context, category);
+    const entry = this.createLogEntry('error', message, context, category);
     this.addLogEntry(entry);
 
     // Also add to errors collection
@@ -199,7 +193,7 @@ class LoggerService implements Logger {
       message,
       stack: entry.stack,
       category: category as any,
-      severity: "medium",
+      severity: 'medium',
       context,
       sessionId: this.sessionId,
       version: this.version,
@@ -213,38 +207,23 @@ class LoggerService implements Logger {
     }
   }
 
-  warn(
-    message: string,
-    context?: Record<string, any>,
-    category: string = "general"
-  ): void {
-    if (!this.shouldLog("warn", category)) return;
-    this.addLogEntry(this.createLogEntry("warn", message, context, category));
+  warn(message: string, context?: Record<string, any>, category: string = 'general'): void {
+    if (!this.shouldLog('warn', category)) return;
+    this.addLogEntry(this.createLogEntry('warn', message, context, category));
   }
 
-  info(
-    message: string,
-    context?: Record<string, any>,
-    category: string = "general"
-  ): void {
-    if (!this.shouldLog("info", category)) return;
-    this.addLogEntry(this.createLogEntry("info", message, context, category));
+  info(message: string, context?: Record<string, any>, category: string = 'general'): void {
+    if (!this.shouldLog('info', category)) return;
+    this.addLogEntry(this.createLogEntry('info', message, context, category));
   }
 
-  debug(
-    message: string,
-    context?: Record<string, any>,
-    category: string = "general"
-  ): void {
-    if (!this.shouldLog("debug", category)) return;
-    this.addLogEntry(this.createLogEntry("debug", message, context, category));
+  debug(message: string, context?: Record<string, any>, category: string = 'general'): void {
+    if (!this.shouldLog('debug', category)) return;
+    this.addLogEntry(this.createLogEntry('debug', message, context, category));
   }
 
   logPerformance(
-    metric: Omit<
-      PerformanceMetric,
-      "id" | "timestamp" | "sessionId" | "version"
-    >
+    metric: Omit<PerformanceMetric, 'id' | 'timestamp' | 'sessionId' | 'version'>
   ): void {
     const fullMetric: PerformanceMetric = {
       ...metric,
@@ -262,11 +241,11 @@ class LoggerService implements Logger {
     this.debug(
       `Performance: ${metric.name} took ${metric.duration}ms`,
       metric.context,
-      "performance"
+      'performance'
     );
   }
 
-  logUserAction(action: Omit<UserAction, "id" | "timestamp">): void {
+  logUserAction(action: Omit<UserAction, 'id' | 'timestamp'>): void {
     const fullAction: UserAction = {
       ...action,
       id: this.generateId(),
@@ -278,11 +257,7 @@ class LoggerService implements Logger {
       this.userActions = this.userActions.slice(-200);
     }
 
-    this.debug(
-      `User action: ${action.type} on ${action.target}`,
-      action.details,
-      "user-action"
-    );
+    this.debug(`User action: ${action.type} on ${action.target}`, action.details, 'user-action');
   }
 
   getRecentLogs(count: number = 50): LogEntry[] {
@@ -317,17 +292,17 @@ class LoggerService implements Logger {
     this.errors = [];
     this.metrics = [];
     this.userActions = [];
-    this.info("Logs cleared", {}, "system");
+    this.info('Logs cleared', {}, 'system');
   }
 
   setLevel(level: LogLevel): void {
     this.config.level = level;
-    this.info(`Log level set to ${level}`, { level }, "system");
+    this.info(`Log level set to ${level}`, { level }, 'system');
   }
 
   setConfig(config: Partial<LoggerConfig>): void {
     this.config = { ...this.config, ...config };
-    this.info("Logger config updated", { config }, "system");
+    this.info('Logger config updated', { config }, 'system');
   }
 
   // Additional utility methods

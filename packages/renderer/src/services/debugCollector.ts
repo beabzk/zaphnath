@@ -5,21 +5,21 @@ import {
   UserAction,
   LogEntry,
   PerformanceMetric,
-} from "@/types/logging";
-import { logger } from "./logger";
-import { performanceMonitor } from "./performanceMonitor";
-import { useRepositoryStore, useUIStore, useReadingStore } from "@/stores";
+} from '@/types/logging';
+import { logger } from './logger';
+import { performanceMonitor } from './performanceMonitor';
+import { useRepositoryStore, useUIStore, useReadingStore } from '@/stores';
 
-const APP_SETTINGS_DB_KEY = "app_settings";
+const APP_SETTINGS_DB_KEY = 'app_settings';
 
 class DebugCollectorService implements DebugCollector {
   async collectSystemInfo(): Promise<SystemInfo> {
     const systemInfo: SystemInfo = {
       platform: navigator.platform,
-      arch: "unknown",
+      arch: 'unknown',
       version: navigator.appVersion,
-      nodeVersion: "unknown",
-      electronVersion: "unknown",
+      nodeVersion: 'unknown',
+      electronVersion: 'unknown',
       chromeVersion: this.getChromeVersion(),
       memory: this.getMemoryInfo(),
       cpu: this.getCPUInfo(),
@@ -35,11 +35,11 @@ class DebugCollectorService implements DebugCollector {
       }
     } catch (_error) {
       logger.warn(
-        "Failed to get system info from main process",
+        'Failed to get system info from main process',
         {
           error: _error instanceof Error ? _error.message : String(_error),
         },
-        "debug"
+        'debug'
       );
     }
 
@@ -48,11 +48,11 @@ class DebugCollectorService implements DebugCollector {
 
   private getChromeVersion(): string {
     const match = navigator.userAgent.match(/Chrome\/([0-9.]+)/);
-    return match ? match[1] : "unknown";
+    return match ? match[1] : 'unknown';
   }
 
-  private getMemoryInfo(): SystemInfo["memory"] {
-    if ("memory" in performance) {
+  private getMemoryInfo(): SystemInfo['memory'] {
+    if ('memory' in performance) {
       const memory = (performance as any).memory;
       return {
         total: memory.totalJSHeapSize || 0,
@@ -68,15 +68,15 @@ class DebugCollectorService implements DebugCollector {
     };
   }
 
-  private getCPUInfo(): SystemInfo["cpu"] {
+  private getCPUInfo(): SystemInfo['cpu'] {
     return {
-      model: "unknown",
+      model: 'unknown',
       cores: navigator.hardwareConcurrency || 1,
       usage: undefined,
     };
   }
 
-  private getScreenInfo(): SystemInfo["screen"] {
+  private getScreenInfo(): SystemInfo['screen'] {
     return {
       width: screen.width,
       height: screen.height,
@@ -99,11 +99,11 @@ class DebugCollectorService implements DebugCollector {
       }
     } catch (_error) {
       logger.warn(
-        "Failed to read settings for debug collection",
+        'Failed to read settings for debug collection',
         {
           error: _error instanceof Error ? _error.message : String(_error),
         },
-        "debug"
+        'debug'
       );
     }
 
@@ -162,7 +162,7 @@ class DebugCollectorService implements DebugCollector {
     performanceMetrics: PerformanceMetric[];
     timestamp: string;
   }> {
-    logger.info("Generating debug report", {}, "debug");
+    logger.info('Generating debug report', {}, 'debug');
 
     const [systemInfo] = await Promise.all([this.collectSystemInfo()]);
 
@@ -178,7 +178,7 @@ class DebugCollectorService implements DebugCollector {
     };
 
     logger.info(
-      "Debug report generated",
+      'Debug report generated',
       {
         systemInfo: !!report.systemInfo,
         applicationState: !!report.applicationState,
@@ -186,7 +186,7 @@ class DebugCollectorService implements DebugCollector {
         logsCount: report.logs.length,
         metricsCount: report.performanceMetrics.length,
       },
-      "debug"
+      'debug'
     );
 
     return report;
@@ -199,7 +199,7 @@ class DebugCollectorService implements DebugCollector {
       ...report,
       metadata: {
         exportedAt: new Date().toISOString(),
-        exportedBy: "Zaphnath Bible Reader Debug Collector",
+        exportedBy: 'Zaphnath Bible Reader Debug Collector',
         version: logger.getVersion(),
         sessionId: logger.getSessionId(),
       },
@@ -221,7 +221,7 @@ class DebugCollectorService implements DebugCollector {
     };
 
     // Get network connection info if available
-    if ("connection" in navigator) {
+    if ('connection' in navigator) {
       const connection = (navigator as any).connection;
       networkInfo.connection = {
         effectiveType: connection.effectiveType,
@@ -245,7 +245,7 @@ class DebugCollectorService implements DebugCollector {
 
     for (const key of keys) {
       try {
-        const value = localStorage.getItem(key) || "";
+        const value = localStorage.getItem(key) || '';
         const size = new Blob([value]).size;
         items[key] = size;
         totalSize += size;
@@ -286,13 +286,12 @@ class DebugCollectorService implements DebugCollector {
   }
 
   async generateComprehensiveReport(): Promise<string> {
-    const [basicReport, networkInfo, localStorageInfo, browserInfo] =
-      await Promise.all([
-        this.generateDebugReport(),
-        this.collectNetworkInfo(),
-        Promise.resolve(this.collectLocalStorageInfo()),
-        Promise.resolve(this.collectBrowserInfo()),
-      ]);
+    const [basicReport, networkInfo, localStorageInfo, browserInfo] = await Promise.all([
+      this.generateDebugReport(),
+      this.collectNetworkInfo(),
+      Promise.resolve(this.collectLocalStorageInfo()),
+      Promise.resolve(this.collectBrowserInfo()),
+    ]);
 
     const comprehensiveReport = {
       ...basicReport,
@@ -302,7 +301,7 @@ class DebugCollectorService implements DebugCollector {
       performanceSummary: performanceMonitor.getMetricsSummary(),
       memoryUsage: performanceMonitor.getMemoryUsage(),
       metadata: {
-        reportType: "comprehensive",
+        reportType: 'comprehensive',
         generatedAt: new Date().toISOString(),
         version: logger.getVersion(),
         sessionId: logger.getSessionId(),

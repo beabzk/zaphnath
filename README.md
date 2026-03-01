@@ -29,15 +29,15 @@ pnpm start
 
 ## Common Commands
 
-| Command | Purpose |
-| --- | --- |
-| `pnpm start` | Run app in development mode |
-| `pnpm run build` | Build all workspaces |
-| `pnpm run compile` | Build distributable app packages |
+| Command              | Purpose                                 |
+| -------------------- | --------------------------------------- |
+| `pnpm start`         | Run app in development mode             |
+| `pnpm run build`     | Build all workspaces                    |
+| `pnpm run compile`   | Build distributable app packages        |
 | `pnpm run typecheck` | Run TypeScript checks across workspaces |
-| `pnpm run lint` | Run ESLint |
-| `pnpm run lint:fix` | Run ESLint with autofix |
-| `pnpm run rebuild` | Rebuild native modules |
+| `pnpm run lint`      | Run ESLint                              |
+| `pnpm run lint:fix`  | Run ESLint with autofix                 |
+| `pnpm run rebuild`   | Rebuild native modules                  |
 
 ## Versioning
 

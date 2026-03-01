@@ -1,10 +1,10 @@
-import React from 'react'
-import { Button } from '@/components/ui/button'
-import { Separator } from '@/components/ui/separator'
-import { Badge } from '@/components/ui/badge'
-import { cn } from '@/lib/utils'
-import { useNavigation, type AppView } from './Navigation'
-import { useSidebar } from '@/stores'
+import React from 'react';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
+import { useNavigation, type AppView } from './Navigation';
+import { useSidebar } from '@/stores';
 import {
   BookOpen,
   Library,
@@ -16,38 +16,38 @@ import {
   Settings,
   Download,
   X,
-  Bug
-} from 'lucide-react'
+  Bug,
+} from 'lucide-react';
 
 interface NavItem {
-  icon: React.ComponentType<{ className?: string }>
-  label: string
-  view: AppView
-  badge?: string
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  view: AppView;
+  badge?: string;
 }
 
 const navigationItems: NavItem[] = [
   { icon: BookOpen, label: 'Reader', view: 'reader' },
   { icon: Library, label: 'Repositories', view: 'repositories' },
   { icon: Search, label: 'Search', view: 'search' },
-]
+];
 
 const studyItems: NavItem[] = [
   { icon: Bookmark, label: 'Bookmarks', view: 'bookmarks' },
   { icon: StickyNote, label: 'Notes', view: 'notes' },
   { icon: Highlighter, label: 'Highlights', view: 'highlights' },
   { icon: Calendar, label: 'Reading Plans', view: 'reading-plans' },
-]
+];
 
 const systemItems: NavItem[] = [
   { icon: Download, label: 'Downloads', view: 'downloads' },
   { icon: Settings, label: 'Settings', view: 'settings' },
   { icon: Bug, label: 'Debug', view: 'debug' },
-]
+];
 
 export function Sidebar() {
-  const { currentView, setCurrentView } = useNavigation()
-  const { isOpen, close, width } = useSidebar()
+  const { currentView, setCurrentView } = useNavigation();
+  const { isOpen, close, width } = useSidebar();
 
   const NavSection = ({ title, items }: { title: string; items: NavItem[] }) => (
     <div className="space-y-1.5">
@@ -55,14 +55,14 @@ export function Sidebar() {
         {title}
       </h3>
       {items.map((item) => {
-        const isActive = currentView === item.view
+        const isActive = currentView === item.view;
         return (
           <Button
             key={item.label}
-            variant={isActive ? "secondary" : "ghost"}
+            variant={isActive ? 'secondary' : 'ghost'}
             className={cn(
-              "h-8 w-full justify-start gap-2.5 rounded-lg px-2.5 text-[13px]",
-              isActive && "border border-border/65 bg-secondary shadow-sm"
+              'h-8 w-full justify-start gap-2.5 rounded-lg px-2.5 text-[13px]',
+              isActive && 'border border-border/65 bg-secondary shadow-sm'
             )}
             onClick={() => setCurrentView(item.view)}
           >
@@ -74,10 +74,10 @@ export function Sidebar() {
               </Badge>
             )}
           </Button>
-        )
+        );
       })}
     </div>
-  )
+  );
 
   return (
     <>
@@ -90,11 +90,11 @@ export function Sidebar() {
 
       <aside
         className={cn(
-          "desktop-surface transition-all duration-300 ease-in-out",
-          "hidden overflow-hidden lg:block",
-          isOpen && "lg:block",
+          'desktop-surface transition-all duration-300 ease-in-out',
+          'hidden overflow-hidden lg:block',
+          isOpen && 'lg:block',
           isOpen &&
-            "block fixed left-[var(--workspace-padding)] top-[calc(var(--titlebar-height)+var(--workspace-padding-y))] z-50 h-[calc(100vh-var(--titlebar-height)-var(--footer-height)-1rem)] lg:relative lg:left-0 lg:top-0 lg:h-auto lg:z-auto"
+            'block fixed left-[var(--workspace-padding)] top-[calc(var(--titlebar-height)+var(--workspace-padding-y))] z-50 h-[calc(100vh-var(--titlebar-height)-var(--footer-height)-1rem)] lg:relative lg:left-0 lg:top-0 lg:h-auto lg:z-auto'
         )}
         style={{ width: isOpen ? `${width}px` : '0px' }}
       >
@@ -122,5 +122,5 @@ export function Sidebar() {
         </div>
       </aside>
     </>
-  )
+  );
 }

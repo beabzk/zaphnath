@@ -1,6 +1,6 @@
-import type Database from "better-sqlite3";
-import { DatabaseConnection } from "./connection.js";
-import type { RepositoryDbRecord, ZBRSBook } from "../repository/types.js";
+import type Database from 'better-sqlite3';
+import { DatabaseConnection } from './connection.js';
+import type { RepositoryDbRecord, ZBRSBook } from '../repository/types.js';
 
 export class DatabaseQueries {
   private db: Database.Database;
@@ -18,15 +18,13 @@ export class DatabaseQueries {
   }
 
   private deleteTranslationData(repositoryId: string): void {
-    this.db.prepare("DELETE FROM verses WHERE repository_id = ?").run(repositoryId);
-    this.db.prepare("DELETE FROM books WHERE repository_id = ?").run(repositoryId);
+    this.db.prepare('DELETE FROM verses WHERE repository_id = ?').run(repositoryId);
+    this.db.prepare('DELETE FROM books WHERE repository_id = ?').run(repositoryId);
 
-    const optionalTables = ["notes", "highlights", "bookmarks"];
+    const optionalTables = ['notes', 'highlights', 'bookmarks'];
     for (const tableName of optionalTables) {
       if (this.tableExists(tableName)) {
-        this.db
-          .prepare(`DELETE FROM ${tableName} WHERE repository_id = ?`)
-          .run(repositoryId);
+        this.db.prepare(`DELETE FROM ${tableName} WHERE repository_id = ?`).run(repositoryId);
       }
     }
   }
@@ -78,7 +76,7 @@ export class DatabaseQueries {
   }
 
   public createRepository(
-    repository: Omit<Zaphnath.BibleRepository, "created_at" | "updated_at">
+    repository: Omit<Zaphnath.BibleRepository, 'created_at' | 'updated_at'>
   ): void {
     const stmt = this.db.prepare(`
       INSERT INTO repositories (id, name, description, language, version)
@@ -110,12 +108,10 @@ export class DatabaseQueries {
         this.deleteTranslationData(translation.id);
       }
 
-      this.db
-        .prepare("DELETE FROM repository_translations WHERE parent_repository_id = ?")
-        .run(id);
+      this.db.prepare('DELETE FROM repository_translations WHERE parent_repository_id = ?').run(id);
 
       // Delete parent repository row (repository_translations cascade on parent_repository_id).
-      this.db.prepare("DELETE FROM repositories WHERE id = ?").run(id);
+      this.db.prepare('DELETE FROM repositories WHERE id = ?').run(id);
     });
     deleteAll();
   }
@@ -140,7 +136,7 @@ export class DatabaseQueries {
       id: record.id,
       name: record.name,
       description: record.description ?? null,
-      language: record.language ?? "en",
+      language: record.language ?? 'en',
       version: record.version,
       created_at: record.created_at,
       updated_at: record.updated_at,
@@ -158,11 +154,11 @@ export class DatabaseQueries {
     let params: any[] = [];
 
     if (repositoryId) {
-      query += " WHERE repository_id = ?";
+      query += ' WHERE repository_id = ?';
       params.push(repositoryId);
     }
 
-    query += " ORDER BY book_order";
+    query += ' ORDER BY book_order';
 
     const stmt = this.db.prepare(query);
     return stmt.all(...params) as Zaphnath.BibleBook[];
@@ -177,7 +173,7 @@ export class DatabaseQueries {
     return stmt.get(id) as Zaphnath.BibleBook | null;
   }
 
-  public createBook(book: Omit<Zaphnath.BibleBook, "id">): number {
+  public createBook(book: Omit<Zaphnath.BibleBook, 'id'>): number {
     const stmt = this.db.prepare(`
       INSERT INTO books (repository_id, name, abbreviation, testament, book_order, chapter_count)
       VALUES (?, ?, ?, ?, ?, ?)
@@ -196,20 +192,16 @@ export class DatabaseQueries {
   public importBook(book: ZBRSBook, repositoryId: string): void {
     const runImport = this.db.transaction(() => {
       const existing = this.db
-        .prepare(
-          "SELECT id FROM books WHERE repository_id = ? AND book_order = ?"
-        )
+        .prepare('SELECT id FROM books WHERE repository_id = ? AND book_order = ?')
         .get(repositoryId, book.book.order) as { id: number } | undefined;
 
       if (existing?.id) {
-        this.db
-          .prepare("DELETE FROM verses WHERE book_id = ?")
-          .run(existing.id);
-        this.db.prepare("DELETE FROM books WHERE id = ?").run(existing.id);
+        this.db.prepare('DELETE FROM verses WHERE book_id = ?').run(existing.id);
+        this.db.prepare('DELETE FROM books WHERE id = ?').run(existing.id);
       }
 
       const chapterCount =
-        typeof book.book.chapters_count === "number"
+        typeof book.book.chapters_count === 'number'
           ? book.book.chapters_count
           : book.chapters.length;
 
@@ -217,7 +209,7 @@ export class DatabaseQueries {
         repository_id: repositoryId,
         name: book.book.name,
         abbreviation: book.book.abbreviation,
-        testament: book.book.testament === "old" ? "OT" : "NT",
+        testament: book.book.testament === 'old' ? 'OT' : 'NT',
         order: book.book.order,
         chapter_count: chapterCount,
       });
@@ -229,13 +221,7 @@ export class DatabaseQueries {
 
       for (const chapter of book.chapters) {
         for (const verse of chapter.verses) {
-          verseStatement.run(
-            repositoryId,
-            bookId,
-            chapter.number,
-            verse.number,
-            verse.text ?? ""
-          );
+          verseStatement.run(repositoryId, bookId, chapter.number, verse.number, verse.text ?? '');
         }
       }
     });
@@ -254,11 +240,7 @@ export class DatabaseQueries {
     return stmt.all(bookId, chapter) as Zaphnath.BibleVerse[];
   }
 
-  public getVerse(
-    bookId: number,
-    chapter: number,
-    verse: number
-  ): Zaphnath.BibleVerse | null {
+  public getVerse(bookId: number, chapter: number, verse: number): Zaphnath.BibleVerse | null {
     const stmt = this.db.prepare(`
       SELECT id, book_id, chapter, verse, text
       FROM verses
@@ -267,7 +249,7 @@ export class DatabaseQueries {
     return stmt.get(bookId, chapter, verse) as Zaphnath.BibleVerse | null;
   }
 
-  public createVerse(verse: Omit<Zaphnath.BibleVerse, "id">): number {
+  public createVerse(verse: Omit<Zaphnath.BibleVerse, 'id'>): number {
     const stmt = this.db.prepare(`
       INSERT INTO verses (repository_id, book_id, chapter, verse, text)
       VALUES (?, ?, ?, ?, ?)
@@ -282,12 +264,9 @@ export class DatabaseQueries {
     return result.lastInsertRowid as number;
   }
 
-  public searchVerses(
-    query: string,
-    repositoryId?: string
-  ): Zaphnath.BibleVerse[] {
+  public searchVerses(query: string, repositoryId?: string): Zaphnath.BibleVerse[] {
     console.log(`[DB] searchVerses called with query: "${query}", repositoryId: ${repositoryId}`);
-    
+
     // If query is empty, return all verses for search indexing
     if (!query || query.trim() === '') {
       console.log('[DB] Empty query, loading all verses for indexing');
@@ -301,15 +280,15 @@ export class DatabaseQueries {
       let params: any[] = [];
 
       if (repositoryId) {
-        sql += " WHERE v.repository_id = ?";
+        sql += ' WHERE v.repository_id = ?';
         params.push(repositoryId);
       }
 
-      sql += " ORDER BY b.book_order, v.chapter, v.verse";
+      sql += ' ORDER BY b.book_order, v.chapter, v.verse';
 
       console.log('[DB] Executing SQL:', sql);
       console.log('[DB] With params:', params);
-      
+
       const stmt = this.db.prepare(sql);
       const results = stmt.all(...params) as Zaphnath.BibleVerse[];
       console.log(`[DB] Query returned ${results.length} verses`);
@@ -328,11 +307,11 @@ export class DatabaseQueries {
     let params: any[] = [`%${query}%`];
 
     if (repositoryId) {
-      sql += " AND v.repository_id = ?";
+      sql += ' AND v.repository_id = ?';
       params.push(repositoryId);
     }
 
-    sql += " ORDER BY b.book_order, v.chapter, v.verse LIMIT 100";
+    sql += ' ORDER BY b.book_order, v.chapter, v.verse LIMIT 100';
 
     const stmt = this.db.prepare(sql);
     return stmt.all(...params) as Zaphnath.BibleVerse[];
@@ -340,9 +319,7 @@ export class DatabaseQueries {
 
   // User settings queries
   public getSetting(key: string): string | null {
-    const stmt = this.db.prepare(
-      "SELECT value FROM user_settings WHERE key = ?"
-    );
+    const stmt = this.db.prepare('SELECT value FROM user_settings WHERE key = ?');
     const result = stmt.get(key) as { value: string } | undefined;
     return result?.value || null;
   }
@@ -356,12 +333,15 @@ export class DatabaseQueries {
   }
 
   public getAllSettings(): Record<string, string> {
-    const stmt = this.db.prepare("SELECT key, value FROM user_settings");
+    const stmt = this.db.prepare('SELECT key, value FROM user_settings');
     const rows = stmt.all() as { key: string; value: string }[];
-    return rows.reduce((acc, row) => {
-      acc[row.key] = row.value;
-      return acc;
-    }, {} as Record<string, string>);
+    return rows.reduce(
+      (acc, row) => {
+        acc[row.key] = row.value;
+        return acc;
+      },
+      {} as Record<string, string>
+    );
   }
 
   // Utility methods
@@ -393,21 +373,19 @@ export class DatabaseQueries {
     verses: number;
     databaseSize: string;
   } {
-    const repositoryCount = this.db
-      .prepare("SELECT COUNT(*) as count FROM repositories")
-      .get() as { count: number };
-    const bookCount = this.db
-      .prepare("SELECT COUNT(*) as count FROM books")
-      .get() as { count: number };
-    const verseCount = this.db
-      .prepare("SELECT COUNT(*) as count FROM verses")
-      .get() as { count: number };
+    const repositoryCount = this.db.prepare('SELECT COUNT(*) as count FROM repositories').get() as {
+      count: number;
+    };
+    const bookCount = this.db.prepare('SELECT COUNT(*) as count FROM books').get() as {
+      count: number;
+    };
+    const verseCount = this.db.prepare('SELECT COUNT(*) as count FROM verses').get() as {
+      count: number;
+    };
 
     // Get database file size
     const sizeResult = this.db
-      .prepare(
-        "SELECT page_count * page_size as size FROM pragma_page_count(), pragma_page_size()"
-      )
+      .prepare('SELECT page_count * page_size as size FROM pragma_page_count(), pragma_page_size()')
       .get() as { size: number };
     const sizeInMB = (sizeResult.size / (1024 * 1024)).toFixed(2);
 
@@ -430,9 +408,7 @@ export class DatabaseQueries {
     return stmt.all() as Zaphnath.BibleRepository[];
   }
 
-  public getTranslationRepositories(
-    parentId?: string
-  ): Zaphnath.BibleRepository[] {
+  public getTranslationRepositories(parentId?: string): Zaphnath.BibleRepository[] {
     let query = `
       SELECT
         rt.translation_id as id,
@@ -450,11 +426,11 @@ export class DatabaseQueries {
     let params: any[] = [];
 
     if (parentId) {
-      query += " AND rt.parent_repository_id = ?";
+      query += ' AND rt.parent_repository_id = ?';
       params.push(parentId);
     }
 
-    query += " ORDER BY rt.translation_name";
+    query += ' ORDER BY rt.translation_name';
 
     const stmt = this.db.prepare(query);
     return stmt.all(...params) as Zaphnath.BibleRepository[];
@@ -470,12 +446,7 @@ export class DatabaseQueries {
       INSERT INTO repositories (id, name, description, version, type)
       VALUES (?, ?, ?, ?, 'parent')
     `);
-    stmt.run(
-      repository.id,
-      repository.name,
-      repository.description,
-      repository.version
-    );
+    stmt.run(repository.id, repository.name, repository.description, repository.version);
   }
 
   public createTranslationRepository(repository: {
@@ -497,7 +468,7 @@ export class DatabaseQueries {
       translation_version: repository.version,
       directory_name: repository.directory_name || repository.id,
       language_code: repository.language,
-      status: repository.status || "active",
+      status: repository.status || 'active',
     });
   }
 
@@ -545,7 +516,7 @@ export class DatabaseQueries {
       translation.translation_version,
       translation.directory_name,
       translation.language_code,
-      translation.status || "active"
+      translation.status || 'active'
     );
   }
 
@@ -572,17 +543,18 @@ export class DatabaseQueries {
     return stmt.all(parentId);
   }
 
-  public deleteRepositoryTranslation(
-    parentId: string,
-    translationId: string
-  ): void {
+  public deleteRepositoryTranslation(parentId: string, translationId: string): void {
     const deleteTranslation = this.db.transaction(() => {
       this.deleteTranslationData(translationId);
 
-      this.db.prepare(`
+      this.db
+        .prepare(
+          `
       DELETE FROM repository_translations
       WHERE parent_repository_id = ? AND translation_id = ?
-    `).run(parentId, translationId);
+    `
+        )
+        .run(parentId, translationId);
     });
 
     deleteTranslation();

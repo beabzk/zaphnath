@@ -1,27 +1,27 @@
-import { useSettings } from './SettingsProvider'
-import { useTheme } from '@/components/theme/ThemeProvider'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
-import { 
-  Sun, 
-  Moon, 
-  Monitor, 
-  Type, 
-  AlignLeft, 
-  AlignCenter, 
+import { useSettings } from './SettingsProvider';
+import { useTheme } from '@/components/theme/ThemeProvider';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import {
+  Sun,
+  Moon,
+  Monitor,
+  Type,
+  AlignLeft,
+  AlignCenter,
   AlignJustify,
   Columns,
   Eye,
-  Minimize2
-} from 'lucide-react'
+  Minimize2,
+} from 'lucide-react';
 
 export function AppearanceSettings() {
-  const { settings, updateSetting } = useSettings()
-  const { theme, setTheme } = useTheme()
-  const { appearance } = settings
+  const { settings, updateSetting } = useSettings();
+  const { theme, setTheme } = useTheme();
+  const { appearance } = settings;
 
-  const fontSizes = [12, 14, 16, 18, 20, 22, 24]
+  const fontSizes = [12, 14, 16, 18, 20, 22, 24];
   const fontFamilies = [
     { name: 'System Default', value: 'system-ui, -apple-system, sans-serif' },
     { name: 'Georgia', value: 'Georgia, serif' },
@@ -30,37 +30,38 @@ export function AppearanceSettings() {
     { name: 'Helvetica', value: 'Helvetica, sans-serif' },
     { name: 'Verdana', value: 'Verdana, sans-serif' },
     { name: 'Trebuchet MS', value: '"Trebuchet MS", sans-serif' },
-  ]
+  ];
 
   const SettingGroup = ({ title, children }: { title: string; children: React.ReactNode }) => (
     <div className="space-y-3">
       <h3 className="font-medium text-sm">{title}</h3>
       {children}
     </div>
-  )
+  );
 
-  const SliderSetting = ({ 
-    label, 
-    value, 
-    min, 
-    max, 
-    step = 1, 
-    unit = '', 
-    onChange 
+  const SliderSetting = ({
+    label,
+    value,
+    min,
+    max,
+    step = 1,
+    unit = '',
+    onChange,
   }: {
-    label: string
-    value: number
-    min: number
-    max: number
-    step?: number
-    unit?: string
-    onChange: (value: number) => void
+    label: string;
+    value: number;
+    min: number;
+    max: number;
+    step?: number;
+    unit?: string;
+    onChange: (value: number) => void;
   }) => (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <label className="text-sm font-medium">{label}</label>
         <Badge variant="secondary" className="text-xs">
-          {value}{unit}
+          {value}
+          {unit}
         </Badge>
       </div>
       <input
@@ -73,7 +74,7 @@ export function AppearanceSettings() {
         className="w-full h-2 bg-secondary rounded-lg appearance-none cursor-pointer"
       />
     </div>
-  )
+  );
 
   return (
     <div className="space-y-6">
@@ -248,7 +249,9 @@ export function AppearanceSettings() {
             <Button
               variant={appearance.showVerseNumbers ? 'default' : 'outline'}
               size="sm"
-              onClick={() => updateSetting('appearance', 'showVerseNumbers', !appearance.showVerseNumbers)}
+              onClick={() =>
+                updateSetting('appearance', 'showVerseNumbers', !appearance.showVerseNumbers)
+              }
             >
               {appearance.showVerseNumbers ? 'On' : 'Off'}
             </Button>
@@ -262,7 +265,13 @@ export function AppearanceSettings() {
             <Button
               variant={appearance.highlightCurrentVerse ? 'default' : 'outline'}
               size="sm"
-              onClick={() => updateSetting('appearance', 'highlightCurrentVerse', !appearance.highlightCurrentVerse)}
+              onClick={() =>
+                updateSetting(
+                  'appearance',
+                  'highlightCurrentVerse',
+                  !appearance.highlightCurrentVerse
+                )
+              }
             >
               {appearance.highlightCurrentVerse ? 'On' : 'Off'}
             </Button>
@@ -284,5 +293,5 @@ export function AppearanceSettings() {
         </div>
       </SettingGroup>
     </div>
-  )
+  );
 }

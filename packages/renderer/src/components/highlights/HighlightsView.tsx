@@ -1,14 +1,8 @@
-import { useState, useMemo, useCallback } from 'react'
-import {
-  Highlighter,
-  Search,
-  Trash2,
-  BookOpen,
-  X,
-} from 'lucide-react'
-import { useReadingStore, useRepositoryStore } from '@/stores'
-import { useNavigation } from '@/components/layout/Navigation'
-import type { Highlight } from '@/types/store'
+import { useState, useMemo, useCallback } from 'react';
+import { Highlighter, Search, Trash2, BookOpen, X } from 'lucide-react';
+import { useReadingStore, useRepositoryStore } from '@/stores';
+import { useNavigation } from '@/components/layout/Navigation';
+import type { Highlight } from '@/types/store';
 
 const HIGHLIGHT_COLORS = [
   { name: 'Yellow', value: 'bg-yellow-200/40 dark:bg-yellow-500/20' },
@@ -17,14 +11,14 @@ const HIGHLIGHT_COLORS = [
   { name: 'Purple', value: 'bg-purple-200/40 dark:bg-purple-500/20' },
   { name: 'Pink', value: 'bg-pink-200/40 dark:bg-pink-500/20' },
   { name: 'Orange', value: 'bg-orange-200/40 dark:bg-orange-500/20' },
-]
+];
 
 function getColorName(colorValue: string): string {
-  return HIGHLIGHT_COLORS.find((c) => c.value === colorValue)?.name ?? 'Custom'
+  return HIGHLIGHT_COLORS.find((c) => c.value === colorValue)?.name ?? 'Custom';
 }
 
 export function HighlightsView() {
-  const { highlights, removeHighlight, updateHighlight, setCurrentLocation } = useReadingStore()
+  const { highlights, removeHighlight, updateHighlight, setCurrentLocation } = useReadingStore();
   const {
     books,
     repositories,
@@ -33,71 +27,70 @@ export function HighlightsView() {
     setCurrentRepository,
     setCurrentBook,
     loadChapter,
-  } =
-    useRepositoryStore()
-  const { setCurrentView } = useNavigation()
+  } = useRepositoryStore();
+  const { setCurrentView } = useNavigation();
 
-  const [searchQuery, setSearchQuery] = useState('')
-  const [activeColor, setActiveColor] = useState<string | null>(null)
-  const [deletingHighlightId, setDeletingHighlightId] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeColor, setActiveColor] = useState<string | null>(null);
+  const [deletingHighlightId, setDeletingHighlightId] = useState<string | null>(null);
 
   // Resolve book_id to display name
   const bookNameMap = useMemo(() => {
-    const map = new Map<string, string>()
-    books.forEach((b) => map.set(b.id, b.name))
-    return map
-  }, [books])
+    const map = new Map<string, string>();
+    books.forEach((b) => map.set(b.id, b.name));
+    return map;
+  }, [books]);
 
   // Collect all unique colors used across highlights
   const usedColors = useMemo(() => {
-    const colorSet = new Set<string>()
-    highlights.forEach((h) => colorSet.add(h.color))
-    return HIGHLIGHT_COLORS.filter((c) => colorSet.has(c.value))
-  }, [highlights])
+    const colorSet = new Set<string>();
+    highlights.forEach((h) => colorSet.add(h.color));
+    return HIGHLIGHT_COLORS.filter((c) => colorSet.has(c.value));
+  }, [highlights]);
 
   // Filter highlights by search query and active color
   const filteredHighlights = useMemo(() => {
-    let result = [...highlights]
+    let result = [...highlights];
 
     if (activeColor) {
-      result = result.filter((h) => h.color === activeColor)
+      result = result.filter((h) => h.color === activeColor);
     }
 
     if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase()
+      const q = searchQuery.toLowerCase();
       result = result.filter((h) => {
-        const bookName = bookNameMap.get(h.book_id) ?? ''
-        const ref = `${bookName} ${h.chapter_number}:${h.verse_number}`
-        return ref.toLowerCase().includes(q) || getColorName(h.color).toLowerCase().includes(q)
-      })
+        const bookName = bookNameMap.get(h.book_id) ?? '';
+        const ref = `${bookName} ${h.chapter_number}:${h.verse_number}`;
+        return ref.toLowerCase().includes(q) || getColorName(h.color).toLowerCase().includes(q);
+      });
     }
 
-    return result
-  }, [highlights, searchQuery, activeColor, bookNameMap])
+    return result;
+  }, [highlights, searchQuery, activeColor, bookNameMap]);
 
   // Group filtered highlights by book_id
   const groupedHighlights = useMemo(() => {
-    const groups = new Map<string, Highlight[]>()
+    const groups = new Map<string, Highlight[]>();
     const sorted = [...filteredHighlights].sort((a, b) => {
-      if (a.book_id !== b.book_id) return a.book_id.localeCompare(b.book_id)
-      if (a.chapter_number !== b.chapter_number) return a.chapter_number - b.chapter_number
-      return a.verse_number - b.verse_number
-    })
+      if (a.book_id !== b.book_id) return a.book_id.localeCompare(b.book_id);
+      if (a.chapter_number !== b.chapter_number) return a.chapter_number - b.chapter_number;
+      return a.verse_number - b.verse_number;
+    });
     sorted.forEach((h) => {
-      const list = groups.get(h.book_id) ?? []
-      list.push(h)
-      groups.set(h.book_id, list)
-    })
-    return groups
-  }, [filteredHighlights])
+      const list = groups.get(h.book_id) ?? [];
+      list.push(h);
+      groups.set(h.book_id, list);
+    });
+    return groups;
+  }, [filteredHighlights]);
 
-  const getBookName = (bookId: string) => bookNameMap.get(bookId) ?? `Book ${bookId}`
+  const getBookName = (bookId: string) => bookNameMap.get(bookId) ?? `Book ${bookId}`;
 
   // Navigate to the verse in the reader
   const handleNavigate = useCallback(
     async (highlight: Highlight) => {
-      const repositoryId = highlight.repository_id
-      const isCurrentRepository = currentRepository?.id === repositoryId
+      const repositoryId = highlight.repository_id;
+      const isCurrentRepository = currentRepository?.id === repositoryId;
 
       if (!isCurrentRepository) {
         const targetRepository = repositories.find((repo) => repo.id === repositoryId) ?? {
@@ -109,19 +102,19 @@ export function HighlightsView() {
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
           type: 'translation' as const,
-        }
-        setCurrentRepository(targetRepository)
+        };
+        setCurrentRepository(targetRepository);
       }
 
       if (!isCurrentRepository || books.length === 0) {
-        await loadBooks(repositoryId)
+        await loadBooks(repositoryId);
       }
 
-      const latestBooks = useRepositoryStore.getState().books
-      const book = latestBooks.find((b) => b.id === highlight.book_id)
+      const latestBooks = useRepositoryStore.getState().books;
+      const book = latestBooks.find((b) => b.id === highlight.book_id);
       if (book) {
-        setCurrentBook(book)
-        await loadChapter(book.id, highlight.chapter_number)
+        setCurrentBook(book);
+        await loadChapter(book.id, highlight.chapter_number);
       }
 
       setCurrentLocation({
@@ -129,8 +122,8 @@ export function HighlightsView() {
         book_id: highlight.book_id,
         chapter_number: highlight.chapter_number,
         verse_number: highlight.verse_number,
-      })
-      setCurrentView('reader')
+      });
+      setCurrentView('reader');
     },
     [
       books.length,
@@ -143,16 +136,16 @@ export function HighlightsView() {
       setCurrentRepository,
       setCurrentView,
     ]
-  )
+  );
 
   const handleDelete = (id: string) => {
-    removeHighlight(id)
-    setDeletingHighlightId(null)
-  }
+    removeHighlight(id);
+    setDeletingHighlightId(null);
+  };
 
   const handleChangeColor = (highlightId: string, newColor: string) => {
-    updateHighlight(highlightId, { color: newColor })
-  }
+    updateHighlight(highlightId, { color: newColor });
+  };
 
   const formatDate = (iso: string) => {
     try {
@@ -160,11 +153,11 @@ export function HighlightsView() {
         year: 'numeric',
         month: 'short',
         day: 'numeric',
-      })
+      });
     } catch {
-      return iso
+      return iso;
     }
-  }
+  };
 
   // Empty state
   if (highlights.length === 0) {
@@ -173,11 +166,11 @@ export function HighlightsView() {
         <Highlighter className="w-12 h-12 text-muted-foreground/40 mb-4" />
         <h3 className="text-lg font-medium mb-1">No highlights yet</h3>
         <p className="text-sm text-muted-foreground max-w-sm">
-          Right-click on any verse in the reader and pick a highlight color to
-          mark verses for quick reference.
+          Right-click on any verse in the reader and pick a highlight color to mark verses for quick
+          reference.
         </p>
       </div>
-    )
+    );
   }
 
   return (
@@ -345,5 +338,5 @@ export function HighlightsView() {
         </div>
       )}
     </div>
-  )
+  );
 }

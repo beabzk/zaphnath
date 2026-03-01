@@ -14,6 +14,7 @@ This is a minimal example repository demonstrating the Zaphnath Bible Repository
 This repository contains one translation with 3 books to demonstrate the hierarchical structure:
 
 ### King James Version (1769) - Minimal (`kjv-1769-min/`)
+
 - **Genesis** (Old Testament) - First 2 chapters showing creation
 - **Psalms** (Old Testament) - Psalm 1 showing wisdom literature
 - **John** (New Testament) - First 5 verses showing gospel literature
@@ -84,7 +85,9 @@ const repoValidation = await window.repository.validate('path/to/minimal-example
 console.log(repoValidation.valid); // Should be true
 
 // Validate a specific translation
-const translationValidation = await window.repository.validate('path/to/minimal-example/kjv-1769-min');
+const translationValidation = await window.repository.validate(
+  'path/to/minimal-example/kjv-1769-min'
+);
 console.log(translationValidation.valid); // Should be true
 ```
 
@@ -99,11 +102,11 @@ To create your own repository based on this example:
 5. **Add more books** - Include additional Bible books in each translation's `books/` directory
 6. **Update the translations array** - Add new translations to the repository manifest
 
-1. Copy this directory structure
-2. Update `manifest.json` with your translation details
-3. Replace the book files with your Bible text
-4. Add more books following the same pattern
-5. Validate with ZBRS tools
+7. Copy this directory structure
+8. Update `manifest.json` with your translation details
+9. Replace the book files with your Bible text
+10. Add more books following the same pattern
+11. Validate with ZBRS tools
 
 ## License
 

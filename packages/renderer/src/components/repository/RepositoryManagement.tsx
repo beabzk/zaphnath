@@ -1,25 +1,18 @@
-import { useCallback, useEffect, useState } from 'react'
-import { RepositoryList } from './RepositoryList'
-import { RepositoryImportDialog } from './RepositoryImportDialog'
-import { useRepositoryStore, useModal, useNotifications } from '@/stores'
-import { useNavigation } from '@/components/layout/Navigation'
-import { database } from '@app/preload'
-import {
-  Database,
-  BookOpen,
-  HardDrive,
-  RefreshCw,
-  AlertCircle,
-  CheckCircle
-} from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react';
+import { RepositoryList } from './RepositoryList';
+import { RepositoryImportDialog } from './RepositoryImportDialog';
+import { useRepositoryStore, useModal, useNotifications } from '@/stores';
+import { useNavigation } from '@/components/layout/Navigation';
+import { database } from '@app/preload';
+import { Database, BookOpen, HardDrive, RefreshCw, AlertCircle, CheckCircle } from 'lucide-react';
 
 // Types are now imported from stores
 
 interface OverviewStats {
-  repositories: number
-  books: number
-  verses: number
-  databaseSize: string
+  repositories: number;
+  books: number;
+  verses: number;
+  databaseSize: string;
 }
 
 export function RepositoryManagement() {
@@ -29,60 +22,66 @@ export function RepositoryManagement() {
     setCurrentRepository,
     loadRepositories,
     isLoading,
-    error
-  } = useRepositoryStore()
-  const { setCurrentView } = useNavigation()
+    error,
+  } = useRepositoryStore();
+  const { setCurrentView } = useNavigation();
 
-  const { isOpen: showImportDialog, open: openImportDialog, close: closeImportDialog } = useModal('repository-import')
-  const { addNotification } = useNotifications()
-  const [overviewStats, setOverviewStats] = useState<OverviewStats | null>(null)
-  const [isOverviewLoading, setIsOverviewLoading] = useState(true)
+  const {
+    isOpen: showImportDialog,
+    open: openImportDialog,
+    close: closeImportDialog,
+  } = useModal('repository-import');
+  const { addNotification } = useNotifications();
+  const [overviewStats, setOverviewStats] = useState<OverviewStats | null>(null);
+  const [isOverviewLoading, setIsOverviewLoading] = useState(true);
 
   const loadOverviewData = useCallback(async () => {
-    setIsOverviewLoading(true)
-    await loadRepositories()
+    setIsOverviewLoading(true);
+    await loadRepositories();
 
     try {
-      const stats = await database.getStats() as OverviewStats
-      setOverviewStats(stats)
+      const stats = (await database.getStats()) as OverviewStats;
+      setOverviewStats(stats);
     } catch (statsError) {
-      console.error('Failed to load database stats:', statsError)
+      console.error('Failed to load database stats:', statsError);
     } finally {
-      setIsOverviewLoading(false)
+      setIsOverviewLoading(false);
     }
-  }, [loadRepositories])
+  }, [loadRepositories]);
 
   useEffect(() => {
-    void loadOverviewData()
-  }, [loadOverviewData])
+    void loadOverviewData();
+  }, [loadOverviewData]);
 
   const handleImportComplete = () => {
-    void loadOverviewData()
+    void loadOverviewData();
     addNotification({
       type: 'success',
       title: 'Repository Imported',
       message: 'Repository has been successfully imported',
-      duration: 5000
-    })
-  }
+      duration: 5000,
+    });
+  };
 
-  const repositoryCount = overviewStats?.repositories ?? repositories.length
-  const bookCount = overviewStats?.books ?? repositories.reduce((sum, repo) => sum + (repo.book_count || 0), 0)
-  const verseCount = overviewStats?.verses ?? repositories.reduce((sum, repo) => sum + (repo.verse_count || 0), 0)
-  const databaseSize = overviewStats?.databaseSize ?? '-'
+  const repositoryCount = overviewStats?.repositories ?? repositories.length;
+  const bookCount =
+    overviewStats?.books ?? repositories.reduce((sum, repo) => sum + (repo.book_count || 0), 0);
+  const verseCount =
+    overviewStats?.verses ?? repositories.reduce((sum, repo) => sum + (repo.verse_count || 0), 0);
+  const databaseSize = overviewStats?.databaseSize ?? '-';
 
   const handleRepositorySelect = (repository: any) => {
-    setCurrentRepository(repository)
+    setCurrentRepository(repository);
     // Navigate to Reader so the user can read immediately
-    setCurrentView('reader')
-  }
+    setCurrentView('reader');
+  };
 
-  const currentBookCount = currentRepository?.book_count ?? null
-  const currentVerseCount = currentRepository?.verse_count ?? null
-  const hasIndexedBooks = (currentBookCount ?? 0) > 0
-  const hasIndexedVerses = (currentVerseCount ?? 0) > 0
-  const isParentRepository = currentRepository?.type === 'parent'
-  const isTranslationReady = !isParentRepository && hasIndexedBooks && hasIndexedVerses
+  const currentBookCount = currentRepository?.book_count ?? null;
+  const currentVerseCount = currentRepository?.verse_count ?? null;
+  const hasIndexedBooks = (currentBookCount ?? 0) > 0;
+  const hasIndexedVerses = (currentVerseCount ?? 0) > 0;
+  const isParentRepository = currentRepository?.type === 'parent';
+  const isTranslationReady = !isParentRepository && hasIndexedBooks && hasIndexedVerses;
 
   return (
     <div className="h-full flex flex-col">
@@ -93,7 +92,9 @@ export function RepositoryManagement() {
             <Database className="h-5 w-5" />
             <h2 className="text-lg font-semibold">Database Overview</h2>
           </div>
-          <p className="text-sm text-muted-foreground">Current status of your Bible database and repositories</p>
+          <p className="text-sm text-muted-foreground">
+            Current status of your Bible database and repositories
+          </p>
         </div>
         <div className="px-6 pb-4">
           {isLoading || isOverviewLoading ? (
@@ -104,8 +105,8 @@ export function RepositoryManagement() {
             <div className="flex items-center gap-2 text-destructive">
               <AlertCircle className="h-4 w-4" />
               <span>{error.message}</span>
-              <button 
-                onClick={() => void loadOverviewData()} 
+              <button
+                onClick={() => void loadOverviewData()}
                 className="ml-auto px-3 py-1 text-sm border border-border hover:bg-accent transition-colors"
               >
                 <RefreshCw className="h-4 w-4 mr-2 inline" />
@@ -146,9 +147,9 @@ export function RepositoryManagement() {
         onRepositorySelect={handleRepositorySelect}
         onRepositoryDelete={(repoId) => {
           if (currentRepository?.id === repoId || currentRepository?.parent_id === repoId) {
-            setCurrentRepository(null)
+            setCurrentRepository(null);
           }
-          void loadOverviewData()
+          void loadOverviewData();
         }}
       />
 
@@ -160,7 +161,9 @@ export function RepositoryManagement() {
               <BookOpen className="h-5 w-5" />
               <h2 className="text-lg font-semibold">Repository Details</h2>
             </div>
-            <p className="text-sm text-muted-foreground">Information about the selected repository</p>
+            <p className="text-sm text-muted-foreground">
+              Information about the selected repository
+            </p>
           </div>
           <div className="px-6 pb-4">
             <div className="grid grid-cols-2 gap-8">
@@ -185,11 +188,13 @@ export function RepositoryManagement() {
                   </div>
                   <div className="flex justify-between py-1">
                     <span className="text-muted-foreground">Verses:</span>
-                    <span>{currentVerseCount !== null ? currentVerseCount.toLocaleString() : 'Unknown'}</span>
+                    <span>
+                      {currentVerseCount !== null ? currentVerseCount.toLocaleString() : 'Unknown'}
+                    </span>
                   </div>
                 </div>
               </div>
-               
+
               <div>
                 <h4 className="font-medium mb-3">Repository Status</h4>
                 <div className="space-y-2">
@@ -224,11 +229,15 @@ export function RepositoryManagement() {
                     </span>
                   </div>
                 </div>
-                
+
                 <div className="mt-4 pt-4 border-t border-border">
                   <div className="text-xs text-muted-foreground space-y-1">
-                    <div>Created: {new Date(currentRepository.created_at).toLocaleDateString()}</div>
-                    <div>Updated: {new Date(currentRepository.updated_at).toLocaleDateString()}</div>
+                    <div>
+                      Created: {new Date(currentRepository.created_at).toLocaleDateString()}
+                    </div>
+                    <div>
+                      Updated: {new Date(currentRepository.updated_at).toLocaleDateString()}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -241,7 +250,7 @@ export function RepositoryManagement() {
       <div className="px-6 py-4">
         <h2 className="text-lg font-semibold mb-1">Quick Actions</h2>
         <p className="text-sm text-muted-foreground mb-4">Common maintenance tasks</p>
-        
+
         <div className="grid grid-cols-2 gap-3">
           <button
             onClick={() => void loadOverviewData()}
@@ -253,8 +262,8 @@ export function RepositoryManagement() {
               <div className="text-xs text-muted-foreground">Update statistics</div>
             </div>
           </button>
-          
-          <button 
+
+          <button
             className="p-4 border border-border bg-muted/20 opacity-50 cursor-not-allowed flex flex-col items-center gap-2"
             disabled
           >
@@ -274,5 +283,5 @@ export function RepositoryManagement() {
         onImportComplete={handleImportComplete}
       />
     </div>
-  )
+  );
 }

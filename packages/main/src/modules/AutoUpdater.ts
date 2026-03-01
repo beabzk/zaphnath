@@ -1,7 +1,7 @@
-import {AppModule} from '../AppModule.js';
-import electronUpdater, {type AppUpdater, type Logger} from 'electron-updater';
-import {Notification, app} from 'electron';
-import {DatabaseService} from '../services/database/index.js';
+import { AppModule } from '../AppModule.js';
+import electronUpdater, { type AppUpdater, type Logger } from 'electron-updater';
+import { Notification, app } from 'electron';
+import { DatabaseService } from '../services/database/index.js';
 
 type DownloadNotification = Parameters<AppUpdater['checkForUpdatesAndNotify']>[0];
 const UPDATE_POLICY_SETTING_KEY = 'update_policy';
@@ -22,22 +22,18 @@ export function isUpdatePolicy(value: unknown): value is UpdatePolicy {
 }
 
 export class AutoUpdater implements AppModule {
-
   readonly #logger: Logger | null;
   readonly #notification: DownloadNotification;
   readonly #databaseService: DatabaseService;
   #policy: UpdatePolicy = 'auto';
 
-  constructor(
-    {
-      logger = null,
-      downloadNotification = undefined,
-    }:
-      {
-        logger?: Logger | null | undefined,
-        downloadNotification?: DownloadNotification
-      } = {},
-  ) {
+  constructor({
+    logger = null,
+    downloadNotification = undefined,
+  }: {
+    logger?: Logger | null | undefined;
+    downloadNotification?: DownloadNotification;
+  } = {}) {
     this.#logger = logger;
     this.#notification = downloadNotification;
     this.#databaseService = DatabaseService.getInstance();
@@ -51,7 +47,7 @@ export class AutoUpdater implements AppModule {
   getAutoUpdater(): AppUpdater {
     // Using destructuring to access autoUpdater due to the CommonJS module of 'electron-updater'.
     // It is a workaround for ESM compatibility issues, see https://github.com/electron-userland/electron-builder/issues/7976.
-    const {autoUpdater} = electronUpdater;
+    const { autoUpdater } = electronUpdater;
     return autoUpdater;
   }
 
@@ -182,7 +178,6 @@ export class AutoUpdater implements AppModule {
     }
   }
 }
-
 
 export function autoUpdater(...args: ConstructorParameters<typeof AutoUpdater>) {
   autoUpdaterInstance = new AutoUpdater(...args);

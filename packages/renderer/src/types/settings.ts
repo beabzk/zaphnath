@@ -1,79 +1,79 @@
 // Settings type definitions for Zaphnath Bible Reader
 
 export interface AppSettings {
-  appearance: AppearanceSettings
-  reading: ReadingSettings
-  audio: AudioSettings
-  advanced: AdvancedSettings
-  version: string
-  lastModified: string
+  appearance: AppearanceSettings;
+  reading: ReadingSettings;
+  audio: AudioSettings;
+  advanced: AdvancedSettings;
+  version: string;
+  lastModified: string;
 }
 
 export interface AppearanceSettings {
-  theme: 'light' | 'dark' | 'system'
-  fontSize: number // 12-24px
-  fontFamily: string
-  lineHeight: number // 1.2-2.0
-  textAlign: 'left' | 'center' | 'justify'
-  columnLayout: 'single' | 'double'
-  showVerseNumbers: boolean
-  highlightCurrentVerse: boolean
-  compactMode: boolean
-  sidebarWidth: number // 200-400px
+  theme: 'light' | 'dark' | 'system';
+  fontSize: number; // 12-24px
+  fontFamily: string;
+  lineHeight: number; // 1.2-2.0
+  textAlign: 'left' | 'center' | 'justify';
+  columnLayout: 'single' | 'double';
+  showVerseNumbers: boolean;
+  highlightCurrentVerse: boolean;
+  compactMode: boolean;
+  sidebarWidth: number; // 200-400px
 }
 
 export interface ReadingSettings {
-  defaultRepository: string | null
-  defaultBook: string | null
-  defaultChapter: number | null
-  autoScroll: boolean
-  scrollSpeed: number // 1-10
-  readingMode: 'verse' | 'paragraph' | 'chapter'
-  showCrossReferences: boolean
-  showFootnotes: boolean
-  enableReadingPlans: boolean
-  dailyReadingReminder: boolean
-  reminderTime: string // HH:MM format
-  readingHistory: boolean
+  defaultRepository: string | null;
+  defaultBook: string | null;
+  defaultChapter: number | null;
+  autoScroll: boolean;
+  scrollSpeed: number; // 1-10
+  readingMode: 'verse' | 'paragraph' | 'chapter';
+  showCrossReferences: boolean;
+  showFootnotes: boolean;
+  enableReadingPlans: boolean;
+  dailyReadingReminder: boolean;
+  reminderTime: string; // HH:MM format
+  readingHistory: boolean;
   bookmarks: {
-    autoSync: boolean
-    maxBookmarks: number
-  }
+    autoSync: boolean;
+    maxBookmarks: number;
+  };
 }
 
 export interface AudioSettings {
-  enabled: boolean
-  defaultVoice: string
-  speechRate: number // 0.5-2.0
-  speechPitch: number // 0.5-2.0
-  speechVolume: number // 0.0-1.0
-  autoPlay: boolean
-  highlightSpokenText: boolean
-  pauseBetweenVerses: number // 0-3000ms
-  downloadQuality: 'low' | 'medium' | 'high'
-  offlineMode: boolean
+  enabled: boolean;
+  defaultVoice: string;
+  speechRate: number; // 0.5-2.0
+  speechPitch: number; // 0.5-2.0
+  speechVolume: number; // 0.0-1.0
+  autoPlay: boolean;
+  highlightSpokenText: boolean;
+  pauseBetweenVerses: number; // 0-3000ms
+  downloadQuality: 'low' | 'medium' | 'high';
+  offlineMode: boolean;
 }
 
 export interface AdvancedSettings {
-  language: string // UI language
-  dataDirectory: string
-  cacheSize: number // MB
-  enableLogging: boolean
-  logLevel: 'error' | 'warn' | 'info' | 'debug'
-  enableAnalytics: boolean
-  updatePolicy: 'auto' | 'notify' | 'manual'
-  experimentalFeatures: boolean
-  developerMode: boolean
+  language: string; // UI language
+  dataDirectory: string;
+  cacheSize: number; // MB
+  enableLogging: boolean;
+  logLevel: 'error' | 'warn' | 'info' | 'debug';
+  enableAnalytics: boolean;
+  updatePolicy: 'auto' | 'notify' | 'manual';
+  experimentalFeatures: boolean;
+  developerMode: boolean;
   database: {
-    autoBackup: boolean
-    backupInterval: number // hours
-    maxBackups: number
-  }
+    autoBackup: boolean;
+    backupInterval: number; // hours
+    maxBackups: number;
+  };
   performance: {
-    enableGPUAcceleration: boolean
-    preloadNextChapter: boolean
-    cacheImages: boolean
-  }
+    enableGPUAcceleration: boolean;
+    preloadNextChapter: boolean;
+    cacheImages: boolean;
+  };
 }
 
 // Default settings
@@ -143,15 +143,15 @@ export const defaultSettings: AppSettings = {
   },
   version: '1.0.0',
   lastModified: new Date().toISOString(),
-}
+};
 
 // Settings validation schemas
 export interface SettingsValidationRule {
-  min?: number
-  max?: number
-  required?: boolean
-  type: 'string' | 'number' | 'boolean' | 'array'
-  enum?: string[]
+  min?: number;
+  max?: number;
+  required?: boolean;
+  type: 'string' | 'number' | 'boolean' | 'array';
+  enum?: string[];
 }
 
 export const settingsValidation: Record<string, SettingsValidationRule> = {
@@ -167,7 +167,7 @@ export const settingsValidation: Record<string, SettingsValidationRule> = {
   'advanced.updatePolicy': { type: 'string', enum: ['auto', 'notify', 'manual'] },
   'advanced.database.backupInterval': { type: 'number', min: 1, max: 168 },
   'advanced.database.maxBackups': { type: 'number', min: 1, max: 30 },
-}
+};
 
 // Settings categories for UI organization
 export const settingsCategories = [
@@ -201,6 +201,6 @@ export const settingsCategories = [
     description: 'Advanced configuration and developer options',
     icon: 'Settings',
   },
-] as const
+] as const;
 
-export type SettingsCategory = typeof settingsCategories[number]['id']
+export type SettingsCategory = (typeof settingsCategories)[number]['id'];

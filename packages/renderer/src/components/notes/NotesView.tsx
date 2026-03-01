@@ -1,23 +1,14 @@
-import { useState, useMemo, useCallback } from 'react'
-import {
-  StickyNote,
-  Search,
-  Trash2,
-  Pencil,
-  BookOpen,
-  Tag,
-  X,
-  Clock,
-} from 'lucide-react'
-import { useReadingStore, useRepositoryStore } from '@/stores'
-import { useNavigation } from '@/components/layout/Navigation'
-import { NoteDialog } from '@/components/reader/NoteDialog'
-import type { Note } from '@/types/store'
+import { useState, useMemo, useCallback } from 'react';
+import { StickyNote, Search, Trash2, Pencil, BookOpen, Tag, X, Clock } from 'lucide-react';
+import { useReadingStore, useRepositoryStore } from '@/stores';
+import { useNavigation } from '@/components/layout/Navigation';
+import { NoteDialog } from '@/components/reader/NoteDialog';
+import type { Note } from '@/types/store';
 
-type SortMode = 'newest' | 'oldest' | 'updated'
+type SortMode = 'newest' | 'oldest' | 'updated';
 
 export function NotesView() {
-  const { notes, removeNote, setCurrentLocation } = useReadingStore()
+  const { notes, removeNote, setCurrentLocation } = useReadingStore();
   const {
     books,
     repositories,
@@ -26,82 +17,82 @@ export function NotesView() {
     setCurrentRepository,
     setCurrentBook,
     loadChapter,
-  } = useRepositoryStore()
-  const { setCurrentView } = useNavigation()
+  } = useRepositoryStore();
+  const { setCurrentView } = useNavigation();
 
-  const [searchQuery, setSearchQuery] = useState('')
-  const [activeTag, setActiveTag] = useState<string | null>(null)
-  const [sortMode, setSortMode] = useState<SortMode>('newest')
-  const [editingNote, setEditingNote] = useState<Note | null>(null)
-  const [deletingNoteId, setDeletingNoteId] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeTag, setActiveTag] = useState<string | null>(null);
+  const [sortMode, setSortMode] = useState<SortMode>('newest');
+  const [editingNote, setEditingNote] = useState<Note | null>(null);
+  const [deletingNoteId, setDeletingNoteId] = useState<string | null>(null);
 
   // Collect all unique tags across notes
   const allTags = useMemo(() => {
-    const tagSet = new Set<string>()
-    notes.forEach((n) => n.tags?.forEach((t) => tagSet.add(t)))
-    return Array.from(tagSet).sort()
-  }, [notes])
+    const tagSet = new Set<string>();
+    notes.forEach((n) => n.tags?.forEach((t) => tagSet.add(t)));
+    return Array.from(tagSet).sort();
+  }, [notes]);
 
   // Filter notes by search query and active tag
   const filteredNotes = useMemo(() => {
-    let result = [...notes]
+    let result = [...notes];
 
     if (activeTag) {
-      result = result.filter((n) => n.tags?.includes(activeTag))
+      result = result.filter((n) => n.tags?.includes(activeTag));
     }
 
     if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase()
+      const q = searchQuery.toLowerCase();
       result = result.filter(
         (n) =>
           (n.title && n.title.toLowerCase().includes(q)) ||
           n.content.toLowerCase().includes(q) ||
           n.tags?.some((t) => t.toLowerCase().includes(q))
-      )
+      );
     }
 
     // Sort
     result.sort((a, b) => {
       switch (sortMode) {
         case 'newest':
-          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
         case 'oldest':
-          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
         case 'updated':
-          return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+          return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
         default:
-          return 0
+          return 0;
       }
-    })
+    });
 
-    return result
-  }, [notes, searchQuery, activeTag, sortMode])
+    return result;
+  }, [notes, searchQuery, activeTag, sortMode]);
 
   // Group filtered notes by book_id
   const groupedNotes = useMemo(() => {
-    const groups = new Map<string, Note[]>()
+    const groups = new Map<string, Note[]>();
     filteredNotes.forEach((n) => {
-      const list = groups.get(n.book_id) ?? []
-      list.push(n)
-      groups.set(n.book_id, list)
-    })
-    return groups
-  }, [filteredNotes])
+      const list = groups.get(n.book_id) ?? [];
+      list.push(n);
+      groups.set(n.book_id, list);
+    });
+    return groups;
+  }, [filteredNotes]);
 
   // Resolve book_id to display name
   const bookNameMap = useMemo(() => {
-    const map = new Map<string, string>()
-    books.forEach((b) => map.set(b.id, b.name))
-    return map
-  }, [books])
+    const map = new Map<string, string>();
+    books.forEach((b) => map.set(b.id, b.name));
+    return map;
+  }, [books]);
 
-  const getBookName = (bookId: string) => bookNameMap.get(bookId) ?? `Book ${bookId}`
+  const getBookName = (bookId: string) => bookNameMap.get(bookId) ?? `Book ${bookId}`;
 
   // Navigate to the verse in the reader
   const handleNavigate = useCallback(
     async (note: Note) => {
-      const repositoryId = note.repository_id
-      const isCurrentRepository = currentRepository?.id === repositoryId
+      const repositoryId = note.repository_id;
+      const isCurrentRepository = currentRepository?.id === repositoryId;
 
       if (!isCurrentRepository) {
         const targetRepository = repositories.find((repo) => repo.id === repositoryId) ?? {
@@ -113,19 +104,19 @@ export function NotesView() {
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
           type: 'translation' as const,
-        }
-        setCurrentRepository(targetRepository)
+        };
+        setCurrentRepository(targetRepository);
       }
 
       if (!isCurrentRepository || books.length === 0) {
-        await loadBooks(repositoryId)
+        await loadBooks(repositoryId);
       }
 
-      const latestBooks = useRepositoryStore.getState().books
-      const book = latestBooks.find((b) => b.id === note.book_id)
+      const latestBooks = useRepositoryStore.getState().books;
+      const book = latestBooks.find((b) => b.id === note.book_id);
       if (book) {
-        setCurrentBook(book)
-        await loadChapter(book.id, note.chapter_number)
+        setCurrentBook(book);
+        await loadChapter(book.id, note.chapter_number);
       }
 
       setCurrentLocation({
@@ -133,8 +124,8 @@ export function NotesView() {
         book_id: note.book_id,
         chapter_number: note.chapter_number,
         verse_number: note.verse_number,
-      })
-      setCurrentView('reader')
+      });
+      setCurrentView('reader');
     },
     [
       books.length,
@@ -147,12 +138,12 @@ export function NotesView() {
       setCurrentRepository,
       setCurrentView,
     ]
-  )
+  );
 
   const handleDelete = (id: string) => {
-    removeNote(id)
-    setDeletingNoteId(null)
-  }
+    removeNote(id);
+    setDeletingNoteId(null);
+  };
 
   const formatDate = (iso: string) => {
     try {
@@ -160,11 +151,11 @@ export function NotesView() {
         year: 'numeric',
         month: 'short',
         day: 'numeric',
-      })
+      });
     } catch {
-      return iso
+      return iso;
     }
-  }
+  };
 
   const formatDateTime = (iso: string) => {
     try {
@@ -174,11 +165,11 @@ export function NotesView() {
         day: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
-      })
+      });
     } catch {
-      return iso
+      return iso;
     }
-  }
+  };
 
   // Empty state
   if (notes.length === 0) {
@@ -187,11 +178,10 @@ export function NotesView() {
         <StickyNote className="w-12 h-12 text-muted-foreground/40 mb-4" />
         <h3 className="text-lg font-medium mb-1">No notes yet</h3>
         <p className="text-sm text-muted-foreground max-w-sm">
-          Right-click on any verse in the reader and select "Add Note" to start
-          writing study notes.
+          Right-click on any verse in the reader and select "Add Note" to start writing study notes.
         </p>
       </div>
-    )
+    );
   }
 
   return (
@@ -284,10 +274,7 @@ export function NotesView() {
                   >
                     <div className="flex items-start justify-between gap-2">
                       {/* Note info - clickable to navigate */}
-                      <button
-                        className="flex-1 text-left"
-                        onClick={() => handleNavigate(note)}
-                      >
+                      <button className="flex-1 text-left" onClick={() => handleNavigate(note)}>
                         <div className="flex items-center gap-2">
                           <StickyNote className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
                           <span className="text-sm font-medium">
@@ -295,8 +282,7 @@ export function NotesView() {
                               `${getBookName(note.book_id)} ${note.chapter_number}:${note.verse_number}`}
                           </span>
                           <span className="text-xs text-muted-foreground">
-                            {getBookName(note.book_id)} {note.chapter_number}:
-                            {note.verse_number}
+                            {getBookName(note.book_id)} {note.chapter_number}:{note.verse_number}
                           </span>
                         </div>
                         <p className="text-sm text-muted-foreground mt-1 line-clamp-3 pl-5.5 whitespace-pre-wrap">
@@ -375,10 +361,7 @@ export function NotesView() {
       )}
 
       {/* Edit dialog */}
-      <NoteDialog
-        editNote={editingNote}
-        onClose={() => setEditingNote(null)}
-      />
+      <NoteDialog editNote={editingNote} onClose={() => setEditingNote(null)} />
     </div>
-  )
+  );
 }

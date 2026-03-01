@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react'
-import { repository } from '@app/preload'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
+import { useState, useEffect } from 'react';
+import { repository } from '@app/preload';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import {
   Search,
   Download,
@@ -12,87 +12,88 @@ import {
   BookOpen,
   Shield,
   AlertCircle,
-  RefreshCw
-} from 'lucide-react'
+  RefreshCw,
+} from 'lucide-react';
 
 interface RepositoryIndexEntry {
-  id: string
-  name: string
-  url: string
-  language: string
-  license: string
-  verified: boolean
-  last_updated: string
-  description?: string
-  tags?: string[]
+  id: string;
+  name: string;
+  url: string;
+  language: string;
+  license: string;
+  verified: boolean;
+  last_updated: string;
+  description?: string;
+  tags?: string[];
 }
 
 interface RepositoryDiscoveryProps {
-  onRepositorySelect: (url: string) => void
+  onRepositorySelect: (url: string) => void;
 }
 
 export function RepositoryDiscovery({ onRepositorySelect }: RepositoryDiscoveryProps) {
-  const [repositories, setRepositories] = useState<RepositoryIndexEntry[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [selectedLanguage, setSelectedLanguage] = useState<string>('all')
+  const [repositories, setRepositories] = useState<RepositoryIndexEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedLanguage, setSelectedLanguage] = useState<string>('all');
 
   useEffect(() => {
-    loadRepositories()
-  }, [])
+    loadRepositories();
+  }, []);
 
   const loadRepositories = async () => {
     try {
-      setLoading(true)
-      setError(null)
-      
-      const repos = await repository.discover()
-      setRepositories(repos || [])
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to discover repositories')
-    } finally {
-      setLoading(false)
-    }
-  }
+      setLoading(true);
+      setError(null);
 
-  const filteredRepositories = repositories.filter(repo => {
-    const matchesSearch = !searchTerm || 
+      const repos = await repository.discover();
+      setRepositories(repos || []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to discover repositories');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredRepositories = repositories.filter((repo) => {
+    const matchesSearch =
+      !searchTerm ||
       repo.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       repo.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      repo.tags?.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
-    
-    const matchesLanguage = selectedLanguage === 'all' || repo.language === selectedLanguage
-    
-    return matchesSearch && matchesLanguage
-  })
+      repo.tags?.some((tag) => tag.toLowerCase().includes(searchTerm.toLowerCase()));
 
-  const availableLanguages = Array.from(new Set(repositories.map(repo => repo.language)))
+    const matchesLanguage = selectedLanguage === 'all' || repo.language === selectedLanguage;
+
+    return matchesSearch && matchesLanguage;
+  });
+
+  const availableLanguages = Array.from(new Set(repositories.map((repo) => repo.language)));
 
   const formatDate = (dateString: string) => {
     try {
-      return new Date(dateString).toLocaleDateString()
+      return new Date(dateString).toLocaleDateString();
     } catch {
-      return dateString
+      return dateString;
     }
-  }
+  };
 
   const getLanguageDisplay = (language: string) => {
     const languageNames: Record<string, string> = {
-      'en': 'English',
-      'es': 'Spanish',
-      'fr': 'French',
-      'de': 'German',
-      'pt': 'Portuguese',
-      'it': 'Italian',
-      'ru': 'Russian',
-      'zh': 'Chinese',
-      'ar': 'Arabic',
-      'he': 'Hebrew',
-      'el': 'Greek'
-    }
-    return languageNames[language] || language.toUpperCase()
-  }
+      en: 'English',
+      es: 'Spanish',
+      fr: 'French',
+      de: 'German',
+      pt: 'Portuguese',
+      it: 'Italian',
+      ru: 'Russian',
+      zh: 'Chinese',
+      ar: 'Arabic',
+      he: 'Hebrew',
+      el: 'Greek',
+    };
+    return languageNames[language] || language.toUpperCase();
+  };
 
   if (loading) {
     return (
@@ -107,7 +108,7 @@ export function RepositoryDiscovery({ onRepositorySelect }: RepositoryDiscoveryP
           </div>
         </CardContent>
       </Card>
-    )
+    );
   }
 
   if (error) {
@@ -128,7 +129,7 @@ export function RepositoryDiscovery({ onRepositorySelect }: RepositoryDiscoveryP
           </Button>
         </CardContent>
       </Card>
-    )
+    );
   }
 
   return (
@@ -141,9 +142,7 @@ export function RepositoryDiscovery({ onRepositorySelect }: RepositoryDiscoveryP
             Refresh
           </Button>
         </CardTitle>
-        <CardDescription>
-          Browse and import Bible repositories from the community
-        </CardDescription>
+        <CardDescription>Browse and import Bible repositories from the community</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Search and Filter */}
@@ -158,7 +157,7 @@ export function RepositoryDiscovery({ onRepositorySelect }: RepositoryDiscoveryP
               className="w-full rounded-md border border-input bg-background pl-10 pr-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             />
           </div>
-          
+
           <div className="flex gap-2 flex-wrap">
             <Button
               variant={selectedLanguage === 'all' ? 'default' : 'outline'}
@@ -167,7 +166,7 @@ export function RepositoryDiscovery({ onRepositorySelect }: RepositoryDiscoveryP
             >
               All Languages
             </Button>
-            {availableLanguages.map(lang => (
+            {availableLanguages.map((lang) => (
               <Button
                 key={lang}
                 variant={selectedLanguage === lang ? 'default' : 'outline'}
@@ -188,10 +187,9 @@ export function RepositoryDiscovery({ onRepositorySelect }: RepositoryDiscoveryP
             <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-medium mb-2">No Repositories Found</h3>
             <p className="text-muted-foreground">
-              {searchTerm || selectedLanguage !== 'all' 
+              {searchTerm || selectedLanguage !== 'all'
                 ? 'Try adjusting your search or filter criteria.'
-                : 'No repositories are currently available for discovery.'
-              }
+                : 'No repositories are currently available for discovery.'}
             </p>
           </div>
         ) : (
@@ -212,11 +210,11 @@ export function RepositoryDiscovery({ onRepositorySelect }: RepositoryDiscoveryP
                         </Badge>
                       )}
                     </div>
-                    
+
                     {repo.description && (
                       <p className="text-sm text-muted-foreground">{repo.description}</p>
                     )}
-                    
+
                     <div className="flex items-center gap-4 text-xs text-muted-foreground">
                       <div className="flex items-center gap-1">
                         <Globe className="h-3 w-3" />
@@ -233,7 +231,7 @@ export function RepositoryDiscovery({ onRepositorySelect }: RepositoryDiscoveryP
 
                     {repo.tags && repo.tags.length > 0 && (
                       <div className="flex gap-1 flex-wrap">
-                        {repo.tags.map(tag => (
+                        {repo.tags.map((tag) => (
                           <Badge key={tag} variant="secondary" className="text-xs">
                             {tag}
                           </Badge>
@@ -242,10 +240,7 @@ export function RepositoryDiscovery({ onRepositorySelect }: RepositoryDiscoveryP
                     )}
                   </div>
 
-                  <Button 
-                    onClick={() => onRepositorySelect(repo.url)}
-                    size="sm"
-                  >
+                  <Button onClick={() => onRepositorySelect(repo.url)} size="sm">
                     <Download className="h-4 w-4 mr-2" />
                     Import
                   </Button>
@@ -261,5 +256,5 @@ export function RepositoryDiscovery({ onRepositorySelect }: RepositoryDiscoveryP
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }

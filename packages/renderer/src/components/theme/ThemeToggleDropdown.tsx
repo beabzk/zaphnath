@@ -1,28 +1,28 @@
-import { Button } from '@/components/ui/button'
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { useTheme } from './ThemeProvider'
-import { Moon, Sun, Monitor, Palette } from 'lucide-react'
+} from '@/components/ui/dropdown-menu';
+import { useTheme } from './ThemeProvider';
+import { Moon, Sun, Monitor, Palette } from 'lucide-react';
 
 export function ThemeToggleDropdown() {
-  const { theme, setTheme } = useTheme()
+  const { theme, setTheme } = useTheme();
 
   const getIcon = () => {
     switch (theme) {
       case 'light':
-        return <Sun className="h-4 w-4" />
+        return <Sun className="h-4 w-4" />;
       case 'dark':
-        return <Moon className="h-4 w-4" />
+        return <Moon className="h-4 w-4" />;
       case 'system':
-        return <Monitor className="h-4 w-4" />
+        return <Monitor className="h-4 w-4" />;
       default:
-        return <Palette className="h-4 w-4" />
+        return <Palette className="h-4 w-4" />;
     }
-  }
+  };
 
   return (
     <DropdownMenu>
@@ -47,5 +47,5 @@ export function ThemeToggleDropdown() {
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
-  )
+  );
 }

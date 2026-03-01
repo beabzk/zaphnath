@@ -1,91 +1,91 @@
 /* eslint-env node */
 
-import pkg from './package.json' with {type: 'json'};
+import pkg from './package.json' with { type: 'json' };
 import mapWorkspaces from '@npmcli/map-workspaces';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 export default /** @type import('electron-builder').Configuration */
-  ({
-    appId: 'io.github.beabzk.zaphnath',
-    productName: 'Zaphnath Bible Reader',
-    executableName: 'zaphnath',
-    copyright: 'Copyright © 2025 Beabfekad Zikie',
-    directories: {
-      output: 'dist',
-      buildResources: 'buildResources',
-    },
-    generateUpdatesFilesForAllChannels: true,
-    compression: 'maximum', // Better compression for Bible data
-    npmRebuild: true, // Required for better-sqlite3
-    buildDependenciesFromSource: true, // Ensure native modules are built correctly
-    mac: {
-      category: 'public.app-category.reference',
-      target: ['dmg', 'zip'],
-      icon: 'buildResources/icon.icns',
-      darkModeSupport: true,
-      gatekeeperAssess: false,
-      hardenedRuntime: false,
-    },
-    win: {
-      target: ['nsis', 'portable'],
-      icon: 'buildResources/icon.ico',
-      verifyUpdateCodeSignature: false,
-    },
-    nsis: {
-      oneClick: false,
-      allowToChangeInstallationDirectory: true,
-      createDesktopShortcut: true,
-      createStartMenuShortcut: true,
-      shortcutName: 'Zaphnath Bible Reader',
-      deleteAppDataOnUninstall: false, // Preserve user's Bible data and settings
-      artifactName: '${productName}-${version}-${os}-${arch}-nsis.${ext}',
-    },
-    portable: {
-      artifactName: '${productName}-${version}-${os}-${arch}-portable.${ext}',
-    },
-    linux: {
-      target: ['deb', 'AppImage', 'tar.gz'],
-      category: 'Education',
-      icon: 'buildResources/icon.png',
-      description: 'Modern Bible study application',
-      maintainer: 'Beabfekad Zikie',
-      desktop: {
-        entry: {
-          Name: 'Zaphnath Bible Reader',
-          Comment: 'Modern Bible study application',
-          Keywords: 'bible;study;religion;scripture;christian;',
-          StartupWMClass: 'zaphnath',
-        },
+({
+  appId: 'io.github.beabzk.zaphnath',
+  productName: 'Zaphnath Bible Reader',
+  executableName: 'zaphnath',
+  copyright: 'Copyright © 2025 Beabfekad Zikie',
+  directories: {
+    output: 'dist',
+    buildResources: 'buildResources',
+  },
+  generateUpdatesFilesForAllChannels: true,
+  compression: 'maximum', // Better compression for Bible data
+  npmRebuild: true, // Required for better-sqlite3
+  buildDependenciesFromSource: true, // Ensure native modules are built correctly
+  mac: {
+    category: 'public.app-category.reference',
+    target: ['dmg', 'zip'],
+    icon: 'buildResources/icon.icns',
+    darkModeSupport: true,
+    gatekeeperAssess: false,
+    hardenedRuntime: false,
+  },
+  win: {
+    target: ['nsis', 'portable'],
+    icon: 'buildResources/icon.ico',
+    verifyUpdateCodeSignature: false,
+  },
+  nsis: {
+    oneClick: false,
+    allowToChangeInstallationDirectory: true,
+    createDesktopShortcut: true,
+    createStartMenuShortcut: true,
+    shortcutName: 'Zaphnath Bible Reader',
+    deleteAppDataOnUninstall: false, // Preserve user's Bible data and settings
+    artifactName: '${productName}-${version}-${os}-${arch}-nsis.${ext}',
+  },
+  portable: {
+    artifactName: '${productName}-${version}-${os}-${arch}-portable.${ext}',
+  },
+  linux: {
+    target: ['deb', 'AppImage', 'tar.gz'],
+    category: 'Education',
+    icon: 'buildResources/icon.png',
+    description: 'Modern Bible study application',
+    maintainer: 'Beabfekad Zikie',
+    desktop: {
+      entry: {
+        Name: 'Zaphnath Bible Reader',
+        Comment: 'Modern Bible study application',
+        Keywords: 'bible;study;religion;scripture;christian;',
+        StartupWMClass: 'zaphnath',
       },
     },
-    /**
-     * It is recommended to avoid using non-standard characters such as spaces in artifact names,
-     * as they can unpredictably change during deployment, making them impossible to locate and download for update.
-     */
-    artifactName: '${productName}-${version}-${os}-${arch}.${ext}',
-    files: [
-      'LICENSE*',
-      'packages/entry-point.mjs',
-      // Include all node_modules except @app workspace packages
-      'node_modules/**/*',
-      '!node_modules/@app/**',
-      // Include ZBRS documentation and schemas
-      'docs/schemas/**',
-      'docs/standards/**',
-      // Exclude development files
-      '!**/*.{ts,tsx,map}',
-      '!**/tests/**',
-      '!**/test/**',
-      '!**/*.test.*',
-      '!**/*.spec.*',
-      '!**/vite.config.*',
-      '!**/tsconfig.*',
-      '!**/eslint.*',
-      '!**/.env*',
-      ...await getListOfFilesFromEachWorkspace(),
-    ],
-  });
+  },
+  /**
+   * It is recommended to avoid using non-standard characters such as spaces in artifact names,
+   * as they can unpredictably change during deployment, making them impossible to locate and download for update.
+   */
+  artifactName: '${productName}-${version}-${os}-${arch}.${ext}',
+  files: [
+    'LICENSE*',
+    'packages/entry-point.mjs',
+    // Include all node_modules except @app workspace packages
+    'node_modules/**/*',
+    '!node_modules/@app/**',
+    // Include ZBRS documentation and schemas
+    'docs/schemas/**',
+    'docs/standards/**',
+    // Exclude development files
+    '!**/*.{ts,tsx,map}',
+    '!**/tests/**',
+    '!**/test/**',
+    '!**/*.test.*',
+    '!**/*.spec.*',
+    '!**/vite.config.*',
+    '!**/tsconfig.*',
+    '!**/eslint.*',
+    '!**/.env*',
+    ...(await getListOfFilesFromEachWorkspace()),
+  ],
+});
 
 /**
  * By default, electron-builder copies each package into the output compilation entirety,
@@ -146,7 +146,6 @@ export default /** @type import('electron-builder').Configuration */
  * ```
  */
 async function getListOfFilesFromEachWorkspace() {
-
   /**
    * @type {Map<string, string>}
    */
@@ -159,11 +158,13 @@ async function getListOfFilesFromEachWorkspace() {
 
   for (const [name, path] of workspaces) {
     const pkgPath = join(path, 'package.json');
-    const { default: workspacePkg } = await import(pathToFileURL(pkgPath), { with: { type: 'json' } });
+    const { default: workspacePkg } = await import(pathToFileURL(pkgPath), {
+      with: { type: 'json' },
+    });
 
     let patterns = workspacePkg.files || ['dist/**', 'package.json'];
 
-    patterns = patterns.map(p => join('node_modules', name, p));
+    patterns = patterns.map((p) => join('node_modules', name, p));
     allFilesToInclude.push(...patterns);
   }
 

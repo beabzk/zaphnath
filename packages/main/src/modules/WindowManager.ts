@@ -1,8 +1,8 @@
-import type { AppModule } from "../AppModule.js";
-import { ModuleContext } from "../ModuleContext.js";
-import { BrowserWindow, Menu, type MenuItemConstructorOptions } from "electron";
-import type { AppInitConfig } from "../AppInitConfig.js";
-import path from "node:path";
+import type { AppModule } from '../AppModule.js';
+import { ModuleContext } from '../ModuleContext.js';
+import { BrowserWindow, Menu, type MenuItemConstructorOptions } from 'electron';
+import type { AppInitConfig } from '../AppInitConfig.js';
+import path from 'node:path';
 
 class WindowManager implements AppModule {
   readonly #preload: { path: string };
@@ -25,68 +25,68 @@ class WindowManager implements AppModule {
     await app.whenReady();
     this.configureApplicationMenu();
     await this.restoreOrCreateWindow(true);
-    app.on("second-instance", () => this.restoreOrCreateWindow(true));
-    app.on("activate", () => this.restoreOrCreateWindow(true));
+    app.on('second-instance', () => this.restoreOrCreateWindow(true));
+    app.on('activate', () => this.restoreOrCreateWindow(true));
   }
 
   configureApplicationMenu(): void {
-    const isMac = process.platform === "darwin";
+    const isMac = process.platform === 'darwin';
     const template: MenuItemConstructorOptions[] = [];
 
     if (isMac) {
       template.push({
-        label: "Zaphnath",
+        label: 'Zaphnath',
         submenu: [
-          { role: "about" },
-          { type: "separator" },
-          { role: "services" },
-          { type: "separator" },
-          { role: "hide" },
-          { role: "hideOthers" },
-          { role: "unhide" },
-          { type: "separator" },
-          { role: "quit" },
+          { role: 'about' },
+          { type: 'separator' },
+          { role: 'services' },
+          { type: 'separator' },
+          { role: 'hide' },
+          { role: 'hideOthers' },
+          { role: 'unhide' },
+          { type: 'separator' },
+          { role: 'quit' },
         ],
       });
     } else {
       template.push({
-        label: "File",
-        submenu: [{ role: "quit" }],
+        label: 'File',
+        submenu: [{ role: 'quit' }],
       });
     }
 
     template.push({
-      label: "Edit",
+      label: 'Edit',
       submenu: [
-        { role: "undo" },
-        { role: "redo" },
-        { type: "separator" },
-        { role: "cut" },
-        { role: "copy" },
-        { role: "paste" },
-        { role: "selectAll" },
+        { role: 'undo' },
+        { role: 'redo' },
+        { type: 'separator' },
+        { role: 'cut' },
+        { role: 'copy' },
+        { role: 'paste' },
+        { role: 'selectAll' },
       ],
     });
 
     template.push({
-      label: "View",
+      label: 'View',
       submenu: [
-        { role: "reload" },
-        { role: "forceReload" },
-        { role: "toggleDevTools" },
-        { type: "separator" },
-        { role: "resetZoom" },
-        { role: "zoomIn" },
-        { role: "zoomOut" },
-        { type: "separator" },
-        { role: "togglefullscreen" },
+        { role: 'reload' },
+        { role: 'forceReload' },
+        { role: 'toggleDevTools' },
+        { type: 'separator' },
+        { role: 'resetZoom' },
+        { role: 'zoomIn' },
+        { role: 'zoomOut' },
+        { type: 'separator' },
+        { role: 'togglefullscreen' },
       ],
     });
 
     if (isMac) {
       template.push({
-        role: "window",
-        submenu: [{ role: "minimize" }, { role: "zoom" }, { role: "front" }],
+        role: 'window',
+        submenu: [{ role: 'minimize' }, { role: 'zoom' }, { role: 'front' }],
       });
     }
 
@@ -94,26 +94,25 @@ class WindowManager implements AppModule {
   }
 
   async createWindow(): Promise<BrowserWindow> {
-    const isMac = process.platform === "darwin";
-    const isWindows = process.platform === "win32";
+    const isMac = process.platform === 'darwin';
+    const isWindows = process.platform === 'win32';
     const browserWindow = new BrowserWindow({
       show: false, // Use the 'ready-to-show' event to show the instantiated BrowserWindow.
       width: 1200, // Optimal width for Bible reading with sidebar
       height: 800, // Good height for reading content
       minWidth: 800, // Minimum width to ensure usability
       minHeight: 600, // Minimum height for proper layout
-      titleBarStyle: isMac ? "hiddenInset" : isWindows ? "hidden" : "default",
+      titleBarStyle: isMac ? 'hiddenInset' : isWindows ? 'hidden' : 'default',
       titleBarOverlay: isWindows
         ? {
-            color: "#00000000",
-            symbolColor: "#9ca3af",
+            color: '#00000000',
+            symbolColor: '#9ca3af',
             height: 42,
           }
         : false,
       autoHideMenuBar: !isMac,
       // Use app icon on Windows/Linux (macOS uses .icns from bundle metadata).
-      icon:
-        isMac ? undefined : path.resolve(process.cwd(), "buildResources", "icon.png"),
+      icon: isMac ? undefined : path.resolve(process.cwd(), 'buildResources', 'icon.png'),
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
@@ -136,7 +135,7 @@ class WindowManager implements AppModule {
     }
 
     // Bible reading optimizations
-    browserWindow.once("ready-to-show", () => {
+    browserWindow.once('ready-to-show', () => {
       browserWindow.show();
 
       // Focus the window for immediate use
@@ -147,23 +146,20 @@ class WindowManager implements AppModule {
     });
 
     // Handle window state for better reading experience
-    browserWindow.on("enter-full-screen", () => {
+    browserWindow.on('enter-full-screen', () => {
       // Could send IPC to renderer to adjust layout for full-screen reading
     });
 
-    browserWindow.on("leave-full-screen", () => {
+    browserWindow.on('leave-full-screen', () => {
       // Could send IPC to renderer to restore normal layout
     });
 
     // Prevent navigation away from the app for security
-    browserWindow.webContents.on("will-navigate", (event, navigationUrl) => {
+    browserWindow.webContents.on('will-navigate', (event, navigationUrl) => {
       const parsedUrl = new URL(navigationUrl);
 
       // Only allow navigation to the same origin or file protocol
-      if (
-        parsedUrl.origin !== this.#renderer.toString() &&
-        parsedUrl.protocol !== "file:"
-      ) {
+      if (parsedUrl.origin !== this.#renderer.toString() && parsedUrl.protocol !== 'file:') {
         event.preventDefault();
       }
     });
@@ -198,8 +194,6 @@ class WindowManager implements AppModule {
   }
 }
 
-export function createWindowManagerModule(
-  ...args: ConstructorParameters<typeof WindowManager>
-) {
+export function createWindowManagerModule(...args: ConstructorParameters<typeof WindowManager>) {
   return new WindowManager(...args);
 }

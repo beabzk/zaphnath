@@ -1,6 +1,6 @@
-import { AppModule } from "../AppModule.js";
-import { ModuleContext } from "../ModuleContext.js";
-import installer from "electron-devtools-installer";
+import { AppModule } from '../AppModule.js';
+import { ModuleContext } from '../ModuleContext.js';
+import installer from 'electron-devtools-installer';
 
 const {
   REDUX_DEVTOOLS,
@@ -28,11 +28,7 @@ const extensionsDictionary = {
 export class ChromeDevToolsExtension implements AppModule {
   readonly #extension: keyof typeof extensionsDictionary;
 
-  constructor({
-    extension,
-  }: {
-    readonly extension: keyof typeof extensionsDictionary;
-  }) {
+  constructor({ extension }: { readonly extension: keyof typeof extensionsDictionary }) {
     this.#extension = extension;
   }
 

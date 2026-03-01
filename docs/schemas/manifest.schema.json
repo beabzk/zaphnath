@@ -4,20 +4,11 @@
   "title": "ZBRS Manifest Schema",
   "description": "Schema for Zaphnath Bible Repository Standard manifest files (supports both repository coordination and translation manifests)",
   "type": "object",
-  "required": [
-    "zbrs_version",
-    "repository"
-  ],
+  "required": ["zbrs_version", "repository"],
   "anyOf": [
     {
       "description": "Parent repository manifest",
-      "required": [
-        "zbrs_version",
-        "repository",
-        "publisher",
-        "translations",
-        "technical"
-      ],
+      "required": ["zbrs_version", "repository", "publisher", "translations", "technical"],
       "properties": {
         "repository": {
           "properties": {
@@ -33,12 +24,7 @@
     },
     {
       "description": "Translation manifest",
-      "required": [
-        "zbrs_version",
-        "repository",
-        "content",
-        "technical"
-      ],
+      "required": ["zbrs_version", "repository", "content", "technical"],
       "properties": {
         "technical": {
           "$ref": "#/$defs/translation_technical"
@@ -54,12 +40,7 @@
     },
     "repository": {
       "type": "object",
-      "required": [
-        "id",
-        "name",
-        "description",
-        "version"
-      ],
+      "required": ["id", "name", "description", "version"],
       "properties": {
         "id": {
           "type": "string",
@@ -87,9 +68,7 @@
         },
         "type": {
           "type": "string",
-          "enum": [
-            "parent"
-          ],
+          "enum": ["parent"],
           "description": "Repository type - must be 'parent' for repository coordination manifests"
         },
         "language": {
@@ -125,11 +104,7 @@
     },
     "content": {
       "type": "object",
-      "required": [
-        "books_count",
-        "testament",
-        "features"
-      ],
+      "required": ["books_count", "testament", "features"],
       "properties": {
         "books_count": {
           "type": "integer",
@@ -139,10 +114,7 @@
         },
         "testament": {
           "type": "object",
-          "required": [
-            "old",
-            "new"
-          ],
+          "required": ["old", "new"],
           "properties": {
             "old": {
               "type": "integer",
@@ -195,9 +167,7 @@
       "patternProperties": {
         "^[a-z0-9-]+:[a-z0-9-_]+$": {
           "type": "object",
-          "required": [
-            "version"
-          ],
+          "required": ["version"],
           "properties": {
             "version": {
               "type": "string",
@@ -211,11 +181,7 @@
   "$defs": {
     "language": {
       "type": "object",
-      "required": [
-        "code",
-        "name",
-        "direction"
-      ],
+      "required": ["code", "name", "direction"],
       "properties": {
         "code": {
           "type": "string",
@@ -230,10 +196,7 @@
         },
         "direction": {
           "type": "string",
-          "enum": [
-            "ltr",
-            "rtl"
-          ],
+          "enum": ["ltr", "rtl"],
           "description": "Text direction"
         },
         "script": {
@@ -245,22 +208,11 @@
     },
     "translation": {
       "type": "object",
-      "required": [
-        "type",
-        "year",
-        "copyright",
-        "license",
-        "source"
-      ],
+      "required": ["type", "year", "copyright", "license", "source"],
       "properties": {
         "type": {
           "type": "string",
-          "enum": [
-            "formal",
-            "dynamic",
-            "paraphrase",
-            "interlinear"
-          ],
+          "enum": ["formal", "dynamic", "paraphrase", "interlinear"],
           "description": "Translation methodology"
         },
         "year": {
@@ -300,9 +252,7 @@
     },
     "publisher": {
       "type": "object",
-      "required": [
-        "name"
-      ],
+      "required": ["name"],
       "properties": {
         "name": {
           "type": "string",
@@ -324,15 +274,7 @@
     },
     "translation_reference": {
       "type": "object",
-      "required": [
-        "id",
-        "name",
-        "directory",
-        "language",
-        "status",
-        "checksum",
-        "size_bytes"
-      ],
+      "required": ["id", "name", "directory", "language", "status", "checksum", "size_bytes"],
       "properties": {
         "id": {
           "type": "string",
@@ -355,11 +297,7 @@
         },
         "status": {
           "type": "string",
-          "enum": [
-            "active",
-            "inactive",
-            "deprecated"
-          ],
+          "enum": ["active", "inactive", "deprecated"],
           "description": "Translation status"
         },
         "checksum": {
@@ -377,25 +315,16 @@
     },
     "base_technical": {
       "type": "object",
-      "required": [
-        "encoding",
-        "compression"
-      ],
+      "required": ["encoding", "compression"],
       "properties": {
         "encoding": {
           "type": "string",
-          "enum": [
-            "UTF-8"
-          ],
+          "enum": ["UTF-8"],
           "description": "Text encoding"
         },
         "compression": {
           "type": "string",
-          "enum": [
-            "none",
-            "gzip",
-            "brotli"
-          ],
+          "enum": ["none", "gzip", "brotli"],
           "description": "Compression method"
         }
       }
@@ -409,14 +338,10 @@
           "not": {
             "anyOf": [
               {
-                "required": [
-                  "checksum"
-                ]
+                "required": ["checksum"]
               },
               {
-                "required": [
-                  "size_bytes"
-                ]
+                "required": ["size_bytes"]
               }
             ]
           }
@@ -430,10 +355,7 @@
         },
         {
           "type": "object",
-          "required": [
-            "checksum",
-            "size_bytes"
-          ],
+          "required": ["checksum", "size_bytes"],
           "properties": {
             "checksum": {
               "type": "string",

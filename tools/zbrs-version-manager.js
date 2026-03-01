@@ -1,30 +1,30 @@
 #!/usr/bin/env node
 
-import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "fs";
-import { join, resolve, extname, relative } from "path";
-import { fileURLToPath } from "url";
+import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'fs';
+import { join, resolve, extname, relative } from 'path';
+import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = resolve(__filename, "..");
-const zaphnathRoot = resolve(__dirname, "..");
-const siblingRoot = resolve(zaphnathRoot, "..");
+const __dirname = resolve(__filename, '..');
+const zaphnathRoot = resolve(__dirname, '..');
+const siblingRoot = resolve(zaphnathRoot, '..');
 
 const repoRoots = [
-  { name: "zaphnath", path: zaphnathRoot },
-  { name: "zbrs-official", path: join(siblingRoot, "zbrs-official") },
-  { name: "zbrs-registry", path: join(siblingRoot, "zbrs-registry") },
+  { name: 'zaphnath', path: zaphnathRoot },
+  { name: 'zbrs-official', path: join(siblingRoot, 'zbrs-official') },
+  { name: 'zbrs-registry', path: join(siblingRoot, 'zbrs-registry') },
 ];
 
-const textExtensions = new Set([".md", ".js", ".ts", ".sh", ".ps1"]);
+const textExtensions = new Set(['.md', '.js', '.ts', '.sh', '.ps1']);
 const skipDirs = new Set([
-  ".git",
-  "node_modules",
-  "dist",
-  "build",
-  "out",
-  ".next",
-  ".turbo",
-  ".cache",
+  '.git',
+  'node_modules',
+  'dist',
+  'build',
+  'out',
+  '.next',
+  '.turbo',
+  '.cache',
 ]);
 
 function parseVersion(version) {
@@ -48,12 +48,14 @@ function compareVersions(a, b) {
 }
 
 function escapeRegex(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function ensureValidVersion(version) {
   if (!/^\d+\.\d+$/.test(version)) {
-    throw new Error(`Invalid ZBRS version "${version}". Expected format: <major>.<minor> (example: 1.1).`);
+    throw new Error(
+      `Invalid ZBRS version "${version}". Expected format: <major>.<minor> (example: 1.1).`
+    );
   }
 }
 
@@ -80,35 +82,31 @@ function walkFiles(rootPath) {
 }
 
 function readJson(filePath) {
-  const raw = readFileSync(filePath, "utf8");
+  const raw = readFileSync(filePath, 'utf8');
   const content = raw.charCodeAt(0) === 0xfeff ? raw.slice(1) : raw;
   return JSON.parse(content);
 }
 
 function writeJson(filePath, value) {
-  writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+  writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
 }
 
 function collectCurrentVersions(files) {
   const versions = new Set();
 
   for (const filePath of files) {
-    if (extname(filePath) !== ".json") {
+    if (extname(filePath) !== '.json') {
       continue;
     }
 
     try {
       const json = readJson(filePath);
 
-      if (json && typeof json === "object" && typeof json.zbrs_version === "string") {
+      if (json && typeof json === 'object' && typeof json.zbrs_version === 'string') {
         versions.add(json.zbrs_version);
       }
 
-      if (
-        filePath.endsWith("manifest.schema.json") &&
-        json &&
-        typeof json.$id === "string"
-      ) {
+      if (filePath.endsWith('manifest.schema.json') && json && typeof json.$id === 'string') {
         const match = json.$id.match(/\/zbrs\/v(\d+\.\d+)\/manifest\.json$/);
         if (match) {
           versions.add(match[1]);
@@ -129,37 +127,34 @@ function replaceVersionedText(content, oldVersions, targetVersion) {
     const oldEscaped = escapeRegex(oldVersion);
 
     next = next.replace(
-      new RegExp(`("zbrs_version"\\s*:\\s*")${oldEscaped}(")`, "g"),
+      new RegExp(`("zbrs_version"\\s*:\\s*")${oldEscaped}(")`, 'g'),
       `$1${targetVersion}$2`
     );
 
     next = next.replace(
-      new RegExp(`(zbrs_version\\s*:\\s*")${oldEscaped}(")`, "g"),
+      new RegExp(`(zbrs_version\\s*:\\s*")${oldEscaped}(")`, 'g'),
       `$1${targetVersion}$2`
     );
 
     next = next.replace(
-      new RegExp(`(zbrs_version\\s*:\\s*')${oldEscaped}(')`, "g"),
+      new RegExp(`(zbrs_version\\s*:\\s*')${oldEscaped}(')`, 'g'),
       `$1${targetVersion}$2`
     );
 
     next = next.replace(
-      new RegExp(`(\\\`zbrs_version\\\`\\s+is\\s+\\")${oldEscaped}(")`, "g"),
+      new RegExp(`(\\\`zbrs_version\\\`\\s+is\\s+\\")${oldEscaped}(")`, 'g'),
       `$1${targetVersion}$2`
     );
 
+    next = next.replace(new RegExp(`(ZBRS\\s+v)${oldEscaped}`, 'g'), `$1${targetVersion}`);
+
     next = next.replace(
-      new RegExp(`(ZBRS\\s+v)${oldEscaped}`, "g"),
+      new RegExp(`(\\*\\*Version\\*\\*:\\s*)${oldEscaped}`, 'g'),
       `$1${targetVersion}`
     );
 
     next = next.replace(
-      new RegExp(`(\\*\\*Version\\*\\*:\\s*)${oldEscaped}`, "g"),
-      `$1${targetVersion}`
-    );
-
-    next = next.replace(
-      new RegExp(`(\\/zbrs\\/v)${oldEscaped}(\\/manifest\\.json)`, "g"),
+      new RegExp(`(\\/zbrs\\/v)${oldEscaped}(\\/manifest\\.json)`, 'g'),
       `$1${targetVersion}$2`
     );
   }
@@ -168,7 +163,7 @@ function replaceVersionedText(content, oldVersions, targetVersion) {
 }
 
 function replaceVersionedJsonStrings(value, oldVersions, targetVersion) {
-  if (typeof value === "string") {
+  if (typeof value === 'string') {
     return replaceVersionedText(value, oldVersions, targetVersion);
   }
 
@@ -176,7 +171,7 @@ function replaceVersionedJsonStrings(value, oldVersions, targetVersion) {
     return value.map((item) => replaceVersionedJsonStrings(item, oldVersions, targetVersion));
   }
 
-  if (value && typeof value === "object") {
+  if (value && typeof value === 'object') {
     const next = {};
     for (const [key, child] of Object.entries(value)) {
       next[key] = replaceVersionedJsonStrings(child, oldVersions, targetVersion);
@@ -188,14 +183,11 @@ function replaceVersionedJsonStrings(value, oldVersions, targetVersion) {
 }
 
 function isVersionedStandardDoc(repoName, relativePath) {
-  return (
-    repoName === "zaphnath" &&
-    /^docs\/standards\/zbrs-v\d+\.\d+\.md$/.test(relativePath)
-  );
+  return repoName === 'zaphnath' && /^docs\/standards\/zbrs-v\d+\.\d+\.md$/.test(relativePath);
 }
 
 function ensureVersionedStandardDoc(targetVersion, dryRun, updatedFiles) {
-  const standardsDir = join(zaphnathRoot, "docs", "standards");
+  const standardsDir = join(zaphnathRoot, 'docs', 'standards');
   if (!existsSync(standardsDir) || !statSync(standardsDir).isDirectory()) {
     return;
   }
@@ -233,12 +225,12 @@ function ensureVersionedStandardDoc(targetVersion, dryRun, updatedFiles) {
 
   candidates.sort((a, b) => compareVersions(a.parsed, b.parsed));
   const source = candidates[candidates.length - 1];
-  const sourceContent = readFileSync(source.path, "utf8");
+  const sourceContent = readFileSync(source.path, 'utf8');
   const targetContent = replaceVersionedText(sourceContent, [source.version], targetVersion);
 
   updatedFiles.push(`zaphnath/docs/standards/${targetName}`);
   if (!dryRun) {
-    writeFileSync(targetPath, targetContent, "utf8");
+    writeFileSync(targetPath, targetContent, 'utf8');
   }
 }
 
@@ -258,7 +250,9 @@ function show() {
       hasAny = true;
     }
 
-    console.log(`- ${repo.name}: ${versions.length ? versions.join(", ") : "no zbrs_version found"}`);
+    console.log(
+      `- ${repo.name}: ${versions.length ? versions.join(', ') : 'no zbrs_version found'}`
+    );
   }
 
   if (!hasAny) {
@@ -285,13 +279,13 @@ function setVersion(targetVersion, dryRun = false) {
 
     for (const filePath of files) {
       const extension = extname(filePath);
-      const rel = relative(repo.path, filePath).replace(/\\/g, "/");
+      const rel = relative(repo.path, filePath).replace(/\\/g, '/');
 
       if (isVersionedStandardDoc(repo.name, rel)) {
         continue;
       }
 
-      if (extension === ".json") {
+      if (extension === '.json') {
         let json;
         try {
           json = readJson(filePath);
@@ -302,16 +296,17 @@ function setVersion(targetVersion, dryRun = false) {
         let changed = false;
         const originalJsonString = JSON.stringify(json);
 
-        if (json && typeof json === "object" && typeof json.zbrs_version === "string" && json.zbrs_version !== targetVersion) {
+        if (
+          json &&
+          typeof json === 'object' &&
+          typeof json.zbrs_version === 'string' &&
+          json.zbrs_version !== targetVersion
+        ) {
           json.zbrs_version = targetVersion;
           changed = true;
         }
 
-        if (
-          filePath.endsWith("manifest.schema.json") &&
-          json &&
-          typeof json.$id === "string"
-        ) {
+        if (filePath.endsWith('manifest.schema.json') && json && typeof json.$id === 'string') {
           const nextId = json.$id.replace(
             /\/zbrs\/v\d+\.\d+\/manifest\.json$/,
             `/zbrs/v${targetVersion}/manifest.json`
@@ -344,13 +339,13 @@ function setVersion(targetVersion, dryRun = false) {
         continue;
       }
 
-      const original = readFileSync(filePath, "utf8");
+      const original = readFileSync(filePath, 'utf8');
       const next = replaceVersionedText(original, oldVersions, targetVersion);
 
       if (next !== original) {
         updatedFiles.push(`${repo.name}/${rel}`);
         if (!dryRun) {
-          writeFileSync(filePath, next, "utf8");
+          writeFileSync(filePath, next, 'utf8');
         }
       }
     }
@@ -361,7 +356,9 @@ function setVersion(targetVersion, dryRun = false) {
     return;
   }
 
-  console.log(`${dryRun ? "[dry-run] " : ""}Updated ${updatedFiles.length} file(s) to ZBRS ${targetVersion}:`);
+  console.log(
+    `${dryRun ? '[dry-run] ' : ''}Updated ${updatedFiles.length} file(s) to ZBRS ${targetVersion}:`
+  );
   for (const file of updatedFiles) {
     console.log(`  - ${file}`);
   }
@@ -369,24 +366,24 @@ function setVersion(targetVersion, dryRun = false) {
 
 function main() {
   const [command, arg, ...rest] = process.argv.slice(2);
-  const dryRun = rest.includes("--dry-run");
+  const dryRun = rest.includes('--dry-run');
 
   switch (command) {
-    case "show":
+    case 'show':
       show();
       return;
-    case "set":
+    case 'set':
       if (!arg) {
-        console.error("Usage: node tools/zbrs-version-manager.js set <major.minor> [--dry-run]");
+        console.error('Usage: node tools/zbrs-version-manager.js set <major.minor> [--dry-run]');
         process.exit(1);
       }
       setVersion(arg, dryRun);
       return;
     default:
-      console.log("ZBRS Version Manager");
-      console.log("Usage:");
-      console.log("  node tools/zbrs-version-manager.js show");
-      console.log("  node tools/zbrs-version-manager.js set <major.minor> [--dry-run]");
+      console.log('ZBRS Version Manager');
+      console.log('Usage:');
+      console.log('  node tools/zbrs-version-manager.js show');
+      console.log('  node tools/zbrs-version-manager.js set <major.minor> [--dry-run]');
   }
 }
 

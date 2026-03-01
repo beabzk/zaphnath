@@ -12,12 +12,12 @@ export class DatabaseConnection {
     // Store database in app's userData directory
     const userDataPath = app.getPath('userData');
     const dbDir = join(userDataPath, 'databases');
-    
+
     // Ensure database directory exists
     if (!existsSync(dbDir)) {
       mkdirSync(dbDir, { recursive: true });
     }
-    
+
     this.dbPath = join(dbDir, 'zaphnath.db');
   }
 
@@ -34,13 +34,13 @@ export class DatabaseConnection {
         this.db = new Database(this.dbPath, {
           verbose: process.env.DEBUG_SQL === '1' ? console.log : undefined,
         });
-        
+
         // Enable foreign keys
         this.db.pragma('foreign_keys = ON');
-        
+
         // Set journal mode to WAL for better performance
         this.db.pragma('journal_mode = WAL');
-        
+
         console.log(`Database connected: ${this.dbPath}`);
       } catch (error) {
         console.error('Failed to connect to database:', error);

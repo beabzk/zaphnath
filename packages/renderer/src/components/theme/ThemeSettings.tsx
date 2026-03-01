@@ -1,11 +1,11 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { useTheme } from './ThemeProvider'
-import { Sun, Moon, Monitor, Palette, Check } from 'lucide-react'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { useTheme } from './ThemeProvider';
+import { Sun, Moon, Monitor, Palette, Check } from 'lucide-react';
 
 export function ThemeSettings() {
-  const { theme, setTheme } = useTheme()
+  const { theme, setTheme } = useTheme();
 
   const themeOptions = [
     {
@@ -29,7 +29,7 @@ export function ThemeSettings() {
       icon: Monitor,
       preview: 'bg-gradient-to-r from-white to-gray-900 border-gray-400',
     },
-  ]
+  ];
 
   return (
     <Card>
@@ -45,9 +45,9 @@ export function ThemeSettings() {
       <CardContent className="space-y-4">
         <div className="grid gap-4">
           {themeOptions.map((option) => {
-            const Icon = option.icon
-            const isSelected = theme === option.value
-            
+            const Icon = option.icon;
+            const isSelected = theme === option.value;
+
             return (
               <div
                 key={option.value}
@@ -59,7 +59,7 @@ export function ThemeSettings() {
                 <div className="flex items-start gap-4">
                   {/* Theme Preview */}
                   <div className={`w-12 h-8 rounded border-2 ${option.preview} flex-shrink-0`} />
-                  
+
                   {/* Theme Info */}
                   <div className="flex-1 space-y-1">
                     <div className="flex items-center gap-2">
@@ -72,20 +72,20 @@ export function ThemeSettings() {
                         </Badge>
                       )}
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      {option.description}
-                    </p>
+                    <p className="text-sm text-muted-foreground">{option.description}</p>
                   </div>
-                  
+
                   {/* Selection Indicator */}
-                  <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                    isSelected ? 'border-primary bg-primary' : 'border-muted-foreground'
-                  }`}>
+                  <div
+                    className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                      isSelected ? 'border-primary bg-primary' : 'border-muted-foreground'
+                    }`}
+                  >
                     {isSelected && <div className="w-2 h-2 rounded-full bg-primary-foreground" />}
                   </div>
                 </div>
               </div>
-            )
+            );
           })}
         </div>
 
@@ -102,35 +102,20 @@ export function ThemeSettings() {
 
         {/* Quick Actions */}
         <div className="flex gap-2 pt-4 border-t">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setTheme('light')}
-            className="flex-1"
-          >
+          <Button variant="outline" size="sm" onClick={() => setTheme('light')} className="flex-1">
             <Sun className="h-4 w-4 mr-2" />
             Light
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setTheme('dark')}
-            className="flex-1"
-          >
+          <Button variant="outline" size="sm" onClick={() => setTheme('dark')} className="flex-1">
             <Moon className="h-4 w-4 mr-2" />
             Dark
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setTheme('system')}
-            className="flex-1"
-          >
+          <Button variant="outline" size="sm" onClick={() => setTheme('system')} className="flex-1">
             <Monitor className="h-4 w-4 mr-2" />
             System
           </Button>
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }

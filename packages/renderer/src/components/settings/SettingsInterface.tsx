@@ -1,13 +1,13 @@
-import { useState } from 'react'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { useSettings } from './SettingsProvider'
-import { AppearanceSettings } from './AppearanceSettings'
-import { ReadingSettings } from './ReadingSettings'
-import { AudioSettings } from './AudioSettings'
-import { AdvancedSettings } from './AdvancedSettings'
-import { UpdatesSettings } from './UpdatesSettings'
-import { defaultSettings, settingsCategories, SettingsCategory } from '@/types/settings'
+import { useState } from 'react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { useSettings } from './SettingsProvider';
+import { AppearanceSettings } from './AppearanceSettings';
+import { ReadingSettings } from './ReadingSettings';
+import { AudioSettings } from './AudioSettings';
+import { AdvancedSettings } from './AdvancedSettings';
+import { UpdatesSettings } from './UpdatesSettings';
+import { defaultSettings, settingsCategories, SettingsCategory } from '@/types/settings';
 import {
   Palette,
   BookOpen,
@@ -19,8 +19,8 @@ import {
   Download,
   Upload,
   AlertCircle,
-  CheckCircle
-} from 'lucide-react'
+  CheckCircle,
+} from 'lucide-react';
 
 const iconMap = {
   Palette,
@@ -28,11 +28,11 @@ const iconMap = {
   Volume2,
   RefreshCw,
   Settings: SettingsIcon,
-}
+};
 
 export function SettingsInterface() {
-  const [activeCategory, setActiveCategory] = useState<SettingsCategory>('appearance')
-  const [showImportExport, setShowImportExport] = useState(false)
+  const [activeCategory, setActiveCategory] = useState<SettingsCategory>('appearance');
+  const [showImportExport, setShowImportExport] = useState(false);
   const {
     settings,
     resetSettings,
@@ -42,58 +42,58 @@ export function SettingsInterface() {
     importSettings,
     hasUnsavedChanges,
     saveSettings,
-    isLoading
-  } = useSettings()
+    isLoading,
+  } = useSettings();
 
   const handleExportSettings = () => {
-    const settingsJson = exportSettings()
-    const blob = new Blob([settingsJson], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `zaphnath-settings-${new Date().toISOString().split('T')[0]}.json`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
-  }
+    const settingsJson = exportSettings();
+    const blob = new Blob([settingsJson], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `zaphnath-settings-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
   const handleImportSettings = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
+    const file = event.target.files?.[0];
+    if (!file) return;
 
     try {
-      const text = await file.text()
-      const success = await importSettings(text)
+      const text = await file.text();
+      const success = await importSettings(text);
       if (success) {
-        alert('Settings imported successfully!')
+        alert('Settings imported successfully!');
       } else {
-        alert('Failed to import settings. Please check the file format.')
+        alert('Failed to import settings. Please check the file format.');
       }
     } catch (_error) {
-      alert('Failed to read settings file.')
+      alert('Failed to read settings file.');
     }
 
     // Reset the input
-    event.target.value = ''
-  }
+    event.target.value = '';
+  };
 
   const renderCategoryContent = () => {
     switch (activeCategory) {
       case 'appearance':
-        return <AppearanceSettings />
+        return <AppearanceSettings />;
       case 'reading':
-        return <ReadingSettings />
+        return <ReadingSettings />;
       case 'audio':
-        return <AudioSettings />
+        return <AudioSettings />;
       case 'updates':
-        return <UpdatesSettings />
+        return <UpdatesSettings />;
       case 'advanced':
-        return <AdvancedSettings />
+        return <AdvancedSettings />;
       default:
-        return null
+        return null;
     }
-  }
+  };
 
   if (isLoading) {
     return (
@@ -106,7 +106,7 @@ export function SettingsInterface() {
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -155,7 +155,12 @@ export function SettingsInterface() {
         {showImportExport && (
           <div className="px-6 pb-4">
             <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-muted/30 p-3">
-              <Button onClick={handleExportSettings} variant="outline" size="sm" className="inline-flex items-center gap-2">
+              <Button
+                onClick={handleExportSettings}
+                variant="outline"
+                size="sm"
+                className="inline-flex items-center gap-2"
+              >
                 <Download className="h-4 w-4" />
                 Export Settings
               </Button>
@@ -198,21 +203,24 @@ export function SettingsInterface() {
           </div>
           <div className="py-2">
             {settingsCategories.map((category) => {
-              const Icon = iconMap[category.icon as keyof typeof iconMap]
-              const isActive = activeCategory === category.id
+              const Icon = iconMap[category.icon as keyof typeof iconMap];
+              const isActive = activeCategory === category.id;
 
               return (
                 <Button
                   key={category.id}
                   variant={isActive ? 'secondary' : 'ghost'}
-                  className={`h-9 w-full justify-start px-3 text-sm ${isActive ? 'border border-border/60 bg-accent/80 text-accent-foreground' : 'hover:bg-accent/50'
-                    }`}
+                  className={`h-9 w-full justify-start px-3 text-sm ${
+                    isActive
+                      ? 'border border-border/60 bg-accent/80 text-accent-foreground'
+                      : 'hover:bg-accent/50'
+                  }`}
                   onClick={() => setActiveCategory(category.id)}
                 >
                   <Icon className="h-4 w-4" />
                   <span className="font-medium">{category.name}</span>
                 </Button>
-              )
+              );
             })}
           </div>
         </div>
@@ -224,28 +232,32 @@ export function SettingsInterface() {
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   {(() => {
-                    const category = settingsCategories.find(c => c.id === activeCategory)
-                    const Icon = iconMap[category?.icon as keyof typeof iconMap]
+                    const category = settingsCategories.find((c) => c.id === activeCategory);
+                    const Icon = iconMap[category?.icon as keyof typeof iconMap];
                     return (
                       <>
                         <Icon className="h-5 w-5" />
                         <h2 className="text-lg font-semibold">{category?.name}</h2>
                       </>
-                    )
+                    );
                   })()}
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  {settingsCategories.find(c => c.id === activeCategory)?.description}
+                  {settingsCategories.find((c) => c.id === activeCategory)?.description}
                 </p>
               </div>
 
               <Button
                 onClick={() => {
                   if (activeCategory === 'updates') {
-                    updateSetting('advanced', 'updatePolicy', defaultSettings.advanced.updatePolicy)
-                    return
+                    updateSetting(
+                      'advanced',
+                      'updatePolicy',
+                      defaultSettings.advanced.updatePolicy
+                    );
+                    return;
                   }
-                  resetCategory(activeCategory)
+                  resetCategory(activeCategory);
                 }}
                 variant="outline"
                 size="sm"
@@ -256,9 +268,7 @@ export function SettingsInterface() {
               </Button>
             </div>
           </div>
-          <div className="flex-1 overflow-y-auto px-6 py-4">
-            {renderCategoryContent()}
-          </div>
+          <div className="flex-1 overflow-y-auto px-6 py-4">{renderCategoryContent()}</div>
         </div>
       </div>
 
@@ -270,9 +280,7 @@ export function SettingsInterface() {
               <CheckCircle className="h-4 w-4" />
               <span>Settings Version: {settings.version}</span>
             </div>
-            <div>
-              Last Modified: {new Date(settings.lastModified).toLocaleString()}
-            </div>
+            <div>Last Modified: {new Date(settings.lastModified).toLocaleString()}</div>
           </div>
 
           {hasUnsavedChanges && (
@@ -284,5 +292,5 @@ export function SettingsInterface() {
         </div>
       </div>
     </div>
-  )
+  );
 }

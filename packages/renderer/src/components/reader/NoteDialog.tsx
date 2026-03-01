@@ -1,91 +1,89 @@
-import { useState, useEffect, useRef } from 'react'
-import { X, StickyNote } from 'lucide-react'
-import { useReadingStore } from '@/stores'
-import type { Note } from '@/types/store'
+import { useState, useEffect, useRef } from 'react';
+import { X, StickyNote } from 'lucide-react';
+import { useReadingStore } from '@/stores';
+import type { Note } from '@/types/store';
 
 interface NoteDialogProps {
   /** When set, the dialog opens in "add" mode for this verse */
   verse?: {
-    repositoryId: string
-    bookId: string
-    bookName: string
-    chapterNumber: number
-    verseNumber: number
-    verseText: string
-  } | null
+    repositoryId: string;
+    bookId: string;
+    bookName: string;
+    chapterNumber: number;
+    verseNumber: number;
+    verseText: string;
+  } | null;
   /** When set, the dialog opens in "edit" mode for this note */
-  editNote?: Note | null
-  onClose: () => void
+  editNote?: Note | null;
+  onClose: () => void;
 }
 
 export function NoteDialog({ verse, editNote, onClose }: NoteDialogProps) {
-  const { addNote, updateNote } = useReadingStore()
-  const isEdit = !!editNote
-  const dialogRef = useRef<HTMLDivElement>(null)
-  const contentRef = useRef<HTMLTextAreaElement>(null)
+  const { addNote, updateNote } = useReadingStore();
+  const isEdit = !!editNote;
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLTextAreaElement>(null);
 
   const defaultTitle = verse
     ? `${verse.bookName} ${verse.chapterNumber}:${verse.verseNumber}`
-    : editNote?.title ?? ''
+    : (editNote?.title ?? '');
 
-  const [title, setTitle] = useState(isEdit ? (editNote?.title ?? '') : defaultTitle)
-  const [content, setContent] = useState(isEdit ? (editNote?.content ?? '') : '')
-  const [tagsInput, setTagsInput] = useState(
-    isEdit ? (editNote?.tags?.join(', ') ?? '') : ''
-  )
+  const [title, setTitle] = useState(isEdit ? (editNote?.title ?? '') : defaultTitle);
+  const [content, setContent] = useState(isEdit ? (editNote?.content ?? '') : '');
+  const [tagsInput, setTagsInput] = useState(isEdit ? (editNote?.tags?.join(', ') ?? '') : '');
 
   // Reset fields when dialog opens with new data
   useEffect(() => {
     if (verse) {
-      setTitle(`${verse.bookName} ${verse.chapterNumber}:${verse.verseNumber}`)
-      setContent('')
-      setTagsInput('')
+      setTitle(`${verse.bookName} ${verse.chapterNumber}:${verse.verseNumber}`);
+      setContent('');
+      setTagsInput('');
     } else if (editNote) {
-      setTitle(editNote.title ?? '')
-      setContent(editNote.content ?? '')
-      setTagsInput(editNote.tags?.join(', ') ?? '')
+      setTitle(editNote.title ?? '');
+      setContent(editNote.content ?? '');
+      setTagsInput(editNote.tags?.join(', ') ?? '');
     }
-  }, [verse, editNote])
+  }, [verse, editNote]);
 
   // Auto-focus content textarea when dialog opens
   useEffect(() => {
     if (verse || editNote) {
-      setTimeout(() => contentRef.current?.focus(), 100)
+      setTimeout(() => contentRef.current?.focus(), 100);
     }
-  }, [verse, editNote])
+  }, [verse, editNote]);
 
   // Close on Escape
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [onClose])
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
 
   // Close on backdrop click
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (dialogRef.current && !dialogRef.current.contains(e.target as Node)) {
-      onClose()
+      onClose();
     }
-  }
+  };
 
   const parseTags = (input: string): string[] =>
     input
       .split(',')
-      .map(t => t.trim())
-      .filter(Boolean)
+      .map((t) => t.trim())
+      .filter(Boolean);
 
   const handleSave = () => {
-    const trimmedContent = content.trim()
-    if (!trimmedContent) return // Don't save empty notes
+    const trimmedContent = content.trim();
+    if (!trimmedContent) return; // Don't save empty notes
 
     if (isEdit && editNote) {
       updateNote(editNote.id, {
         title: title.trim() || undefined,
         content: trimmedContent,
         tags: parseTags(tagsInput),
-      })
+      });
     } else if (verse) {
       addNote({
         repository_id: verse.repositoryId,
@@ -95,13 +93,13 @@ export function NoteDialog({ verse, editNote, onClose }: NoteDialogProps) {
         title: title.trim() || undefined,
         content: trimmedContent,
         tags: parseTags(tagsInput),
-      })
+      });
     }
-    onClose()
-  }
+    onClose();
+  };
 
-  const isOpen = !!(verse || editNote)
-  if (!isOpen) return null
+  const isOpen = !!(verse || editNote);
+  if (!isOpen) return null;
 
   return (
     <div
@@ -116,14 +114,9 @@ export function NoteDialog({ verse, editNote, onClose }: NoteDialogProps) {
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <div className="flex items-center gap-2">
             <StickyNote className="w-4 h-4" />
-            <h3 className="text-sm font-medium">
-              {isEdit ? 'Edit Note' : 'Add Note'}
-            </h3>
+            <h3 className="text-sm font-medium">{isEdit ? 'Edit Note' : 'Add Note'}</h3>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1 hover:bg-accent rounded transition-colors"
-          >
+          <button onClick={onClose} className="p-1 hover:bg-accent rounded transition-colors">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -142,9 +135,7 @@ export function NoteDialog({ verse, editNote, onClose }: NoteDialogProps) {
         <div className="px-4 py-3 space-y-3">
           {/* Title */}
           <div>
-            <label className="text-xs font-medium text-muted-foreground block mb-1">
-              Title
-            </label>
+            <label className="text-xs font-medium text-muted-foreground block mb-1">Title</label>
             <input
               type="text"
               value={title}
@@ -156,9 +147,7 @@ export function NoteDialog({ verse, editNote, onClose }: NoteDialogProps) {
 
           {/* Content */}
           <div>
-            <label className="text-xs font-medium text-muted-foreground block mb-1">
-              Note
-            </label>
+            <label className="text-xs font-medium text-muted-foreground block mb-1">Note</label>
             <textarea
               ref={contentRef}
               value={content}
@@ -214,5 +203,5 @@ export function NoteDialog({ verse, editNote, onClose }: NoteDialogProps) {
         </div>
       </div>
     </div>
-  )
+  );
 }

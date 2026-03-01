@@ -1,18 +1,18 @@
-import { app } from "electron";
-import type { AppInitConfig } from "./AppInitConfig.js";
-import { createModuleRunner } from "./ModuleRunner.js";
-import { disallowMultipleAppInstance } from "./modules/SingleInstanceApp.js";
-import { createWindowManagerModule } from "./modules/WindowManager.js";
-import { terminateAppOnLastWindowClose } from "./modules/ApplicationTerminatorOnLastWindowClose.js";
-import { hardwareAccelerationMode } from "./modules/HardwareAccelerationModule.js";
-import { autoUpdater } from "./modules/AutoUpdater.js";
-import { allowInternalOrigins } from "./modules/BlockNotAllowdOrigins.js";
-import { allowExternalUrls } from "./modules/ExternalUrls.js";
-import { IpcHandlers } from "./modules/IpcHandlers.js";
+import { app } from 'electron';
+import type { AppInitConfig } from './AppInitConfig.js';
+import { createModuleRunner } from './ModuleRunner.js';
+import { disallowMultipleAppInstance } from './modules/SingleInstanceApp.js';
+import { createWindowManagerModule } from './modules/WindowManager.js';
+import { terminateAppOnLastWindowClose } from './modules/ApplicationTerminatorOnLastWindowClose.js';
+import { hardwareAccelerationMode } from './modules/HardwareAccelerationModule.js';
+import { autoUpdater } from './modules/AutoUpdater.js';
+import { allowInternalOrigins } from './modules/BlockNotAllowdOrigins.js';
+import { allowExternalUrls } from './modules/ExternalUrls.js';
+import { IpcHandlers } from './modules/IpcHandlers.js';
 
 export async function initApp(initConfig: AppInitConfig) {
-  if (process.platform === "win32") {
-    app.setAppUserModelId("io.github.beabzk.zaphnath");
+  if (process.platform === 'win32') {
+    app.setAppUserModelId('io.github.beabzk.zaphnath');
   }
 
   const moduleRunner = createModuleRunner()
@@ -34,9 +34,7 @@ export async function initApp(initConfig: AppInitConfig) {
     // Security
     .init(
       allowInternalOrigins(
-        new Set(
-          initConfig.renderer instanceof URL ? [initConfig.renderer.origin] : []
-        )
+        new Set(initConfig.renderer instanceof URL ? [initConfig.renderer.origin] : [])
       )
     )
     .init(
@@ -44,15 +42,15 @@ export async function initApp(initConfig: AppInitConfig) {
         new Set(
           initConfig.renderer instanceof URL
             ? [
-                "https://vite.dev",
-                "https://developer.mozilla.org",
-                "https://solidjs.com",
-                "https://qwik.dev",
-                "https://lit.dev",
-                "https://react.dev",
-                "https://preactjs.com",
-                "https://www.typescriptlang.org",
-                "https://vuejs.org",
+                'https://vite.dev',
+                'https://developer.mozilla.org',
+                'https://solidjs.com',
+                'https://qwik.dev',
+                'https://lit.dev',
+                'https://react.dev',
+                'https://preactjs.com',
+                'https://www.typescriptlang.org',
+                'https://vuejs.org',
               ]
             : []
         )

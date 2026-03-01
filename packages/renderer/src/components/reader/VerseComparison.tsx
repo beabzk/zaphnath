@@ -1,98 +1,108 @@
-import { useState, useEffect } from 'react'
-import { X, Plus, Copy, Download } from 'lucide-react'
-import { useRepositoryStore } from '@/stores'
+import { useState, useEffect } from 'react';
+import { X, Plus, Copy, Download } from 'lucide-react';
+import { useRepositoryStore } from '@/stores';
 
 interface ComparisonVerse {
-  repositoryId: string
-  repositoryName: string
-  text: string
+  repositoryId: string;
+  repositoryName: string;
+  text: string;
 }
 
 interface VerseComparisonProps {
-  bookId: string
-  chapterNumber: number
-  verseNumber: number
-  onClose: () => void
+  bookId: string;
+  chapterNumber: number;
+  verseNumber: number;
+  onClose: () => void;
 }
 
-export function VerseComparison({ bookId, chapterNumber, verseNumber, onClose }: VerseComparisonProps) {
-  const { repositories } = useRepositoryStore()
-  const [selectedRepos, setSelectedRepos] = useState<string[]>([])
-  const [verses, setVerses] = useState<ComparisonVerse[]>([])
-  const [loading, setLoading] = useState(false)
-  const [availableRepos, setAvailableRepos] = useState<typeof repositories>([])
+export function VerseComparison({
+  bookId,
+  chapterNumber,
+  verseNumber,
+  onClose,
+}: VerseComparisonProps) {
+  const { repositories } = useRepositoryStore();
+  const [selectedRepos, setSelectedRepos] = useState<string[]>([]);
+  const [verses, setVerses] = useState<ComparisonVerse[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [availableRepos, setAvailableRepos] = useState<typeof repositories>([]);
 
   // Filter repositories that are translations (not parent repositories)
   useEffect(() => {
-    const translationRepos = repositories.filter(r => r.type === 'translation' || !r.parent_id)
-    setAvailableRepos(translationRepos)
-    
+    const translationRepos = repositories.filter((r) => r.type === 'translation' || !r.parent_id);
+    setAvailableRepos(translationRepos);
+
     // Auto-select first two repositories
     if (translationRepos.length > 0 && selectedRepos.length === 0) {
-      const initialSelection = translationRepos.slice(0, Math.min(2, translationRepos.length)).map(r => r.id)
-      setSelectedRepos(initialSelection)
+      const initialSelection = translationRepos
+        .slice(0, Math.min(2, translationRepos.length))
+        .map((r) => r.id);
+      setSelectedRepos(initialSelection);
     }
-  }, [repositories, selectedRepos.length])
+  }, [repositories, selectedRepos.length]);
 
   // Load verses when selected repositories change
   useEffect(() => {
-    if (selectedRepos.length === 0) return
+    if (selectedRepos.length === 0) return;
 
     const loadVerses = async () => {
-      setLoading(true)
+      setLoading(true);
       try {
-        const loadedVerses: ComparisonVerse[] = []
-        
+        const loadedVerses: ComparisonVerse[] = [];
+
         for (const repoId of selectedRepos) {
-          const repo = availableRepos.find(r => r.id === repoId)
-          if (!repo) continue
+          const repo = availableRepos.find((r) => r.id === repoId);
+          if (!repo) continue;
 
           // @ts-ignore - APIs will be available at runtime
-          const verse = await window.repository?.getVerse?.(repoId, bookId, chapterNumber, verseNumber)
-          
+          const verse = await window.repository?.getVerse?.(
+            repoId,
+            bookId,
+            chapterNumber,
+            verseNumber
+          );
+
           if (verse) {
             loadedVerses.push({
               repositoryId: repoId,
               repositoryName: repo.name,
-              text: verse.text
-            })
+              text: verse.text,
+            });
           }
         }
-        
-        setVerses(loadedVerses)
-      } catch (error) {
-        console.error('Failed to load comparison verses:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
 
-    loadVerses()
-  }, [selectedRepos, bookId, chapterNumber, verseNumber, availableRepos])
+        setVerses(loadedVerses);
+      } catch (error) {
+        console.error('Failed to load comparison verses:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadVerses();
+  }, [selectedRepos, bookId, chapterNumber, verseNumber, availableRepos]);
 
   const handleToggleRepo = (repoId: string) => {
-    setSelectedRepos(prev => 
-      prev.includes(repoId)
-        ? prev.filter(id => id !== repoId)
-        : [...prev, repoId]
-    )
-  }
+    setSelectedRepos((prev) =>
+      prev.includes(repoId) ? prev.filter((id) => id !== repoId) : [...prev, repoId]
+    );
+  };
 
   const handleCopyAll = () => {
-    const text = verses.map(v => `${v.repositoryName}:\n${v.text}`).join('\n\n')
-    navigator.clipboard.writeText(text)
-  }
+    const text = verses.map((v) => `${v.repositoryName}:\n${v.text}`).join('\n\n');
+    navigator.clipboard.writeText(text);
+  };
 
   const handleExport = () => {
-    const text = verses.map(v => `${v.repositoryName}:\n${v.text}`).join('\n\n')
-    const blob = new Blob([text], { type: 'text/plain' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `comparison-${bookId}-${chapterNumber}-${verseNumber}.txt`
-    a.click()
-    URL.revokeObjectURL(url)
-  }
+    const text = verses.map((v) => `${v.repositoryName}:\n${v.text}`).join('\n\n');
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `comparison-${bookId}-${chapterNumber}-${verseNumber}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
@@ -120,10 +130,7 @@ export function VerseComparison({ bookId, chapterNumber, verseNumber, onClose }:
             >
               <Download className="w-4 h-4" />
             </button>
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-accent rounded transition-colors"
-            >
+            <button onClick={onClose} className="p-2 hover:bg-accent rounded transition-colors">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -134,9 +141,7 @@ export function VerseComparison({ bookId, chapterNumber, verseNumber, onClose }:
           <div className="w-64 border-r border-border p-3 overflow-y-auto">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-medium">Translations</h3>
-              <span className="text-xs text-muted-foreground">
-                {selectedRepos.length} selected
-              </span>
+              <span className="text-xs text-muted-foreground">{selectedRepos.length} selected</span>
             </div>
             <div className="space-y-1">
               {availableRepos.map((repo) => (
@@ -169,9 +174,7 @@ export function VerseComparison({ bookId, chapterNumber, verseNumber, onClose }:
           {/* Comparison view */}
           <div className="flex-1 p-4">
             {loading && (
-              <div className="text-center text-muted-foreground py-8">
-                Loading verses...
-              </div>
+              <div className="text-center text-muted-foreground py-8">Loading verses...</div>
             )}
 
             {!loading && selectedRepos.length === 0 && (
@@ -186,7 +189,10 @@ export function VerseComparison({ bookId, chapterNumber, verseNumber, onClose }:
             {!loading && verses.length > 0 && (
               <div className="space-y-6">
                 {verses.map((verse) => (
-                  <div key={verse.repositoryId} className="border-b border-border pb-4 last:border-0">
+                  <div
+                    key={verse.repositoryId}
+                    className="border-b border-border pb-4 last:border-0"
+                  >
                     <div className="flex items-center justify-between mb-2">
                       <h4 className="text-sm font-semibold">{verse.repositoryName}</h4>
                       <button
@@ -212,5 +218,5 @@ export function VerseComparison({ bookId, chapterNumber, verseNumber, onClose }:
         </div>
       </div>
     </div>
-  )
+  );
 }

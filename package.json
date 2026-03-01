@@ -18,7 +18,7 @@
     "url": "https://github.com/beabzk/zaphnath/issues"
   },
   "main": "packages/entry-point.mjs",
-  "packageManager": "pnpm@10.13.1",
+  "packageManager": "pnpm@10.30.3",
   "workspaces": [
     "packages/*"
   ],
@@ -50,7 +50,9 @@
     "zbrs:version:show": "node tools/zbrs-version-manager.js show",
     "zbrs:version:set": "node tools/zbrs-version-manager.js set",
     "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
-    "lint:fix": "eslint . --ext .ts,.tsx,.js,.jsx --fix"
+    "lint:fix": "eslint . --ext .ts,.tsx,.js,.jsx --fix",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,mjs,cjs,json,css,scss,html,md,yml,yaml}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,mjs,cjs,json,css,scss,html,md,yml,yaml}\""
   },
   "devDependencies": {
     "@electron/rebuild": "^4.0.3",
@@ -66,6 +68,7 @@
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.0.1",
     "glob": "13.0.6",
+    "prettier": "^3.8.1",
     "vite": "^7.1.11"
   },
   "dependencies": {

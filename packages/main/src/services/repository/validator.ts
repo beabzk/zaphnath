@@ -1,9 +1,9 @@
-import addFormats from "ajv-formats";
-import { createHash } from "crypto";
-import { existsSync, readFileSync } from "fs";
-import { createRequire } from "module";
-import path from "path";
-import { fileURLToPath } from "url";
+import addFormats from 'ajv-formats';
+import { createHash } from 'crypto';
+import { existsSync, readFileSync } from 'fs';
+import { createRequire } from 'module';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 import type {
   ZBRSParentManifest,
@@ -13,9 +13,9 @@ import type {
   ValidationWarning,
   SecurityPolicy,
   IntegrityCheck,
-} from "./types.js";
-import { isParentManifest, isTranslationManifest } from "./types.js";
-import { normalizeRepositoryUrl } from "./pathUtils.js";
+} from './types.js';
+import { isParentManifest, isTranslationManifest } from './types.js';
+import { normalizeRepositoryUrl } from './pathUtils.js';
 
 type SchemaError = {
   instancePath?: string;
@@ -27,7 +27,7 @@ type ValidateFunction = ((data: unknown) => boolean) & {
 };
 
 const require = createRequire(import.meta.url);
-const Ajv2020 = require("ajv/dist/2020.js");
+const Ajv2020 = require('ajv/dist/2020.js');
 
 export class ZBRSValidator {
   private manifestSchema: unknown;
@@ -45,7 +45,7 @@ export class ZBRSValidator {
       allowUnionTypes: true,
     });
     const addFormatsFn =
-      typeof addFormats === "function"
+      typeof addFormats === 'function'
         ? addFormats
         : (addFormats as unknown as { default?: (ajv: any) => void }).default;
     if (addFormatsFn) {
@@ -74,9 +74,9 @@ export class ZBRSValidator {
     for (const root of searchRoots) {
       let probe = root;
       while (true) {
-        const candidate = path.join(probe, "docs", "schemas");
-        const manifestPath = path.join(candidate, "manifest.schema.json");
-        const bookPath = path.join(candidate, "book.schema.json");
+        const candidate = path.join(probe, 'docs', 'schemas');
+        const manifestPath = path.join(candidate, 'manifest.schema.json');
+        const bookPath = path.join(candidate, 'book.schema.json');
         if (existsSync(manifestPath) && existsSync(bookPath)) {
           return candidate;
         }
@@ -89,19 +89,19 @@ export class ZBRSValidator {
       }
     }
 
-    throw new Error("Unable to locate docs/schemas directory");
+    throw new Error('Unable to locate docs/schemas directory');
   }
 
   private readJsonFile(filePath: string): unknown {
-    const raw = readFileSync(filePath, "utf-8");
-    return JSON.parse(raw.replace(/^\uFEFF/, ""));
+    const raw = readFileSync(filePath, 'utf-8');
+    return JSON.parse(raw.replace(/^\uFEFF/, ''));
   }
 
   private loadSchemas(): void {
     try {
       const schemasDir = this.resolveSchemasDirectory();
-      const manifestSchemaPath = path.join(schemasDir, "manifest.schema.json");
-      const bookSchemaPath = path.join(schemasDir, "book.schema.json");
+      const manifestSchemaPath = path.join(schemasDir, 'manifest.schema.json');
+      const bookSchemaPath = path.join(schemasDir, 'book.schema.json');
 
       this.manifestSchema = this.readJsonFile(manifestSchemaPath);
       this.bookSchema = this.readJsonFile(bookSchemaPath);
@@ -122,13 +122,13 @@ export class ZBRSValidator {
     }
 
     for (const err of ajvErrors) {
-      const pointer = err.instancePath || "/";
+      const pointer = err.instancePath || '/';
       target.push({
-        code: "SCHEMA_VALIDATION",
-        message: `${prefix}${pointer}: ${err.message ?? "schema validation failed"}`,
+        code: 'SCHEMA_VALIDATION',
+        message: `${prefix}${pointer}: ${err.message ?? 'schema validation failed'}`,
         path: err.instancePath || undefined,
-        severity: "error",
-        name: "ValidationError",
+        severity: 'error',
+        name: 'ValidationError',
       });
     }
   }
@@ -141,10 +141,10 @@ export class ZBRSValidator {
   ): void {
     if (!validator) {
       errors.push({
-        code: "SCHEMA_NOT_LOADED",
-        message: "Schema validator is not initialized",
-        severity: "error",
-        name: "ValidationError",
+        code: 'SCHEMA_NOT_LOADED',
+        message: 'Schema validator is not initialized',
+        severity: 'error',
+        name: 'ValidationError',
       });
       return;
     }
@@ -159,12 +159,7 @@ export class ZBRSValidator {
     const errors: ValidationError[] = [];
 
     try {
-      this.validateAgainstSchema(
-        this.manifestValidator,
-        manifest,
-        errors,
-        "manifest"
-      );
+      this.validateAgainstSchema(this.manifestValidator, manifest, errors, 'manifest');
 
       if (errors.length > 0) {
         return { valid: false, errors, warnings: [] };
@@ -179,18 +174,17 @@ export class ZBRSValidator {
       }
 
       errors.push({
-        code: "UNKNOWN_MANIFEST_TYPE",
-        message:
-          "Manifest is neither a parent repository nor a translation manifest",
-        severity: "error",
-        name: "ValidationError",
+        code: 'UNKNOWN_MANIFEST_TYPE',
+        message: 'Manifest is neither a parent repository nor a translation manifest',
+        severity: 'error',
+        name: 'ValidationError',
       });
     } catch (error) {
       errors.push({
-        code: "VALIDATION_EXCEPTION",
+        code: 'VALIDATION_EXCEPTION',
         message: `Validation failed: ${error}`,
-        severity: "error",
-        name: "ValidationError",
+        severity: 'error',
+        name: 'ValidationError',
       });
     }
 
@@ -201,19 +195,12 @@ export class ZBRSValidator {
     };
   }
 
-  public validateParentManifest(
-    manifest: ZBRSParentManifest
-  ): ValidationResult {
+  public validateParentManifest(manifest: ZBRSParentManifest): ValidationResult {
     const errors: ValidationError[] = [];
     const warnings: ValidationWarning[] = [];
 
     try {
-      this.validateAgainstSchema(
-        this.manifestValidator,
-        manifest,
-        errors,
-        "parent manifest"
-      );
+      this.validateAgainstSchema(this.manifestValidator, manifest, errors, 'parent manifest');
       if (errors.length > 0) {
         return { valid: false, errors, warnings };
       }
@@ -223,10 +210,10 @@ export class ZBRSValidator {
       this.validateManifestSecurity(manifest, errors, warnings);
     } catch (error) {
       errors.push({
-        code: "PARENT_VALIDATION_EXCEPTION",
+        code: 'PARENT_VALIDATION_EXCEPTION',
         message: `Parent manifest validation failed: ${error}`,
-        severity: "error",
-        name: "ValidationError",
+        severity: 'error',
+        name: 'ValidationError',
       });
     }
 
@@ -237,19 +224,12 @@ export class ZBRSValidator {
     };
   }
 
-  public validateTranslationManifest(
-    manifest: ZBRSTranslationManifest
-  ): ValidationResult {
+  public validateTranslationManifest(manifest: ZBRSTranslationManifest): ValidationResult {
     const errors: ValidationError[] = [];
     const warnings: ValidationWarning[] = [];
 
     try {
-      this.validateAgainstSchema(
-        this.manifestValidator,
-        manifest,
-        errors,
-        "translation manifest"
-      );
+      this.validateAgainstSchema(this.manifestValidator, manifest, errors, 'translation manifest');
       if (errors.length > 0) {
         return { valid: false, errors, warnings };
       }
@@ -259,10 +239,10 @@ export class ZBRSValidator {
       this.validateManifestSecurity(manifest, errors, warnings);
     } catch (error) {
       errors.push({
-        code: "TRANSLATION_VALIDATION_EXCEPTION",
+        code: 'TRANSLATION_VALIDATION_EXCEPTION',
         message: `Translation manifest validation failed: ${error}`,
-        severity: "error",
-        name: "ValidationError",
+        severity: 'error',
+        name: 'ValidationError',
       });
     }
 
@@ -278,14 +258,14 @@ export class ZBRSValidator {
     const warnings: ValidationWarning[] = [];
 
     try {
-      this.validateAgainstSchema(this.bookValidator, book, errors, "book");
+      this.validateAgainstSchema(this.bookValidator, book, errors, 'book');
       this.validateBookBusinessRules(book as any, errors, warnings, expectedOrder);
     } catch (error) {
       errors.push({
-        code: "VALIDATION_EXCEPTION",
+        code: 'VALIDATION_EXCEPTION',
         message: `Book validation failed: ${error}`,
-        severity: "error",
-        name: "ValidationError",
+        severity: 'error',
+        name: 'ValidationError',
       });
     }
 
@@ -301,13 +281,13 @@ export class ZBRSValidator {
     errors: ValidationError[],
     warnings: ValidationWarning[]
   ): void {
-    if (manifest.zbrs_version && !manifest.zbrs_version.startsWith("1.")) {
+    if (manifest.zbrs_version && !manifest.zbrs_version.startsWith('1.')) {
       errors.push({
-        code: "UNSUPPORTED_VERSION",
+        code: 'UNSUPPORTED_VERSION',
         message: `Unsupported ZBRS version: ${manifest.zbrs_version}`,
-        path: "/zbrs_version",
-        severity: "error",
-        name: "ValidationError",
+        path: '/zbrs_version',
+        severity: 'error',
+        name: 'ValidationError',
       });
     }
 
@@ -315,30 +295,29 @@ export class ZBRSValidator {
     const total = (old || 0) + (newTestament || 0);
     if (total !== manifest.content.books_count) {
       errors.push({
-        code: "BOOK_COUNT_MISMATCH",
+        code: 'BOOK_COUNT_MISMATCH',
         message: `Testament book counts (${old} + ${newTestament} = ${total}) don't match total (${manifest.content.books_count})`,
-        path: "/content/testament",
-        severity: "error",
-        name: "ValidationError",
+        path: '/content/testament',
+        severity: 'error',
+        name: 'ValidationError',
       });
     }
 
     if (manifest.content.books_count === 66 && (old !== 39 || newTestament !== 27)) {
       warnings.push({
-        code: "NON_STANDARD_CANON",
-        message:
-          "Book counts differ from standard Protestant canon (39 OT + 27 NT)",
-        path: "/content/testament",
+        code: 'NON_STANDARD_CANON',
+        message: 'Book counts differ from standard Protestant canon (39 OT + 27 NT)',
+        path: '/content/testament',
       });
     }
 
     if (manifest.technical.size_bytes > this.securityPolicy.max_repository_size) {
       errors.push({
-        code: "REPOSITORY_TOO_LARGE",
+        code: 'REPOSITORY_TOO_LARGE',
         message: `Repository size (${manifest.technical.size_bytes}) exceeds maximum (${this.securityPolicy.max_repository_size})`,
-        path: "/technical/size_bytes",
-        severity: "error",
-        name: "ValidationError",
+        path: '/technical/size_bytes',
+        severity: 'error',
+        name: 'ValidationError',
       });
     }
   }
@@ -352,11 +331,11 @@ export class ZBRSValidator {
       if (isTranslationManifest(manifest)) {
         if (!manifest.technical?.checksum) {
           errors.push({
-            code: "MISSING_CHECKSUM",
-            message: "Translation checksum is required by security policy",
-            path: "/technical/checksum",
-            severity: "error",
-            name: "ValidationError",
+            code: 'MISSING_CHECKSUM',
+            message: 'Translation checksum is required by security policy',
+            path: '/technical/checksum',
+            severity: 'error',
+            name: 'ValidationError',
           });
         }
       } else if (isParentManifest(manifest)) {
@@ -364,11 +343,11 @@ export class ZBRSValidator {
           const translation = manifest.translations[i];
           if (!translation.checksum) {
             errors.push({
-              code: "MISSING_TRANSLATION_CHECKSUM",
+              code: 'MISSING_TRANSLATION_CHECKSUM',
               message: `Translation ${translation.id} is missing checksum`,
               path: `/translations/${i}/checksum`,
-              severity: "error",
-              name: "ValidationError",
+              severity: 'error',
+              name: 'ValidationError',
             });
           }
         }
@@ -386,36 +365,30 @@ export class ZBRSValidator {
     try {
       const parsed = new URL(publisherUrl);
 
-      if (!this.securityPolicy.allow_http && parsed.protocol === "http:") {
+      if (!this.securityPolicy.allow_http && parsed.protocol === 'http:') {
         warnings.push({
-          code: "INSECURE_URL",
-          message: "Publisher URL uses insecure HTTP protocol",
-          path: isParentManifest(manifest)
-            ? "/publisher/url"
-            : "/repository/publisher/url",
+          code: 'INSECURE_URL',
+          message: 'Publisher URL uses insecure HTTP protocol',
+          path: isParentManifest(manifest) ? '/publisher/url' : '/repository/publisher/url',
         });
       }
 
       if (this.securityPolicy.blocked_domains.includes(parsed.hostname)) {
         errors.push({
-          code: "BLOCKED_DOMAIN",
+          code: 'BLOCKED_DOMAIN',
           message: `Publisher domain ${parsed.hostname} is blocked`,
-          path: isParentManifest(manifest)
-            ? "/publisher/url"
-            : "/repository/publisher/url",
-          severity: "error",
-          name: "ValidationError",
+          path: isParentManifest(manifest) ? '/publisher/url' : '/repository/publisher/url',
+          severity: 'error',
+          name: 'ValidationError',
         });
       }
     } catch (error) {
       errors.push({
-        code: "INVALID_PUBLISHER_URL",
+        code: 'INVALID_PUBLISHER_URL',
         message: `Invalid publisher URL: ${error}`,
-        path: isParentManifest(manifest)
-          ? "/publisher/url"
-          : "/repository/publisher/url",
-        severity: "error",
-        name: "ValidationError",
+        path: isParentManifest(manifest) ? '/publisher/url' : '/repository/publisher/url',
+        severity: 'error',
+        name: 'ValidationError',
       });
     }
   }
@@ -432,21 +405,21 @@ export class ZBRSValidator {
 
     if (expectedOrder && book.book.order !== expectedOrder) {
       errors.push({
-        code: "INCORRECT_BOOK_ORDER",
+        code: 'INCORRECT_BOOK_ORDER',
         message: `Book order ${book.book.order} doesn't match expected ${expectedOrder}`,
-        path: "/book/order",
-        severity: "error",
-        name: "ValidationError",
+        path: '/book/order',
+        severity: 'error',
+        name: 'ValidationError',
       });
     }
 
     if (book.chapters.length !== book.book.chapters_count) {
       errors.push({
-        code: "CHAPTER_COUNT_MISMATCH",
+        code: 'CHAPTER_COUNT_MISMATCH',
         message: `Actual chapters (${book.chapters.length}) don't match declared count (${book.book.chapters_count})`,
-        path: "/book/chapters_count",
-        severity: "error",
-        name: "ValidationError",
+        path: '/book/chapters_count',
+        severity: 'error',
+        name: 'ValidationError',
       });
     }
 
@@ -456,11 +429,11 @@ export class ZBRSValidator {
 
       if (chapter.number !== i + 1) {
         errors.push({
-          code: "INCORRECT_CHAPTER_NUMBER",
+          code: 'INCORRECT_CHAPTER_NUMBER',
           message: `Chapter ${i + 1} has incorrect number ${chapter.number}`,
           path: `/chapters/${i}/number`,
-          severity: "error",
-          name: "ValidationError",
+          severity: 'error',
+          name: 'ValidationError',
         });
       }
 
@@ -473,21 +446,21 @@ export class ZBRSValidator {
 
         if (verse.number !== j + 1) {
           errors.push({
-            code: "INCORRECT_VERSE_NUMBER",
+            code: 'INCORRECT_VERSE_NUMBER',
             message: `Chapter ${chapter.number}, verse ${j + 1} has incorrect number ${verse.number}`,
             path: `/chapters/${i}/verses/${j}/number`,
-            severity: "error",
-            name: "ValidationError",
+            severity: 'error',
+            name: 'ValidationError',
           });
         }
 
         if (!verse.text || String(verse.text).trim().length === 0) {
           errors.push({
-            code: "EMPTY_VERSE_TEXT",
+            code: 'EMPTY_VERSE_TEXT',
             message: `Chapter ${chapter.number}, verse ${verse.number} has empty text`,
             path: `/chapters/${i}/verses/${j}/text`,
-            severity: "error",
-            name: "ValidationError",
+            severity: 'error',
+            name: 'ValidationError',
           });
         }
 
@@ -497,24 +470,21 @@ export class ZBRSValidator {
 
     if (totalVerses !== book.book.verses_count) {
       errors.push({
-        code: "VERSE_COUNT_MISMATCH",
+        code: 'VERSE_COUNT_MISMATCH',
         message: `Actual verses (${totalVerses}) don't match declared count (${book.book.verses_count})`,
-        path: "/book/verses_count",
-        severity: "error",
-        name: "ValidationError",
+        path: '/book/verses_count',
+        severity: 'error',
+        name: 'ValidationError',
       });
     }
   }
 
-  public validateFileIntegrity(
-    filePath: string,
-    expectedChecksum: string
-  ): IntegrityCheck {
+  public validateFileIntegrity(filePath: string, expectedChecksum: string): IntegrityCheck {
     try {
       const content = readFileSync(filePath);
-      const hash = createHash("sha256");
+      const hash = createHash('sha256');
       hash.update(content);
-      const actualChecksum = `sha256:${hash.digest("hex")}`;
+      const actualChecksum = `sha256:${hash.digest('hex')}`;
 
       return {
         file_path: filePath,
@@ -526,7 +496,7 @@ export class ZBRSValidator {
       return {
         file_path: filePath,
         expected_checksum: expectedChecksum,
-        actual_checksum: "",
+        actual_checksum: '',
         valid: false,
       };
     }
@@ -540,36 +510,32 @@ export class ZBRSValidator {
       const normalizedUrl = normalizeRepositoryUrl(url);
       const parsedUrl = new URL(normalizedUrl);
 
-      if (!this.securityPolicy.allow_http && parsedUrl.protocol === "http:") {
+      if (!this.securityPolicy.allow_http && parsedUrl.protocol === 'http:') {
         errors.push({
-          code: "INSECURE_PROTOCOL",
-          message: "HTTP protocol not allowed by security policy",
-          severity: "error",
-          name: "ValidationError",
+          code: 'INSECURE_PROTOCOL',
+          message: 'HTTP protocol not allowed by security policy',
+          severity: 'error',
+          name: 'ValidationError',
         });
       }
 
-      if (!["http:", "https:", "file:"].includes(parsedUrl.protocol)) {
+      if (!['http:', 'https:', 'file:'].includes(parsedUrl.protocol)) {
         errors.push({
-          code: "INVALID_PROTOCOL",
+          code: 'INVALID_PROTOCOL',
           message: `Unsupported protocol: ${parsedUrl.protocol}`,
-          severity: "error",
-          name: "ValidationError",
+          severity: 'error',
+          name: 'ValidationError',
         });
       }
 
-      const isNetworkUrl =
-        parsedUrl.protocol === "http:" || parsedUrl.protocol === "https:";
+      const isNetworkUrl = parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:';
 
-      if (
-        isNetworkUrl &&
-        this.securityPolicy.blocked_domains.includes(parsedUrl.hostname)
-      ) {
+      if (isNetworkUrl && this.securityPolicy.blocked_domains.includes(parsedUrl.hostname)) {
         errors.push({
-          code: "BLOCKED_DOMAIN",
+          code: 'BLOCKED_DOMAIN',
           message: `Domain ${parsedUrl.hostname} is blocked`,
-          severity: "error",
-          name: "ValidationError",
+          severity: 'error',
+          name: 'ValidationError',
         });
       }
 
@@ -579,18 +545,18 @@ export class ZBRSValidator {
         !this.securityPolicy.allowed_domains.includes(parsedUrl.hostname)
       ) {
         errors.push({
-          code: "DOMAIN_NOT_ALLOWED",
+          code: 'DOMAIN_NOT_ALLOWED',
           message: `Domain ${parsedUrl.hostname} is not in allowed list`,
-          severity: "error",
-          name: "ValidationError",
+          severity: 'error',
+          name: 'ValidationError',
         });
       }
     } catch (error) {
       errors.push({
-        code: "INVALID_URL",
+        code: 'INVALID_URL',
         message: `Invalid URL format: ${error}`,
-        severity: "error",
-        name: "ValidationError",
+        severity: 'error',
+        name: 'ValidationError',
       });
     }
 
@@ -606,35 +572,35 @@ export class ZBRSValidator {
     errors: ValidationError[],
     warnings: ValidationWarning[]
   ): void {
-    if (manifest.repository.type !== "parent") {
+    if (manifest.repository.type !== 'parent') {
       errors.push({
-        code: "INVALID_PARENT_TYPE",
+        code: 'INVALID_PARENT_TYPE',
         message: "Parent repository must have type 'parent'",
-        severity: "error",
-        name: "ValidationError",
+        severity: 'error',
+        name: 'ValidationError',
       });
     }
 
     if (!Array.isArray(manifest.translations)) {
       errors.push({
-        code: "MISSING_TRANSLATIONS_ARRAY",
-        message: "Parent repository must have a translations array",
-        severity: "error",
-        name: "ValidationError",
+        code: 'MISSING_TRANSLATIONS_ARRAY',
+        message: 'Parent repository must have a translations array',
+        severity: 'error',
+        name: 'ValidationError',
       });
     } else if (manifest.translations.length === 0) {
       warnings.push({
-        code: "EMPTY_TRANSLATIONS_ARRAY",
-        message: "Parent repository has no translations",
+        code: 'EMPTY_TRANSLATIONS_ARRAY',
+        message: 'Parent repository has no translations',
       });
     }
 
     if (!manifest.publisher) {
       errors.push({
-        code: "MISSING_PUBLISHER",
-        message: "Parent repository must have publisher information",
-        severity: "error",
-        name: "ValidationError",
+        code: 'MISSING_PUBLISHER',
+        message: 'Parent repository must have publisher information',
+        severity: 'error',
+        name: 'ValidationError',
       });
     }
   }
@@ -646,28 +612,28 @@ export class ZBRSValidator {
   ): void {
     if (!manifest.content) {
       errors.push({
-        code: "MISSING_CONTENT",
-        message: "Translation manifest must have content information",
-        severity: "error",
-        name: "ValidationError",
+        code: 'MISSING_CONTENT',
+        message: 'Translation manifest must have content information',
+        severity: 'error',
+        name: 'ValidationError',
       });
     }
 
     if (!manifest.repository.language) {
       errors.push({
-        code: "MISSING_LANGUAGE",
-        message: "Translation manifest must have language information",
-        severity: "error",
-        name: "ValidationError",
+        code: 'MISSING_LANGUAGE',
+        message: 'Translation manifest must have language information',
+        severity: 'error',
+        name: 'ValidationError',
       });
     }
 
     if (!manifest.repository.translation) {
       errors.push({
-        code: "MISSING_TRANSLATION_INFO",
-        message: "Translation manifest must have translation information",
-        severity: "error",
-        name: "ValidationError",
+        code: 'MISSING_TRANSLATION_INFO',
+        message: 'Translation manifest must have translation information',
+        severity: 'error',
+        name: 'ValidationError',
       });
     }
   }
@@ -690,10 +656,10 @@ export class ZBRSValidator {
 
     if (duplicateIds.length > 0) {
       errors.push({
-        code: "DUPLICATE_TRANSLATION_IDS",
-        message: `Duplicate translation IDs found: ${duplicateIds.join(", ")}`,
-        severity: "error",
-        name: "ValidationError",
+        code: 'DUPLICATE_TRANSLATION_IDS',
+        message: `Duplicate translation IDs found: ${duplicateIds.join(', ')}`,
+        severity: 'error',
+        name: 'ValidationError',
       });
     }
 
@@ -710,12 +676,10 @@ export class ZBRSValidator {
 
     if (duplicateDirectories.length > 0) {
       errors.push({
-        code: "DUPLICATE_TRANSLATION_DIRECTORIES",
-        message: `Duplicate translation directories found: ${duplicateDirectories.join(
-          ", "
-        )}`,
-        severity: "error",
-        name: "ValidationError",
+        code: 'DUPLICATE_TRANSLATION_DIRECTORIES',
+        message: `Duplicate translation directories found: ${duplicateDirectories.join(', ')}`,
+        severity: 'error',
+        name: 'ValidationError',
       });
     }
   }

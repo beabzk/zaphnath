@@ -8,7 +8,7 @@ export interface Repository {
   version: string;
   created_at: string;
   updated_at: string;
-  type?: "parent" | "translation"; // Add type field
+  type?: 'parent' | 'translation'; // Add type field
   parent_id?: string; // For translation repositories
   book_count?: number;
   verse_count?: number;
@@ -31,7 +31,7 @@ export interface Book {
   repository_id: string;
   name: string;
   abbreviation: string;
-  testament: "old" | "new";
+  testament: 'old' | 'new';
   order: number;
   chapter_count: number;
 }
@@ -152,7 +152,7 @@ export interface ErrorState {
 
 export interface NotificationState {
   id: string;
-  type: "info" | "success" | "warning" | "error";
+  type: 'info' | 'success' | 'warning' | 'error';
   title: string;
   message?: string;
   duration?: number;
@@ -180,10 +180,7 @@ export interface RepositoryState {
   setCurrentRepository: (repository: Repository | null) => void;
   addRepository: (repository: Repository) => void;
   removeRepository: (repositoryId: string) => void;
-  updateRepository: (
-    repositoryId: string,
-    updates: Partial<Repository>
-  ) => void;
+  updateRepository: (repositoryId: string, updates: Partial<Repository>) => void;
 
   setBooks: (books: Book[]) => void;
   setCurrentBook: (book: Book | null) => void;
@@ -247,9 +244,7 @@ export interface UIState {
   clearComponentError: (component: string) => void;
   clearAllErrors: () => void;
 
-  addNotification: (
-    notification: Omit<NotificationState, "id" | "timestamp">
-  ) => void;
+  addNotification: (notification: Omit<NotificationState, 'id' | 'timestamp'>) => void;
   removeNotification: (id: string) => void;
   clearNotifications: () => void;
 
@@ -282,7 +277,7 @@ export interface ReadingState {
   highlights: Highlight[];
 
   // Reading Preferences (from settings but cached here)
-  readingMode: "verse" | "paragraph" | "chapter";
+  readingMode: 'verse' | 'paragraph' | 'chapter';
   autoScroll: boolean;
   scrollSpeed: number;
   showVerseNumbers: boolean;
@@ -293,23 +288,23 @@ export interface ReadingState {
   addToHistory: (location: ReadingLocation, duration?: number) => void;
   clearHistory: () => void;
 
-  addBookmark: (bookmark: Omit<Bookmark, "id" | "created_at">) => void;
+  addBookmark: (bookmark: Omit<Bookmark, 'id' | 'created_at'>) => void;
   removeBookmark: (bookmarkId: string) => void;
   updateBookmark: (bookmarkId: string, updates: Partial<Bookmark>) => void;
   loadBookmarks: () => Promise<void>;
 
-  addNote: (note: Omit<Note, "id" | "created_at" | "updated_at">) => void;
+  addNote: (note: Omit<Note, 'id' | 'created_at' | 'updated_at'>) => void;
   removeNote: (noteId: string) => void;
   updateNote: (noteId: string, updates: Partial<Note>) => void;
   loadNotes: () => Promise<void>;
 
-  addHighlight: (highlight: Omit<Highlight, "id" | "created_at">) => void;
+  addHighlight: (highlight: Omit<Highlight, 'id' | 'created_at'>) => void;
   removeHighlight: (highlightId: string) => void;
   updateHighlight: (highlightId: string, updates: Partial<Highlight>) => void;
   loadHighlights: () => Promise<void>;
   getVerseHighlight: (verseId: string) => Highlight | undefined;
 
-  setReadingMode: (mode: "verse" | "paragraph" | "chapter") => void;
+  setReadingMode: (mode: 'verse' | 'paragraph' | 'chapter') => void;
   setAutoScroll: (enabled: boolean) => void;
   setScrollSpeed: (speed: number) => void;
   setShowVerseNumbers: (show: boolean) => void;

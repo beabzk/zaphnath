@@ -62,15 +62,7 @@
         },
         "genre": {
           "type": "string",
-          "enum": [
-            "law",
-            "history",
-            "wisdom",
-            "prophecy",
-            "gospel",
-            "epistle",
-            "apocalyptic"
-          ],
+          "enum": ["law", "history", "wisdom", "prophecy", "gospel", "epistle", "apocalyptic"],
           "description": "Literary genre"
         },
         "author": {
@@ -260,13 +252,7 @@
         },
         "type": {
           "type": "string",
-          "enum": [
-            "historical",
-            "cultural",
-            "theological",
-            "linguistic",
-            "archaeological"
-          ],
+          "enum": ["historical", "cultural", "theological", "linguistic", "archaeological"],
           "description": "Type of study note"
         },
         "author": {

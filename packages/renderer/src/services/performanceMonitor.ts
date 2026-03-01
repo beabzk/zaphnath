@@ -1,9 +1,5 @@
-import {
-  PerformanceMonitor,
-  PerformanceMetric,
-  PerformanceCategory,
-} from "@/types/logging";
-import { logger } from "./logger";
+import { PerformanceMonitor, PerformanceMetric, PerformanceCategory } from '@/types/logging';
+import { logger } from './logger';
 
 interface ActiveTiming {
   id: string;
@@ -29,7 +25,7 @@ class PerformanceMonitorService implements PerformanceMonitor {
 
   private setupPerformanceObserver(): void {
     // Observe navigation timing
-    if ("PerformanceObserver" in window) {
+    if ('PerformanceObserver' in window) {
       try {
         const observer = new PerformanceObserver((list) => {
           for (const entry of list.getEntries()) {
@@ -38,36 +34,36 @@ class PerformanceMonitorService implements PerformanceMonitor {
         });
 
         observer.observe({
-          entryTypes: ["navigation", "resource", "measure", "paint"],
+          entryTypes: ['navigation', 'resource', 'measure', 'paint'],
         });
       } catch (error) {
         logger.warn(
-          "Failed to setup PerformanceObserver",
+          'Failed to setup PerformanceObserver',
           { error: error instanceof Error ? error.message : String(error) },
-          "performance"
+          'performance'
         );
       }
     }
   }
 
   private handlePerformanceEntry(entry: PerformanceEntry): void {
-    let category: PerformanceCategory = "user-interaction";
+    let category: PerformanceCategory = 'user-interaction';
     let name = entry.name;
 
     switch (entry.entryType) {
-      case "navigation":
-        category = "page-load";
-        name = "page-load";
+      case 'navigation':
+        category = 'page-load';
+        name = 'page-load';
         break;
-      case "resource":
-        category = "api-call";
-        name = `resource-${entry.name.split("/").pop()}`;
+      case 'resource':
+        category = 'api-call';
+        name = `resource-${entry.name.split('/').pop()}`;
         break;
-      case "measure":
-        category = "component-render";
+      case 'measure':
+        category = 'component-render';
         break;
-      case "paint":
-        category = "page-load";
+      case 'paint':
+        category = 'page-load';
         break;
     }
 
@@ -109,7 +105,7 @@ class PerformanceMonitorService implements PerformanceMonitor {
         {
           metric,
         },
-        "performance"
+        'performance'
       );
     }
   }
@@ -123,9 +119,9 @@ class PerformanceMonitorService implements PerformanceMonitor {
       performance.mark(startMark);
     } catch (error) {
       logger.warn(
-        "Failed to create performance mark",
+        'Failed to create performance mark',
         { error: error instanceof Error ? error.message : String(error), name },
-        "performance"
+        'performance'
       );
     }
 
@@ -140,22 +136,15 @@ class PerformanceMonitorService implements PerformanceMonitor {
 
     this.activeTimings.set(id, timing);
 
-    logger.debug(`Started timing: ${name}`, { id, category }, "performance");
+    logger.debug(`Started timing: ${name}`, { id, category }, 'performance');
 
     return id;
   }
 
-  endTiming(
-    timingId: string,
-    context?: Record<string, any>
-  ): PerformanceMetric | null {
+  endTiming(timingId: string, context?: Record<string, any>): PerformanceMetric | null {
     const timing = this.activeTimings.get(timingId);
     if (!timing) {
-      logger.warn(
-        "Attempted to end unknown timing",
-        { timingId },
-        "performance"
-      );
+      logger.warn('Attempted to end unknown timing', { timingId }, 'performance');
       return null;
     }
 
@@ -164,19 +153,15 @@ class PerformanceMonitorService implements PerformanceMonitor {
 
     try {
       performance.mark(timing.endMark);
-      performance.measure(
-        `${timing.name}-${timingId}`,
-        timing.startMark,
-        timing.endMark
-      );
+      performance.measure(`${timing.name}-${timingId}`, timing.startMark, timing.endMark);
     } catch (error) {
       logger.warn(
-        "Failed to create performance measure",
+        'Failed to create performance measure',
         {
           error: error instanceof Error ? error.message : String(error),
           name: timing.name,
         },
-        "performance"
+        'performance'
       );
     }
 
@@ -203,7 +188,7 @@ class PerformanceMonitorService implements PerformanceMonitor {
         duration,
         context,
       },
-      "performance"
+      'performance'
     );
 
     return metric;
@@ -270,34 +255,26 @@ class PerformanceMonitorService implements PerformanceMonitor {
       performance.clearMeasures();
     } catch (error) {
       logger.warn(
-        "Failed to clear performance marks/measures",
+        'Failed to clear performance marks/measures',
         {
           error: error instanceof Error ? error.message : String(error),
         },
-        "performance"
+        'performance'
       );
     }
 
-    logger.info("Performance metrics cleared", {}, "performance");
+    logger.info('Performance metrics cleared', {}, 'performance');
   }
 
   // Additional utility methods
-  getAverageMetric(
-    name: string,
-    category?: PerformanceCategory
-  ): number | null {
+  getAverageMetric(name: string, category?: PerformanceCategory): number | null {
     const filteredMetrics = this.metrics.filter((metric) => {
-      return (
-        metric.name === name && (!category || metric.category === category)
-      );
+      return metric.name === name && (!category || metric.category === category);
     });
 
     if (filteredMetrics.length === 0) return null;
 
-    const total = filteredMetrics.reduce(
-      (sum, metric) => sum + metric.duration,
-      0
-    );
+    const total = filteredMetrics.reduce((sum, metric) => sum + metric.duration, 0);
     return total / filteredMetrics.length;
   }
 
@@ -322,8 +299,7 @@ class PerformanceMonitorService implements PerformanceMonitor {
     return {
       total: this.metrics.length,
       categories,
-      averageDuration:
-        this.metrics.length > 0 ? totalDuration / this.metrics.length : 0,
+      averageDuration: this.metrics.length > 0 ? totalDuration / this.metrics.length : 0,
       slowOperations: this.getSlowOperations().length,
     };
   }
@@ -334,7 +310,7 @@ class PerformanceMonitorService implements PerformanceMonitor {
     total: number;
     percentage: number;
   } | null {
-    if ("memory" in performance) {
+    if ('memory' in performance) {
       const memory = (performance as any).memory;
       return {
         used: memory.usedJSHeapSize,

@@ -15,7 +15,7 @@ A minimal King James Version translation demonstrating the ZBRS v1.1 translation
 This translation contains just 3 books to demonstrate the basic structure:
 
 - **Genesis** (Old Testament) - First 2 chapters showing creation
-- **Psalms** (Old Testament) - Psalm 1 showing wisdom literature  
+- **Psalms** (Old Testament) - Psalm 1 showing wisdom literature
 - **John** (New Testament) - First 5 verses showing gospel literature
 
 ## Translation Directory Structure

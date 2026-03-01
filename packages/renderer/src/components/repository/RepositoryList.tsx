@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Badge } from '@/components/ui/badge'
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Badge } from '@/components/ui/badge';
 import {
   BookOpen,
   Calendar,
@@ -13,57 +13,57 @@ import {
   ChevronDown,
   ChevronRight,
   FolderOpen,
-  Languages
-} from 'lucide-react'
-import { repository } from '@app/preload'
+  Languages,
+} from 'lucide-react';
+import { repository } from '@app/preload';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+} from '@/components/ui/dropdown-menu';
 
 interface Repository {
-  id: string
-  name: string
-  description: string
-  language?: string // Optional for parent repositories
-  version: string
-  created_at: string
-  updated_at: string
-  type?: 'parent' | 'translation'
-  parent_id?: string
-  book_count?: number
-  verse_count?: number
-  translation_count?: number
-  translations?: TranslationInfo[]
+  id: string;
+  name: string;
+  description: string;
+  language?: string; // Optional for parent repositories
+  version: string;
+  created_at: string;
+  updated_at: string;
+  type?: 'parent' | 'translation';
+  parent_id?: string;
+  book_count?: number;
+  verse_count?: number;
+  translation_count?: number;
+  translations?: TranslationInfo[];
 }
 
 interface TranslationInfo {
-  id: string
-  name: string
-  directory: string
-  language: string
-  status: string
-  book_count?: number
-  verse_count?: number
+  id: string;
+  name: string;
+  directory: string;
+  language: string;
+  status: string;
+  book_count?: number;
+  verse_count?: number;
 }
 
 interface RepositoryListProps {
-  repositories: Repository[]
-  currentRepositoryId?: string | null
-  isLoading: boolean
-  errorMessage: string | null
-  onRefresh: () => void
-  onImportClick: () => void
-  onRepositorySelect?: (repository: Repository) => void
-  onRepositoryDelete?: (repositoryId: string) => void
+  repositories: Repository[];
+  currentRepositoryId?: string | null;
+  isLoading: boolean;
+  errorMessage: string | null;
+  onRefresh: () => void;
+  onImportClick: () => void;
+  onRepositorySelect?: (repository: Repository) => void;
+  onRepositoryDelete?: (repositoryId: string) => void;
 }
 
 interface DeleteTarget {
-  id: string
-  name: string
+  id: string;
+  name: string;
 }
 
 export function RepositoryList({
@@ -74,173 +74,185 @@ export function RepositoryList({
   onRefresh,
   onImportClick,
   onRepositorySelect,
-  onRepositoryDelete
+  onRepositoryDelete,
 }: RepositoryListProps) {
-  const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set())
-  const [translationsByParent, setTranslationsByParent] = useState<Record<string, TranslationInfo[]>>({})
-  const [translationsLoadingByParent, setTranslationsLoadingByParent] = useState<Record<string, boolean>>({})
-  const [translationErrorByParent, setTranslationErrorByParent] = useState<Record<string, string>>({})
-  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null)
+  const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set());
+  const [translationsByParent, setTranslationsByParent] = useState<
+    Record<string, TranslationInfo[]>
+  >({});
+  const [translationsLoadingByParent, setTranslationsLoadingByParent] = useState<
+    Record<string, boolean>
+  >({});
+  const [translationErrorByParent, setTranslationErrorByParent] = useState<Record<string, string>>(
+    {}
+  );
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
 
   const filteredRepositories = useMemo(() => {
-    const baseRepositories = repositories.filter(repo => {
-      if (repo.type === 'parent') return true
-      if (repo.type === 'translation' && !repo.parent_id) return true
-      if (repo.type === 'translation' && repo.parent_id) return false
-      return true
-    })
+    const baseRepositories = repositories.filter((repo) => {
+      if (repo.type === 'parent') return true;
+      if (repo.type === 'translation' && !repo.parent_id) return true;
+      if (repo.type === 'translation' && repo.parent_id) return false;
+      return true;
+    });
 
-    return baseRepositories.map(repo => {
+    return baseRepositories.map((repo) => {
       if (repo.type !== 'parent') {
-        return repo
+        return repo;
       }
 
       return {
         ...repo,
-        translations: translationsByParent[repo.id] || []
+        translations: translationsByParent[repo.id] || [],
+      };
+    });
+  }, [repositories, translationsByParent]);
+
+  const loadTranslationsForParent = useCallback(
+    async (parentId: string) => {
+      if (translationsByParent[parentId] || translationsLoadingByParent[parentId]) {
+        return;
       }
-    })
-  }, [repositories, translationsByParent])
 
-  const loadTranslationsForParent = useCallback(async (parentId: string) => {
-    if (translationsByParent[parentId] || translationsLoadingByParent[parentId]) {
-      return
-    }
+      setTranslationsLoadingByParent((prev) => ({ ...prev, [parentId]: true }));
+      setTranslationErrorByParent((prev) => {
+        const next = { ...prev };
+        delete next[parentId];
+        return next;
+      });
 
-    setTranslationsLoadingByParent((prev) => ({ ...prev, [parentId]: true }))
-    setTranslationErrorByParent((prev) => {
-      const next = { ...prev }
-      delete next[parentId]
-      return next
-    })
+      try {
+        const translations = await repository.getTranslations(parentId);
+        const mappedTranslations: TranslationInfo[] = (translations || []).map(
+          (t: Record<string, unknown>) => {
+            const id = String(t.translation_id ?? t.id ?? '');
+            const name = String(t.translation_name ?? t.name ?? '');
+            const directory = String(t.directory_name ?? t.directory ?? '');
+            const language = String(t.language_code ?? t.language ?? '');
+            const status = String(t.status ?? 'active');
+            const book_count = typeof t.book_count === 'number' ? t.book_count : undefined;
+            const verse_count = typeof t.verse_count === 'number' ? t.verse_count : undefined;
 
-    try {
-      const translations = await repository.getTranslations(parentId)
-      const mappedTranslations: TranslationInfo[] = (translations || []).map((t: Record<string, unknown>) => {
-        const id = String(t.translation_id ?? t.id ?? '')
-        const name = String(t.translation_name ?? t.name ?? '')
-        const directory = String(t.directory_name ?? t.directory ?? '')
-        const language = String(t.language_code ?? t.language ?? '')
-        const status = String(t.status ?? 'active')
-        const book_count = typeof t.book_count === 'number' ? t.book_count : undefined
-        const verse_count = typeof t.verse_count === 'number' ? t.verse_count : undefined
+            return { id, name, directory, language, status, book_count, verse_count };
+          }
+        );
 
-        return { id, name, directory, language, status, book_count, verse_count }
-      })
-
-      setTranslationsByParent((prev) => ({ ...prev, [parentId]: mappedTranslations }))
-    } catch (translationError) {
-      console.error(`Failed to fetch translations for ${parentId}:`, translationError)
-      setTranslationErrorByParent((prev) => ({
-        ...prev,
-        [parentId]: translationError instanceof Error ? translationError.message : 'Failed to load translations'
-      }))
-    } finally {
-      setTranslationsLoadingByParent((prev) => ({ ...prev, [parentId]: false }))
-    }
-  }, [translationsByParent, translationsLoadingByParent])
+        setTranslationsByParent((prev) => ({ ...prev, [parentId]: mappedTranslations }));
+      } catch (translationError) {
+        console.error(`Failed to fetch translations for ${parentId}:`, translationError);
+        setTranslationErrorByParent((prev) => ({
+          ...prev,
+          [parentId]:
+            translationError instanceof Error
+              ? translationError.message
+              : 'Failed to load translations',
+        }));
+      } finally {
+        setTranslationsLoadingByParent((prev) => ({ ...prev, [parentId]: false }));
+      }
+    },
+    [translationsByParent, translationsLoadingByParent]
+  );
 
   useEffect(() => {
     const activeParentIds = new Set(
       repositories.filter((repo) => repo.type === 'parent').map((repo) => repo.id)
-    )
+    );
 
     setExpandedParents((prev) => {
-      const filtered = new Set([...prev].filter((id) => activeParentIds.has(id)))
-      return filtered.size === prev.size ? prev : filtered
-    })
+      const filtered = new Set([...prev].filter((id) => activeParentIds.has(id)));
+      return filtered.size === prev.size ? prev : filtered;
+    });
 
     setTranslationsByParent((prev) =>
       Object.fromEntries(Object.entries(prev).filter(([id]) => activeParentIds.has(id)))
-    )
+    );
 
     setTranslationsLoadingByParent((prev) =>
       Object.fromEntries(Object.entries(prev).filter(([id]) => activeParentIds.has(id)))
-    )
+    );
 
     setTranslationErrorByParent((prev) =>
       Object.fromEntries(Object.entries(prev).filter(([id]) => activeParentIds.has(id)))
-    )
-  }, [repositories])
+    );
+  }, [repositories]);
 
   useEffect(() => {
     expandedParents.forEach((parentId) => {
-      void loadTranslationsForParent(parentId)
-    })
-  }, [expandedParents, loadTranslationsForParent])
+      void loadTranslationsForParent(parentId);
+    });
+  }, [expandedParents, loadTranslationsForParent]);
 
   const toggleParentExpansion = (parentId: string) => {
-    const shouldExpand = !expandedParents.has(parentId)
+    const shouldExpand = !expandedParents.has(parentId);
 
-    setExpandedParents(prev => {
-      const newSet = new Set(prev)
+    setExpandedParents((prev) => {
+      const newSet = new Set(prev);
       if (newSet.has(parentId)) {
-        newSet.delete(parentId)
+        newSet.delete(parentId);
       } else {
-        newSet.add(parentId)
+        newSet.add(parentId);
       }
-      return newSet
-    })
+      return newSet;
+    });
 
     if (shouldExpand) {
-      void loadTranslationsForParent(parentId)
+      void loadTranslationsForParent(parentId);
     }
-  }
+  };
 
   useEffect(() => {
     if (!deleteTarget) {
-      return
+      return;
     }
 
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        setDeleteTarget(null)
+        setDeleteTarget(null);
       }
-    }
+    };
 
-    document.addEventListener('keydown', handleEscape)
-    return () => document.removeEventListener('keydown', handleEscape)
-  }, [deleteTarget])
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [deleteTarget]);
 
   const handleRepositorySelect = (repository: Repository) => {
-    onRepositorySelect?.(repository)
-  }
+    onRepositorySelect?.(repository);
+  };
 
   const handleRowKeyDown = (event: React.KeyboardEvent<HTMLElement>, action: () => void) => {
     if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault()
-      action()
+      event.preventDefault();
+      action();
     }
-  }
+  };
 
   const handleDeleteRepository = async (repositoryId: string) => {
     try {
-      await repository.delete(repositoryId)
-      onRepositoryDelete?.(repositoryId)
-      setDeleteTarget(null)
+      await repository.delete(repositoryId);
+      onRepositoryDelete?.(repositoryId);
+      setDeleteTarget(null);
     } catch (err) {
-      console.error('Failed to delete repository:', err)
+      console.error('Failed to delete repository:', err);
     }
-  }
-
-
+  };
 
   const getLanguageDisplay = (language: string) => {
     const languageNames: Record<string, string> = {
-      'en': 'English',
-      'es': 'Spanish',
-      'fr': 'French',
-      'de': 'German',
-      'pt': 'Portuguese',
-      'it': 'Italian',
-      'ru': 'Russian',
-      'zh': 'Chinese',
-      'ar': 'Arabic',
-      'he': 'Hebrew',
-      'el': 'Greek'
-    }
-    return languageNames[language] || language.toUpperCase()
-  }
+      en: 'English',
+      es: 'Spanish',
+      fr: 'French',
+      de: 'German',
+      pt: 'Portuguese',
+      it: 'Italian',
+      ru: 'Russian',
+      zh: 'Chinese',
+      ar: 'Arabic',
+      he: 'Hebrew',
+      el: 'Greek',
+    };
+    return languageNames[language] || language.toUpperCase();
+  };
 
   if (isLoading) {
     return (
@@ -255,7 +267,7 @@ export function RepositoryList({
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   if (errorMessage) {
@@ -270,12 +282,15 @@ export function RepositoryList({
             <AlertCircle className="h-4 w-4" />
             <span>{errorMessage}</span>
           </div>
-          <button onClick={onRefresh} className="px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
+          <button
+            onClick={onRefresh}
+            className="px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+          >
             Try Again
           </button>
         </div>
       </div>
-    )
+    );
   }
 
   if (filteredRepositories.length === 0) {
@@ -291,13 +306,16 @@ export function RepositoryList({
           <p className="text-muted-foreground mb-4">
             Import your first Bible repository to get started with reading and studying.
           </p>
-          <button onClick={onImportClick} className="px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 transition-colors inline-flex items-center gap-2">
+          <button
+            onClick={onImportClick}
+            className="px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 transition-colors inline-flex items-center gap-2"
+          >
             <Download className="h-4 w-4" />
             Import Repository
           </button>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -305,42 +323,43 @@ export function RepositoryList({
       <div className="px-6 py-4">
         <div className="flex items-center justify-between mb-1">
           <h2 className="text-lg font-semibold">Installed Repositories</h2>
-          <button onClick={onImportClick} className="px-3 py-1 text-sm bg-primary text-primary-foreground hover:bg-primary/90 transition-colors inline-flex items-center gap-2">
+          <button
+            onClick={onImportClick}
+            className="px-3 py-1 text-sm bg-primary text-primary-foreground hover:bg-primary/90 transition-colors inline-flex items-center gap-2"
+          >
             <Download className="h-4 w-4" />
             Import
           </button>
         </div>
         <p className="text-sm text-muted-foreground">
-          {filteredRepositories.length} repository{filteredRepositories.length !== 1 ? 's' : ''} available
+          {filteredRepositories.length} repository{filteredRepositories.length !== 1 ? 's' : ''}{' '}
+          available
         </p>
       </div>
       <div className="px-6 pb-4 space-y-3">
-        
         {filteredRepositories.map((repo) => (
           <div key={repo.id} className="space-y-2">
             {/* Parent Repository or Standalone Translation */}
             <div
               className={`p-3 border-b border-border transition-all ${
                 repo.type === 'parent' ? 'cursor-default' : 'cursor-pointer hover:bg-accent/30'
-              } ${
-                currentRepositoryId === repo.id ? 'bg-accent/20' : ''
-              }`}
+              } ${currentRepositoryId === repo.id ? 'bg-accent/20' : ''}`}
               role="button"
               tabIndex={0}
               aria-expanded={repo.type === 'parent' ? expandedParents.has(repo.id) : undefined}
               onClick={() => {
                 if (repo.type === 'parent') {
-                  toggleParentExpansion(repo.id)
+                  toggleParentExpansion(repo.id);
                 } else {
-                  handleRepositorySelect(repo)
+                  handleRepositorySelect(repo);
                 }
               }}
               onKeyDown={(event) =>
                 handleRowKeyDown(event, () => {
                   if (repo.type === 'parent') {
-                    toggleParentExpansion(repo.id)
+                    toggleParentExpansion(repo.id);
                   } else {
-                    handleRepositorySelect(repo)
+                    handleRepositorySelect(repo);
                   }
                 })
               }
@@ -418,13 +437,13 @@ export function RepositoryList({
                     <DropdownMenuItem
                       className="text-destructive"
                       onClick={(e) => {
-                        e.stopPropagation()
-                        setDeleteTarget({ id: repo.id, name: repo.name })
+                        e.stopPropagation();
+                        setDeleteTarget({ id: repo.id, name: repo.name });
                       }}
                     >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete
-                      </DropdownMenuItem>
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
@@ -443,11 +462,13 @@ export function RepositoryList({
                     {translationErrorByParent[repo.id]}
                   </div>
                 )}
-                {!translationsLoadingByParent[repo.id] && !translationErrorByParent[repo.id] && repo.translations.length === 0 && (
-                  <div className="p-2 text-xs text-muted-foreground border-b border-border/50">
-                    No translations available
-                  </div>
-                )}
+                {!translationsLoadingByParent[repo.id] &&
+                  !translationErrorByParent[repo.id] &&
+                  repo.translations.length === 0 && (
+                    <div className="p-2 text-xs text-muted-foreground border-b border-border/50">
+                      No translations available
+                    </div>
+                  )}
                 {repo.translations.map((translation) => (
                   <div
                     key={translation.id}
@@ -469,9 +490,9 @@ export function RepositoryList({
                         type: 'translation',
                         parent_id: repo.id,
                         book_count: translation.book_count,
-                        verse_count: translation.verse_count
-                      }
-                      handleRepositorySelect(translationRepo)
+                        verse_count: translation.verse_count,
+                      };
+                      handleRepositorySelect(translationRepo);
                     }}
                     onKeyDown={(event) =>
                       handleRowKeyDown(event, () => {
@@ -486,9 +507,9 @@ export function RepositoryList({
                           type: 'translation',
                           parent_id: repo.id,
                           book_count: translation.book_count,
-                          verse_count: translation.verse_count
-                        }
-                        handleRepositorySelect(translationRepo)
+                          verse_count: translation.verse_count,
+                        };
+                        handleRepositorySelect(translationRepo);
                       })
                     }
                   >
@@ -535,9 +556,7 @@ export function RepositoryList({
           >
             <div className="px-4 py-3 border-b border-border">
               <h3 className="text-sm font-medium">Delete Repository</h3>
-              <p className="text-xs text-muted-foreground mt-1">
-                This action cannot be undone.
-              </p>
+              <p className="text-xs text-muted-foreground mt-1">This action cannot be undone.</p>
             </div>
             <div className="px-4 py-3 space-y-2">
               <p className="text-sm">
@@ -562,5 +581,5 @@ export function RepositoryList({
         </div>
       )}
     </div>
-  )
+  );
 }

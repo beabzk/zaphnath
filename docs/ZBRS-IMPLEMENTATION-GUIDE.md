@@ -9,6 +9,7 @@ This guide provides practical instructions for implementing the Zaphnath Bible R
 ### Quick Start
 
 1. **Choose Your Repository Structure**
+
    ```
    my-bible-repository/
    ├── manifest.json          # Repository coordination manifest
@@ -203,17 +204,20 @@ const result = await validator.validateRepository(repositoryPath);
 #### 5. Hosting Options
 
 **GitHub/GitLab (Recommended)**
+
 - Free hosting with version control
 - Automatic HTTPS
 - Easy collaboration
 - Example: `https://raw.githubusercontent.com/user/repo/main/`
 
 **Static Web Hosting**
+
 - Netlify, Vercel, GitHub Pages
 - CDN distribution
 - Custom domains
 
 **Self-Hosted**
+
 - Full control
 - Must provide HTTPS
 - Handle CORS headers
@@ -235,20 +239,23 @@ const result = await validator.validateRepository(repositoryPath);
 ### Integration Steps
 
 1. **Install ZBRS Support**
+
    ```typescript
    import { RepositoryService } from './services/repository';
-   
+
    const repoService = RepositoryService.getInstance();
    await repoService.initialize();
    ```
 
 2. **Discover Repository**
+
    ```typescript
    const manifest = await repoService.getRepositoryManifest('https://example.com/bible-repo/');
    console.log(`Found repository with ${manifest.translations.length} translations`);
    ```
 
 3. **Import Repository**
+
    ```typescript
    const result = await repoService.importRepository({
      repository_url: 'https://example.com/bible-repo/',
@@ -256,7 +263,7 @@ const result = await validator.validateRepository(repositoryPath);
      overwrite_existing: false,
      progress_callback: (progress) => {
        console.log(`${progress.stage}: ${progress.progress}%`);
-     }
+     },
    });
    ```
 
@@ -341,7 +348,7 @@ from lxml import etree
 def osis_to_zbrs(osis_file, output_dir):
     # Parse OSIS XML
     tree = etree.parse(osis_file)
-    
+
     # Extract books, chapters, verses
     # Convert to ZBRS format
     # Write JSON files
@@ -355,11 +362,15 @@ const usfm = require('usfm-js');
 
 function usfmToZbrs(usfmText) {
   const parsed = usfm.toJSON(usfmText);
-  
+
   // Convert to ZBRS book format
   return {
-    book: { /* book metadata */ },
-    chapters: [ /* chapter data */ ]
+    book: {
+      /* book metadata */
+    },
+    chapters: [
+      /* chapter data */
+    ],
   };
 }
 ```
@@ -376,13 +387,13 @@ function convertToZbrs(existingData: any): ZBRSBook {
       name: existingData.bookName,
       // ... map other fields
     },
-    chapters: existingData.chapters.map(ch => ({
+    chapters: existingData.chapters.map((ch) => ({
       number: ch.chapterNumber,
-      verses: ch.verses.map(v => ({
+      verses: ch.verses.map((v) => ({
         number: v.verseNumber,
-        text: v.verseText
-      }))
-    }))
+        text: v.verseText,
+      })),
+    })),
   };
 }
 ```
@@ -398,11 +409,11 @@ describe('ZBRS Repository', () => {
     const result = await validator.validateManifest(manifest);
     expect(result.valid).toBe(true);
   });
-  
+
   test('imports successfully', async () => {
     const result = await importer.importRepository({
       repository_url: 'test-repo-url',
-      validate_checksums: true
+      validate_checksums: true,
     });
     expect(result.success).toBe(true);
   });
@@ -449,7 +460,7 @@ describe('ZBRS Repository', () => {
 // Enable debug logging
 const repoService = new RepositoryService({
   debug: true,
-  verbose: true
+  verbose: true,
 });
 
 // Check validation details

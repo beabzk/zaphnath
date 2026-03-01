@@ -1,7 +1,7 @@
-import { useSettings } from './SettingsProvider'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
+import { useSettings } from './SettingsProvider';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import {
   HardDrive,
   Database,
@@ -12,42 +12,43 @@ import {
   Folder,
   RefreshCw,
   Trash2,
-  Settings as SettingsIcon
-} from 'lucide-react'
+  Settings as SettingsIcon,
+} from 'lucide-react';
 
 export function AdvancedSettings() {
-  const { settings, updateSetting } = useSettings()
-  const { advanced } = settings
+  const { settings, updateSetting } = useSettings();
+  const { advanced } = settings;
 
   const SettingGroup = ({ title, children }: { title: string; children: React.ReactNode }) => (
     <div className="space-y-3">
       <h3 className="font-medium text-sm">{title}</h3>
       {children}
     </div>
-  )
+  );
 
-  const SliderSetting = ({ 
-    label, 
-    value, 
-    min, 
-    max, 
-    step = 1, 
-    unit = '', 
-    onChange 
+  const SliderSetting = ({
+    label,
+    value,
+    min,
+    max,
+    step = 1,
+    unit = '',
+    onChange,
   }: {
-    label: string
-    value: number
-    min: number
-    max: number
-    step?: number
-    unit?: string
-    onChange: (value: number) => void
+    label: string;
+    value: number;
+    min: number;
+    max: number;
+    step?: number;
+    unit?: string;
+    onChange: (value: number) => void;
   }) => (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <label className="text-sm font-medium">{label}</label>
         <Badge variant="secondary" className="text-xs">
-          {value}{unit}
+          {value}
+          {unit}
         </Badge>
       </div>
       <input
@@ -60,7 +61,7 @@ export function AdvancedSettings() {
         className="w-full h-2 bg-secondary rounded-lg appearance-none cursor-pointer"
       />
     </div>
-  )
+  );
 
   const languages = [
     { code: 'en', name: 'English' },
@@ -73,14 +74,14 @@ export function AdvancedSettings() {
     { code: 'zh', name: '中文' },
     { code: 'ar', name: 'العربية' },
     { code: 'he', name: 'עברית' },
-  ]
+  ];
 
   const logLevels = [
     { value: 'error', name: 'Error', description: 'Only critical errors' },
     { value: 'warn', name: 'Warning', description: 'Errors and warnings' },
     { value: 'info', name: 'Info', description: 'General information' },
     { value: 'debug', name: 'Debug', description: 'Detailed debugging' },
-  ]
+  ];
 
   return (
     <div className="space-y-6">
@@ -219,7 +220,9 @@ export function AdvancedSettings() {
             <Button
               variant={advanced.enableAnalytics ? 'default' : 'outline'}
               size="sm"
-              onClick={() => updateSetting('advanced', 'enableAnalytics', !advanced.enableAnalytics)}
+              onClick={() =>
+                updateSetting('advanced', 'enableAnalytics', !advanced.enableAnalytics)
+              }
             >
               {advanced.enableAnalytics ? 'On' : 'Off'}
             </Button>
@@ -243,10 +246,12 @@ export function AdvancedSettings() {
             <Button
               variant={advanced.database.autoBackup ? 'default' : 'outline'}
               size="sm"
-              onClick={() => updateSetting('advanced', 'database', {
-                ...advanced.database,
-                autoBackup: !advanced.database.autoBackup
-              })}
+              onClick={() =>
+                updateSetting('advanced', 'database', {
+                  ...advanced.database,
+                  autoBackup: !advanced.database.autoBackup,
+                })
+              }
             >
               {advanced.database.autoBackup ? 'On' : 'Off'}
             </Button>
@@ -260,10 +265,12 @@ export function AdvancedSettings() {
                 min={1}
                 max={168}
                 unit=" hours"
-                onChange={(value) => updateSetting('advanced', 'database', {
-                  ...advanced.database,
-                  backupInterval: value
-                })}
+                onChange={(value) =>
+                  updateSetting('advanced', 'database', {
+                    ...advanced.database,
+                    backupInterval: value,
+                  })
+                }
               />
 
               <SliderSetting
@@ -271,10 +278,12 @@ export function AdvancedSettings() {
                 value={advanced.database.maxBackups}
                 min={1}
                 max={30}
-                onChange={(value) => updateSetting('advanced', 'database', {
-                  ...advanced.database,
-                  maxBackups: value
-                })}
+                onChange={(value) =>
+                  updateSetting('advanced', 'database', {
+                    ...advanced.database,
+                    maxBackups: value,
+                  })
+                }
               />
             </>
           )}
@@ -294,10 +303,12 @@ export function AdvancedSettings() {
             <Button
               variant={advanced.performance.enableGPUAcceleration ? 'default' : 'outline'}
               size="sm"
-              onClick={() => updateSetting('advanced', 'performance', {
-                ...advanced.performance,
-                enableGPUAcceleration: !advanced.performance.enableGPUAcceleration
-              })}
+              onClick={() =>
+                updateSetting('advanced', 'performance', {
+                  ...advanced.performance,
+                  enableGPUAcceleration: !advanced.performance.enableGPUAcceleration,
+                })
+              }
             >
               {advanced.performance.enableGPUAcceleration ? 'On' : 'Off'}
             </Button>
@@ -311,10 +322,12 @@ export function AdvancedSettings() {
             <Button
               variant={advanced.performance.preloadNextChapter ? 'default' : 'outline'}
               size="sm"
-              onClick={() => updateSetting('advanced', 'performance', {
-                ...advanced.performance,
-                preloadNextChapter: !advanced.performance.preloadNextChapter
-              })}
+              onClick={() =>
+                updateSetting('advanced', 'performance', {
+                  ...advanced.performance,
+                  preloadNextChapter: !advanced.performance.preloadNextChapter,
+                })
+              }
             >
               {advanced.performance.preloadNextChapter ? 'On' : 'Off'}
             </Button>
@@ -328,10 +341,12 @@ export function AdvancedSettings() {
             <Button
               variant={advanced.performance.cacheImages ? 'default' : 'outline'}
               size="sm"
-              onClick={() => updateSetting('advanced', 'performance', {
-                ...advanced.performance,
-                cacheImages: !advanced.performance.cacheImages
-              })}
+              onClick={() =>
+                updateSetting('advanced', 'performance', {
+                  ...advanced.performance,
+                  cacheImages: !advanced.performance.cacheImages,
+                })
+              }
             >
               {advanced.performance.cacheImages ? 'On' : 'Off'}
             </Button>
@@ -352,7 +367,9 @@ export function AdvancedSettings() {
             <Button
               variant={advanced.experimentalFeatures ? 'default' : 'outline'}
               size="sm"
-              onClick={() => updateSetting('advanced', 'experimentalFeatures', !advanced.experimentalFeatures)}
+              onClick={() =>
+                updateSetting('advanced', 'experimentalFeatures', !advanced.experimentalFeatures)
+              }
             >
               {advanced.experimentalFeatures ? 'On' : 'Off'}
             </Button>
@@ -363,5 +380,5 @@ export function AdvancedSettings() {
         </div>
       </SettingGroup>
     </div>
-  )
+  );
 }

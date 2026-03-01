@@ -1,5 +1,5 @@
-import {resolveModuleExportNames} from 'mlly';
-import {getChromeMajorVersion} from '@app/electron-versions';
+import { resolveModuleExportNames } from 'mlly';
+import { getChromeMajorVersion } from '@app/electron-versions';
 
 export default /**
  * @type {import('vite').UserConfig}
@@ -29,7 +29,6 @@ export default /**
   },
   plugins: [mockExposed(), handleHotReload()],
 });
-
 
 /**
  * This plugin creates a browser (renderer) version of `preload` package.
@@ -77,7 +76,6 @@ function mockExposed() {
   };
 }
 
-
 /**
  * Implement Electron webview reload when some file was changed
  * @return {import('vite').Plugin}
@@ -94,7 +92,9 @@ function handleHotReload() {
         return;
       }
 
-      const rendererWatchServerProvider = config.plugins.find(p => p.name === '@app/renderer-watch-server-provider');
+      const rendererWatchServerProvider = config.plugins.find(
+        (p) => p.name === '@app/renderer-watch-server-provider'
+      );
       if (!rendererWatchServerProvider) {
         throw new Error('Renderer watch server provider not found');
       }

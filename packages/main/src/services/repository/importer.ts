@@ -1,12 +1,12 @@
-import { createHash } from "crypto";
-import { readdir, readFile, stat } from "fs/promises";
-import { join } from "path";
-import { fileURLToPath } from "url";
+import { createHash } from 'crypto';
+import { readdir, readFile, stat } from 'fs/promises';
+import { join } from 'path';
+import { fileURLToPath } from 'url';
 
-import { DatabaseService } from "../database/index.js";
-import { RepositoryDiscoveryService } from "./discovery.js";
-import { ZBRSValidator } from "./validator.js";
-import { normalizeRepositoryUrl } from "./pathUtils.js";
+import { DatabaseService } from '../database/index.js';
+import { RepositoryDiscoveryService } from './discovery.js';
+import { ZBRSValidator } from './validator.js';
+import { normalizeRepositoryUrl } from './pathUtils.js';
 import type {
   ContentBookReference,
   RepositoryDbRecord,
@@ -20,8 +20,8 @@ import type {
   ValidationResult,
   SecurityPolicy,
   ValidationError,
-} from "./types.js";
-import { isParentManifest, isTranslationManifest } from "./types.js";
+} from './types.js';
+import { isParentManifest, isTranslationManifest } from './types.js';
 
 const createValidationError = (
   code: string,
@@ -32,9 +32,9 @@ const createValidationError = (
   code,
   message,
   path,
-  severity: "error",
+  severity: 'error',
   details,
-  name: "ValidationError",
+  name: 'ValidationError',
 });
 
 const toErrorMessage = (error: unknown): string =>
@@ -63,7 +63,7 @@ export class RepositoryImporter {
     };
     const result: ImportResult = {
       success: false,
-      repository_id: "",
+      repository_id: '',
       books_imported: 0,
       errors: [],
       warnings: [],
@@ -72,9 +72,9 @@ export class RepositoryImporter {
 
     try {
       this.reportProgress(options, {
-        stage: "discovering",
+        stage: 'discovering',
         progress: 0,
-        message: "Discovering repository...",
+        message: 'Discovering repository...',
       });
 
       const manifest = await this.discoveryService.fetchRepositoryManifest(
@@ -88,19 +88,13 @@ export class RepositoryImporter {
         return await this.importTranslation(manifest, normalizedOptions);
       } else {
         result.errors.push(
-          createValidationError(
-            "unknown-manifest-type",
-            "Unknown manifest type - cannot import"
-          )
+          createValidationError('unknown-manifest-type', 'Unknown manifest type - cannot import')
         );
         return result;
       }
     } catch (error) {
       result.errors.push(
-        createValidationError(
-          "import-failed",
-          `Import failed: ${toErrorMessage(error)}`
-        )
+        createValidationError('import-failed', `Import failed: ${toErrorMessage(error)}`)
       );
       result.duration_ms = Date.now() - startTime;
       return result;
@@ -125,9 +119,9 @@ export class RepositoryImporter {
 
     try {
       this.reportProgress(options, {
-        stage: "validating",
+        stage: 'validating',
         progress: 10,
-        message: "Validating parent repository...",
+        message: 'Validating parent repository...',
       });
 
       const validation = this.validator.validateParentManifest(manifest);
@@ -142,7 +136,7 @@ export class RepositoryImporter {
         name: manifest.repository.name,
         description: manifest.repository.description,
         version: manifest.repository.version,
-        type: "parent",
+        type: 'parent',
         parent_id: null,
         language: null, // Parent repos don't have a single language
         created_at: new Date().toISOString(),
@@ -156,7 +150,7 @@ export class RepositoryImporter {
       });
 
       // Clean base URL for translations
-      const baseUrl = options.repository_url.replace(/\/manifest\.json$/, "").replace(/\/$/, "");
+      const baseUrl = options.repository_url.replace(/\/manifest\.json$/, '').replace(/\/$/, '');
 
       const selectedTranslationIds = new Set(options.selected_translations || []);
       const useSelectiveImport = selectedTranslationIds.size > 0;
@@ -174,24 +168,22 @@ export class RepositoryImporter {
         );
         if (unknownSelections.length > 0) {
           result.warnings.push({
-            code: "UNKNOWN_TRANSLATION_SELECTION",
-            message: `Selected translations not found in parent manifest: ${unknownSelections.join(", ")}`,
-            name: "ValidationWarning",
+            code: 'UNKNOWN_TRANSLATION_SELECTION',
+            message: `Selected translations not found in parent manifest: ${unknownSelections.join(', ')}`,
+            name: 'ValidationWarning',
           });
         }
       }
 
       const translationsToImport = useSelectiveImport
-        ? manifest.translations.filter((translation) =>
-          selectedTranslationIds.has(translation.id)
-        )
+        ? manifest.translations.filter((translation) => selectedTranslationIds.has(translation.id))
         : manifest.translations;
 
       if (translationsToImport.length === 0) {
         result.errors.push(
           createValidationError(
-            "no-translations-selected",
-            "No translations were selected for import"
+            'no-translations-selected',
+            'No translations were selected for import'
           )
         );
         return result;
@@ -215,10 +207,7 @@ export class RepositoryImporter {
       result.success = result.errors.length === 0;
     } catch (error) {
       result.errors.push(
-        createValidationError(
-          "parent-import-failed",
-          `Import failed: ${toErrorMessage(error)}`
-        )
+        createValidationError('parent-import-failed', `Import failed: ${toErrorMessage(error)}`)
       );
     } finally {
       result.duration_ms = Date.now() - startTime;
@@ -231,10 +220,7 @@ export class RepositoryImporter {
     options: ImportOptions,
     parentId: string | null
   ): Promise<[ValidationResult, RepositoryDbRecord | null]> {
-    const validation = await this.validateRepositoryChecksums(
-      manifest,
-      options
-    );
+    const validation = await this.validateRepositoryChecksums(manifest, options);
     if (!validation.valid) return [validation, null];
 
     // Parent imports store translation metadata in repository_translations only.
@@ -242,22 +228,22 @@ export class RepositoryImporter {
     const record: RepositoryDbRecord | null = parentId
       ? null
       : {
-        id: manifest.repository.id,
-        name: manifest.repository.name,
-        description: manifest.repository.description,
-        version: manifest.repository.version,
-        language: manifest.repository.language.code,
-        type: "parent",
-        parent_id: null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        imported_at: new Date().toISOString(),
-        metadata: JSON.stringify({
-          technical: manifest.technical,
-          content: manifest.content,
-          extensions: manifest.extensions || {},
-        }),
-      };
+          id: manifest.repository.id,
+          name: manifest.repository.name,
+          description: manifest.repository.description,
+          version: manifest.repository.version,
+          language: manifest.repository.language.code,
+          type: 'parent',
+          parent_id: null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          imported_at: new Date().toISOString(),
+          metadata: JSON.stringify({
+            technical: manifest.technical,
+            content: manifest.content,
+            extensions: manifest.extensions || {},
+          }),
+        };
 
     return [validation, record];
   }
@@ -267,7 +253,7 @@ export class RepositoryImporter {
     options: ImportOptions,
     parentId: string | null = null,
     directoryName: string | null = null,
-    translationStatus: "active" | "inactive" | "deprecated" = "active"
+    translationStatus: 'active' | 'inactive' | 'deprecated' = 'active'
   ): Promise<ImportResult> {
     const startTime = Date.now();
     const result: ImportResult = {
@@ -297,7 +283,7 @@ export class RepositoryImporter {
       }
 
       const translationParentId = parentId ?? manifest.repository.id;
-      const translationDirectory = directoryName ?? ".";
+      const translationDirectory = directoryName ?? '.';
 
       this.databaseService.getQueries().createRepositoryTranslation({
         id: `${translationParentId}:${manifest.repository.id}`,
@@ -315,7 +301,7 @@ export class RepositoryImporter {
       result.books_imported = importedCount;
 
       this.reportProgress(options, {
-        stage: "complete",
+        stage: 'complete',
         progress: 100,
         message: `Import complete! ${importedCount} books imported.`,
       });
@@ -324,7 +310,7 @@ export class RepositoryImporter {
     } catch (error) {
       result.errors.push(
         createValidationError(
-          "translation-import-failed",
+          'translation-import-failed',
           `Import failed: ${toErrorMessage(error)}`
         )
       );
@@ -341,12 +327,10 @@ export class RepositoryImporter {
     options: ImportOptions
   ): Promise<ImportResult> {
     const translationUrl =
-      (baseUrl.endsWith("/") ? baseUrl : baseUrl + "/") + translation.directory;
+      (baseUrl.endsWith('/') ? baseUrl : baseUrl + '/') + translation.directory;
 
     try {
-      const manifest = await this.discoveryService.fetchRepositoryManifest(
-        translationUrl
-      );
+      const manifest = await this.discoveryService.fetchRepositoryManifest(translationUrl);
 
       if (!isTranslationManifest(manifest)) {
         throw new Error(
@@ -368,10 +352,8 @@ export class RepositoryImporter {
         books_imported: 0,
         errors: [
           createValidationError(
-            "fetch-translation-failed",
-            `Failed to import translation ${translation.name}: ${toErrorMessage(
-              error
-            )}`
+            'fetch-translation-failed',
+            `Failed to import translation ${translation.name}: ${toErrorMessage(error)}`
           ),
         ],
         warnings: [],
@@ -386,7 +368,7 @@ export class RepositoryImporter {
 
   private normalizeRepositoryBaseUrl(repositoryUrl: string): string {
     const normalizedUrl = normalizeRepositoryUrl(repositoryUrl);
-    return normalizedUrl.replace(/\/manifest\.json$/, "").replace(/\/$/, "");
+    return normalizedUrl.replace(/\/manifest\.json$/, '').replace(/\/$/, '');
   }
 
   private buildBookUrl(baseUrl: string, bookFile: ResolvedBookFile): string {
@@ -394,44 +376,40 @@ export class RepositoryImporter {
       return bookFile.download_url;
     }
 
-    const normalizedBookPath = bookFile.path.replace(/\\/g, "/");
+    const normalizedBookPath = bookFile.path.replace(/\\/g, '/');
     if (
-      normalizedBookPath.startsWith("http://") ||
-      normalizedBookPath.startsWith("https://") ||
-      normalizedBookPath.startsWith("file://")
+      normalizedBookPath.startsWith('http://') ||
+      normalizedBookPath.startsWith('https://') ||
+      normalizedBookPath.startsWith('file://')
     ) {
       return normalizedBookPath;
     }
 
     const absoluteBookPath = normalizeRepositoryUrl(bookFile.path);
-    if (absoluteBookPath.startsWith("file://")) {
+    if (absoluteBookPath.startsWith('file://')) {
       return absoluteBookPath;
     }
 
-    if (baseUrl.startsWith("file://")) {
-      const normalizedBase = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
-      return new URL(normalizedBookPath.replace(/^\/+/, ""), normalizedBase)
-        .toString();
+    if (baseUrl.startsWith('file://')) {
+      const normalizedBase = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+      return new URL(normalizedBookPath.replace(/^\/+/, ''), normalizedBase).toString();
     }
 
-    const normalizedBase = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
-    return `${normalizedBase}${normalizedBookPath.replace(/^\/+/, "")}`;
+    const normalizedBase = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+    return `${normalizedBase}${normalizedBookPath.replace(/^\/+/, '')}`;
   }
 
   private async fetchJsonFromLocation(location: string): Promise<unknown> {
     const normalizedLocation = normalizeRepositoryUrl(location);
 
-    if (normalizedLocation.startsWith("file://")) {
+    if (normalizedLocation.startsWith('file://')) {
       const localPath = fileURLToPath(normalizedLocation);
-      const rawContent = await readFile(localPath, "utf-8");
-      return JSON.parse(rawContent.replace(/^\uFEFF/, ""));
+      const rawContent = await readFile(localPath, 'utf-8');
+      return JSON.parse(rawContent.replace(/^\uFEFF/, ''));
     }
 
-    if (
-      !normalizedLocation.startsWith("http://") &&
-      !normalizedLocation.startsWith("https://")
-    ) {
-      throw new Error("Only HTTP(S) or local file book sources are supported");
+    if (!normalizedLocation.startsWith('http://') && !normalizedLocation.startsWith('https://')) {
+      throw new Error('Only HTTP(S) or local file book sources are supported');
     }
 
     const response = await fetch(normalizedLocation);
@@ -439,25 +417,22 @@ export class RepositoryImporter {
       throw new Error(`Failed to fetch JSON: ${response.statusText}`);
     }
     const rawContent = await response.text();
-    return JSON.parse(rawContent.replace(/^\uFEFF/, ""));
+    return JSON.parse(rawContent.replace(/^\uFEFF/, ''));
   }
 
   private async calculateSha256(location: string): Promise<string> {
     const normalizedLocation = normalizeRepositoryUrl(location);
 
-    if (normalizedLocation.startsWith("file://")) {
+    if (normalizedLocation.startsWith('file://')) {
       const localPath = fileURLToPath(normalizedLocation);
       const data = await readFile(localPath);
-      const hash = createHash("sha256");
+      const hash = createHash('sha256');
       hash.update(data);
-      return `sha256:${hash.digest("hex")}`;
+      return `sha256:${hash.digest('hex')}`;
     }
 
-    if (
-      !normalizedLocation.startsWith("http://") &&
-      !normalizedLocation.startsWith("https://")
-    ) {
-      throw new Error("Only HTTP(S) or local file checksum sources are supported");
+    if (!normalizedLocation.startsWith('http://') && !normalizedLocation.startsWith('https://')) {
+      throw new Error('Only HTTP(S) or local file checksum sources are supported');
     }
 
     const response = await fetch(normalizedLocation);
@@ -466,9 +441,9 @@ export class RepositoryImporter {
     }
 
     const data = Buffer.from(await response.arrayBuffer());
-    const hash = createHash("sha256");
+    const hash = createHash('sha256');
     hash.update(data);
-    return `sha256:${hash.digest("hex")}`;
+    return `sha256:${hash.digest('hex')}`;
   }
 
   private async resolveBookFiles(
@@ -480,9 +455,7 @@ export class RepositoryImporter {
       return manifestBooks;
     }
 
-    const discoveredBooks = await this.discoverBookFiles(
-      options.repository_url
-    );
+    const discoveredBooks = await this.discoverBookFiles(options.repository_url);
     if (discoveredBooks.length > 0) {
       return discoveredBooks;
     }
@@ -490,19 +463,17 @@ export class RepositoryImporter {
     return [];
   }
 
-  private async discoverBookFiles(
-    repositoryUrl: string
-  ): Promise<ResolvedBookFile[]> {
+  private async discoverBookFiles(repositoryUrl: string): Promise<ResolvedBookFile[]> {
     const normalizedUrl = this.normalizeRepositoryBaseUrl(repositoryUrl);
 
-    if (normalizedUrl.startsWith("file://")) {
+    if (normalizedUrl.startsWith('file://')) {
       return this.discoverLocalBookFiles(normalizedUrl);
     }
 
-    if (normalizedUrl.startsWith("http://") || normalizedUrl.startsWith("https://")) {
+    if (normalizedUrl.startsWith('http://') || normalizedUrl.startsWith('https://')) {
       try {
         const parsedUrl = new URL(normalizedUrl);
-        if (parsedUrl.hostname === "raw.githubusercontent.com") {
+        if (parsedUrl.hostname === 'raw.githubusercontent.com') {
           return this.discoverGitHubRawBookFiles(parsedUrl);
         }
       } catch {
@@ -513,30 +484,24 @@ export class RepositoryImporter {
     return [];
   }
 
-  private async discoverLocalBookFiles(
-    repositoryUrl: string
-  ): Promise<ResolvedBookFile[]> {
+  private async discoverLocalBookFiles(repositoryUrl: string): Promise<ResolvedBookFile[]> {
     try {
       const repositoryPath = fileURLToPath(repositoryUrl);
-      const booksDirectory = join(repositoryPath, "books");
+      const booksDirectory = join(repositoryPath, 'books');
       const entries = await readdir(booksDirectory, { withFileTypes: true });
 
       const files = await Promise.all(
         entries
-          .filter(
-            (entry) =>
-              entry.isFile() &&
-              entry.name.toLowerCase().endsWith(".json")
-          )
+          .filter((entry) => entry.isFile() && entry.name.toLowerCase().endsWith('.json'))
           .map(async (entry) => {
             const filePath = join(booksDirectory, entry.name);
             const fileStat = await stat(filePath);
 
             return {
               path: `books/${entry.name}`,
-              checksum: "",
+              checksum: '',
               size_bytes: fileStat.size,
-              media_type: "application/json",
+              media_type: 'application/json',
             } as ResolvedBookFile;
           })
       );
@@ -544,7 +509,7 @@ export class RepositoryImporter {
       return files.sort((a, b) =>
         a.path.localeCompare(b.path, undefined, {
           numeric: true,
-          sensitivity: "base",
+          sensitivity: 'base',
         })
       );
     } catch {
@@ -552,31 +517,27 @@ export class RepositoryImporter {
     }
   }
 
-  private async discoverGitHubRawBookFiles(
-    repositoryUrl: URL
-  ): Promise<ResolvedBookFile[]> {
+  private async discoverGitHubRawBookFiles(repositoryUrl: URL): Promise<ResolvedBookFile[]> {
     try {
       const pathSegments = repositoryUrl.pathname
-        .split("/")
+        .split('/')
         .filter((segment) => segment.length > 0);
       if (pathSegments.length < 4) {
         return [];
       }
 
       const [owner, repo, ref, ...repositoryPath] = pathSegments;
-      const booksPath = [...repositoryPath, "books"]
+      const booksPath = [...repositoryPath, 'books']
         .map((segment) => encodeURIComponent(segment))
-        .join("/");
+        .join('/');
       const apiUrl = `https://api.github.com/repos/${encodeURIComponent(
         owner
-      )}/${encodeURIComponent(repo)}/contents/${booksPath}?ref=${encodeURIComponent(
-        ref
-      )}`;
+      )}/${encodeURIComponent(repo)}/contents/${booksPath}?ref=${encodeURIComponent(ref)}`;
 
       const response = await fetch(apiUrl, {
         headers: {
-          Accept: "application/vnd.github+json",
-          "User-Agent": "Zaphnath Bible Reader/1.0",
+          Accept: 'application/vnd.github+json',
+          'User-Agent': 'Zaphnath Bible Reader/1.0',
         },
       });
 
@@ -601,25 +562,22 @@ export class RepositoryImporter {
       return data
         .filter(
           (entry) =>
-            entry.type === "file" &&
-            typeof entry.name === "string" &&
-            entry.name.toLowerCase().endsWith(".json")
+            entry.type === 'file' &&
+            typeof entry.name === 'string' &&
+            entry.name.toLowerCase().endsWith('.json')
         )
         .sort((a, b) =>
-          (a.name ?? "").localeCompare(b.name ?? "", undefined, {
+          (a.name ?? '').localeCompare(b.name ?? '', undefined, {
             numeric: true,
-            sensitivity: "base",
+            sensitivity: 'base',
           })
         )
         .map((entry) => ({
           path: `books/${entry.name as string}`,
-          checksum: "",
-          size_bytes: typeof entry.size === "number" ? entry.size : undefined,
-          media_type: "application/json",
-          download_url:
-            typeof entry.download_url === "string"
-              ? entry.download_url
-              : undefined,
+          checksum: '',
+          size_bytes: typeof entry.size === 'number' ? entry.size : undefined,
+          media_type: 'application/json',
+          download_url: typeof entry.download_url === 'string' ? entry.download_url : undefined,
         }));
     } catch {
       return [];
@@ -635,9 +593,9 @@ export class RepositoryImporter {
 
     if (options.validate_checksums) {
       this.reportProgress(options, {
-        stage: "validating",
+        stage: 'validating',
         progress: 50,
-        message: "Validating file checksums...",
+        message: 'Validating file checksums...',
       });
 
       const baseUrl = this.normalizeRepositoryBaseUrl(options.repository_url);
@@ -646,13 +604,13 @@ export class RepositoryImporter {
 
       for (const bookFile of bookFiles) {
         const expectedChecksum = bookFile.checksum;
-        if (!expectedChecksum || !expectedChecksum.startsWith("sha256:")) {
+        if (!expectedChecksum || !expectedChecksum.startsWith('sha256:')) {
           if (!checksumWarningEmitted) {
             validation.warnings.push({
-              code: "CHECKSUM_SKIPPED",
+              code: 'CHECKSUM_SKIPPED',
               message:
-                "Skipping checksum validation for one or more books because checksum metadata is missing or not sha256",
-              name: "ValidationWarning",
+                'Skipping checksum validation for one or more books because checksum metadata is missing or not sha256',
+              name: 'ValidationWarning',
             });
             checksumWarningEmitted = true;
           }
@@ -670,7 +628,7 @@ export class RepositoryImporter {
           validation.valid = false;
           validation.errors.push(
             createValidationError(
-              "checksum-mismatch",
+              'checksum-mismatch',
               `Checksum mismatch for ${bookFile.path}`,
               bookFile.path,
               {
@@ -683,10 +641,8 @@ export class RepositoryImporter {
           validation.valid = false;
           validation.errors.push(
             createValidationError(
-              "checksum-validation-failed",
-              `Failed to validate checksum for ${bookFile.path}: ${toErrorMessage(
-                error
-              )}`,
+              'checksum-validation-failed',
+              `Failed to validate checksum for ${bookFile.path}: ${toErrorMessage(error)}`,
               bookFile.path
             )
           );
@@ -705,19 +661,16 @@ export class RepositoryImporter {
     let importedCount = 0;
 
     if (!Array.isArray(bookFiles) || bookFiles.length === 0) {
-      console.error(
-        "No book files could be resolved for translation:",
-        manifest.repository.id
-      );
+      console.error('No book files could be resolved for translation:', manifest.repository.id);
       throw new Error(
-        "No book files could be resolved. Ensure the translation exposes a books directory (e.g., translation/books/*.json) or provides content.books references."
+        'No book files could be resolved. Ensure the translation exposes a books directory (e.g., translation/books/*.json) or provides content.books references.'
       );
     }
 
     for (const [index, bookFile] of bookFiles.entries()) {
       const bookFileName = bookFile.path;
       this.reportProgress(options, {
-        stage: "downloading",
+        stage: 'downloading',
         progress: (index / bookFiles.length) * 100,
         message: `Importing book ${bookFileName}...`,
       });
@@ -726,9 +679,7 @@ export class RepositoryImporter {
         const bookUrl = this.buildBookUrl(baseUrl, bookFile);
         const book = (await this.fetchJsonFromLocation(bookUrl)) as ZBRSBook;
 
-        await this.databaseService
-          .getQueries()
-          .importBook(book, manifest.repository.id);
+        await this.databaseService.getQueries().importBook(book, manifest.repository.id);
         importedCount++;
       } catch (error) {
         console.error(`Failed to import book ${bookFileName}:`, error);
@@ -738,10 +689,7 @@ export class RepositoryImporter {
     return importedCount;
   }
 
-  private reportProgress(
-    options: ImportOptions,
-    progress: ImportProgress
-  ): void {
+  private reportProgress(options: ImportOptions, progress: ImportProgress): void {
     if (options.progress_callback) {
       options.progress_callback(progress);
     }
@@ -760,7 +708,7 @@ export class RepositoryImporter {
     const normalizedRepositoryUrl = normalizeRepositoryUrl(repositoryUrl);
     const result: ImportResult = {
       success: false,
-      repository_id: "",
+      repository_id: '',
       translations_imported: [],
       translations_skipped: [],
       books_imported: 0,
@@ -771,15 +719,13 @@ export class RepositoryImporter {
 
     try {
       // Fetch the parent repository manifest
-      const manifest = await this.discoveryService.fetchRepositoryManifest(
-        normalizedRepositoryUrl
-      );
+      const manifest = await this.discoveryService.fetchRepositoryManifest(normalizedRepositoryUrl);
 
       if (!isParentManifest(manifest)) {
         result.errors.push(
           createValidationError(
-            "not-parent-repository",
-            "URL does not point to a parent repository manifest"
+            'not-parent-repository',
+            'URL does not point to a parent repository manifest'
           )
         );
         result.duration_ms = Date.now() - startTime;
@@ -802,7 +748,7 @@ export class RepositoryImporter {
         id: manifest.repository.id,
         name: manifest.repository.name,
         description: manifest.repository.description || null,
-        type: "parent",
+        type: 'parent',
         parent_id: null,
         language: null,
         version: manifest.repository.version,
@@ -846,9 +792,8 @@ export class RepositoryImporter {
             result.translations_skipped!.push(translation.id);
             result.errors.push(
               createValidationError(
-                "translation-import-failed",
-                `Failed to import translation ${translation.name
-                }: ${toErrorMessage(error)}`
+                'translation-import-failed',
+                `Failed to import translation ${translation.name}: ${toErrorMessage(error)}`
               )
             );
           }
@@ -865,7 +810,7 @@ export class RepositoryImporter {
     } catch (error) {
       result.errors.push(
         createValidationError(
-          "hierarchical-import-failed",
+          'hierarchical-import-failed',
           `Hierarchical import failed: ${toErrorMessage(error)}`
         )
       );
