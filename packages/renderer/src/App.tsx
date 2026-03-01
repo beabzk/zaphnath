@@ -43,7 +43,7 @@ function App() {
 
   return (
     <ErrorBoundary name="AppRoot" isolate={false}>
-      <SettingsProvider storageKey="zaphnath-settings">
+      <SettingsProvider>
         <ThemeProvider defaultTheme="system" storageKey="zaphnath-ui-theme">
           <ErrorBoundary name="Navigation" isolate={true}>
             <NavigationProvider initialView="reader">

@@ -1,9 +1,10 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { AppSettings, defaultSettings, settingsValidation } from '@/types/settings'
 
+const APP_SETTINGS_DB_KEY = 'app_settings'
+
 type SettingsProviderProps = {
   children: React.ReactNode
-  storageKey?: string
 }
 
 type SettingsProviderState = {
@@ -42,40 +43,60 @@ const SettingsProviderContext = createContext<SettingsProviderState>(initialStat
 
 export function SettingsProvider({
   children,
-  storageKey = 'zaphnath-settings',
 }: SettingsProviderProps) {
   const [settings, setSettings] = useState<AppSettings>(defaultSettings)
   const [isLoading, setIsLoading] = useState(true)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
 
-  // Load settings from localStorage on mount
+  // Load settings from database on mount and seed defaults when missing.
   useEffect(() => {
-    const loadSettings = () => {
+    const loadSettings = async () => {
       try {
-        const stored = localStorage.getItem(storageKey)
-        if (stored) {
-          const parsedSettings = JSON.parse(stored) as AppSettings
-          // Merge with defaults to ensure all properties exist
+        const dbSettings = await window.database.getSetting(APP_SETTINGS_DB_KEY)
+
+        if (dbSettings) {
+          const parsedSettings = JSON.parse(dbSettings) as AppSettings
           const mergedSettings = mergeWithDefaults(parsedSettings, defaultSettings)
           setSettings(mergedSettings)
+          return
         }
+
+        const seededDefaults = mergeWithDefaults({}, defaultSettings)
+        setSettings(seededDefaults)
+        await window.database.setSetting(
+          APP_SETTINGS_DB_KEY,
+          JSON.stringify(seededDefaults)
+        )
       } catch (error) {
         console.error('Failed to load settings:', error)
         // Fall back to defaults
-        setSettings(defaultSettings)
+        setSettings(mergeWithDefaults({}, defaultSettings))
       } finally {
         setIsLoading(false)
       }
     }
 
-    loadSettings()
-  }, [storageKey])
+    loadSettings().catch((error) => {
+      console.error('Failed to initialize settings:', error)
+      setSettings(mergeWithDefaults({}, defaultSettings))
+      setIsLoading(false)
+    })
+  }, [])
 
   // Deep merge settings with defaults
-  const mergeWithDefaults = (stored: any, defaults: AppSettings): AppSettings => {
+  const mergeWithDefaults = (stored: unknown, defaults: AppSettings): AppSettings => {
+    if (!stored || typeof stored !== 'object') {
+      return {
+        ...defaults,
+        version: defaults.version,
+        lastModified: new Date().toISOString(),
+      }
+    }
+
+    const storedRecord = stored as Record<string, any>
     const merged = { ...defaults }
     
-    for (const [category, categorySettings] of Object.entries(stored)) {
+    for (const [category, categorySettings] of Object.entries(storedRecord)) {
       if (category in merged && typeof categorySettings === 'object' && categorySettings !== null) {
         const currentCategory = merged[category as keyof AppSettings]
         if (typeof currentCategory === 'object' && currentCategory !== null) {
@@ -91,14 +112,6 @@ export function SettingsProvider({
     merged.version = defaults.version
     merged.lastModified = new Date().toISOString()
 
-    // Backward compatibility: migrate legacy boolean autoUpdate to updatePolicy
-    if (
-      typeof stored?.advanced?.autoUpdate === 'boolean' &&
-      typeof stored?.advanced?.updatePolicy !== 'string'
-    ) {
-      merged.advanced.updatePolicy = stored.advanced.autoUpdate ? 'auto' : 'manual'
-    }
-    
     return merged
   }
 
@@ -205,16 +218,17 @@ export function SettingsProvider({
     }
   }, [])
 
-  // Save settings to localStorage
+  // Save settings to database.
   const saveSettings = useCallback(async (): Promise<void> => {
     try {
-      localStorage.setItem(storageKey, JSON.stringify(settings))
+      const serializedSettings = JSON.stringify(settings)
+      await window.database.setSetting(APP_SETTINGS_DB_KEY, serializedSettings)
       setHasUnsavedChanges(false)
     } catch (error) {
       console.error('Failed to save settings:', error)
       throw error
     }
-  }, [settings, storageKey])
+  }, [settings])
 
   // Auto-save settings when they change (debounced)
   useEffect(() => {

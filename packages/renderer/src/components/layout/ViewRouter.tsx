@@ -47,7 +47,7 @@ function ReadingPlansView() {
       </CardHeader>
       <CardContent>
         <p className="text-muted-foreground">
-          Reading plans feature will be implemented in future sprints.
+          Reading plans feature will be implemented in the future.
         </p>
       </CardContent>
     </Card>
@@ -65,7 +65,7 @@ function DownloadsView() {
       </CardHeader>
       <CardContent>
         <p className="text-muted-foreground">
-          Downloads management will be implemented in future sprints.
+          Downloads management will be implemented in the future.
         </p>
       </CardContent>
     </Card>

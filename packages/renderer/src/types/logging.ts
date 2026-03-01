@@ -228,7 +228,7 @@ export interface PerformanceMonitor {
 // Debug information collector interface
 export interface DebugCollector {
   collectSystemInfo(): Promise<SystemInfo>
-  collectApplicationState(): ApplicationState
+  collectApplicationState(): Promise<ApplicationState>
   collectUserActions(count?: number): UserAction[]
   collectLogs(count?: number): LogEntry[]
   collectPerformanceMetrics(count?: number): PerformanceMetric[]

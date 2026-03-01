@@ -10,6 +10,8 @@ import { logger } from "./logger";
 import { performanceMonitor } from "./performanceMonitor";
 import { useRepositoryStore, useUIStore, useReadingStore } from "@/stores";
 
+const APP_SETTINGS_DB_KEY = "app_settings";
+
 class DebugCollectorService implements DebugCollector {
   async collectSystemInfo(): Promise<SystemInfo> {
     const systemInfo: SystemInfo = {
@@ -82,22 +84,22 @@ class DebugCollectorService implements DebugCollector {
     };
   }
 
-  collectApplicationState(): ApplicationState {
+  async collectApplicationState(): Promise<ApplicationState> {
     // Get current store states
     const repositoryState = useRepositoryStore.getState();
     const uiState = useUIStore.getState();
     const readingState = useReadingStore.getState();
 
-    // Get settings from localStorage
+    // Get settings from database
     let settings = {};
     try {
-      const settingsData = localStorage.getItem("zaphnath-settings");
+      const settingsData = await window.database.getSetting(APP_SETTINGS_DB_KEY);
       if (settingsData) {
         settings = JSON.parse(settingsData);
       }
     } catch (_error) {
       logger.warn(
-        "Failed to parse settings for debug collection",
+        "Failed to read settings for debug collection",
         {
           error: _error instanceof Error ? _error.message : String(_error),
         },
@@ -105,7 +107,7 @@ class DebugCollectorService implements DebugCollector {
       );
     }
 
-    const applicationState: ApplicationState = {
+    return {
       currentView: uiState.currentView,
       repositories: repositoryState.repositories.length,
       currentRepository: repositoryState.currentRepository?.name,
@@ -138,8 +140,6 @@ class DebugCollectorService implements DebugCollector {
         },
       },
     };
-
-    return applicationState;
   }
 
   collectUserActions(count: number = 50): UserAction[] {
@@ -166,9 +166,11 @@ class DebugCollectorService implements DebugCollector {
 
     const [systemInfo] = await Promise.all([this.collectSystemInfo()]);
 
+    const applicationState = await this.collectApplicationState();
+
     const report = {
       systemInfo,
-      applicationState: this.collectApplicationState(),
+      applicationState,
       userActions: this.collectUserActions(100),
       logs: this.collectLogs(200),
       performanceMetrics: this.collectPerformanceMetrics(100),

@@ -74,6 +74,8 @@ declare namespace Zaphnath {
     getBooks: () => Promise<BibleBook[]>;
     getVerses: (bookId: number, chapter: number) => Promise<BibleVerse[]>;
     searchVerses: (query: string, repositoryId?: string) => Promise<BibleVerse[]>;
+    getSetting: (key: string) => Promise<string | null>;
+    setSetting: (key: string, value: string) => Promise<boolean>;
     getStats: () => Promise<{
       repositories: number;
       books: number;

@@ -17,6 +17,9 @@ const database: Zaphnath.DatabaseAPI = {
     ipcRenderer.invoke("database:getVerses", bookId, chapter),
   searchVerses: (query: string, repositoryId?: string) =>
     ipcRenderer.invoke("database:searchVerses", query, repositoryId),
+  getSetting: (key: string) => ipcRenderer.invoke("database:getSetting", key),
+  setSetting: (key: string, value: string) =>
+    ipcRenderer.invoke("database:setSetting", key, value),
   getStats: () => ipcRenderer.invoke("database:getStats"),
 };
 
