@@ -12,7 +12,6 @@ import {
   Folder,
   RefreshCw,
   Trash2,
-  Download,
   Settings as SettingsIcon
 } from 'lucide-react'
 
@@ -81,28 +80,6 @@ export function AdvancedSettings() {
     { value: 'warn', name: 'Warning', description: 'Errors and warnings' },
     { value: 'info', name: 'Info', description: 'General information' },
     { value: 'debug', name: 'Debug', description: 'Detailed debugging' },
-  ]
-
-  const updatePolicies: Array<{
-    value: typeof advanced.updatePolicy
-    name: string
-    description: string
-  }> = [
-    {
-      value: 'auto',
-      name: 'Auto update',
-      description: 'Automatically check, download, and install updates when closing the app.',
-    },
-    {
-      value: 'notify',
-      name: 'Check and notify',
-      description: 'Automatically check for updates and notify you when one is available.',
-    },
-    {
-      value: 'manual',
-      name: 'Manual only',
-      description: 'Do not automatically check for updates.',
-    },
   ]
 
   return (
@@ -250,28 +227,6 @@ export function AdvancedSettings() {
           <p className="text-xs text-muted-foreground">
             Help improve the app by sharing anonymous usage data
           </p>
-
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <Download className="h-4 w-4" />
-              <span className="text-sm font-medium">Update Behavior</span>
-            </div>
-            <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
-              {updatePolicies.map((policy) => (
-                <Button
-                  key={policy.value}
-                  variant={advanced.updatePolicy === policy.value ? 'default' : 'outline'}
-                  onClick={() => updateSetting('advanced', 'updatePolicy', policy.value)}
-                  className="h-auto flex-col items-start gap-1 p-3 text-left"
-                >
-                  <span className="text-xs font-medium">{policy.name}</span>
-                  <span className="text-xs text-muted-foreground whitespace-normal">
-                    {policy.description}
-                  </span>
-                </Button>
-              ))}
-            </div>
-          </div>
         </div>
       </SettingGroup>
 

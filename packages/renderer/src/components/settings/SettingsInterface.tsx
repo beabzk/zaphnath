@@ -5,11 +5,13 @@ import { AppearanceSettings } from './AppearanceSettings'
 import { ReadingSettings } from './ReadingSettings'
 import { AudioSettings } from './AudioSettings'
 import { AdvancedSettings } from './AdvancedSettings'
-import { settingsCategories, SettingsCategory } from '@/types/settings'
+import { UpdatesSettings } from './UpdatesSettings'
+import { defaultSettings, settingsCategories, SettingsCategory } from '@/types/settings'
 import {
   Palette,
   BookOpen,
   Volume2,
+  RefreshCw,
   Settings as SettingsIcon,
   Save,
   RotateCcw,
@@ -23,6 +25,7 @@ const iconMap = {
   Palette,
   BookOpen,
   Volume2,
+  RefreshCw,
   Settings: SettingsIcon,
 }
 
@@ -33,6 +36,7 @@ export function SettingsInterface() {
     settings,
     resetSettings,
     resetCategory,
+    updateSetting,
     exportSettings,
     importSettings,
     hasUnsavedChanges,
@@ -81,6 +85,8 @@ export function SettingsInterface() {
         return <ReadingSettings />
       case 'audio':
         return <AudioSettings />
+      case 'updates':
+        return <UpdatesSettings />
       case 'advanced':
         return <AdvancedSettings />
       default:
@@ -228,7 +234,13 @@ export function SettingsInterface() {
               </div>
 
               <button
-                onClick={() => resetCategory(activeCategory)}
+                onClick={() => {
+                  if (activeCategory === 'updates') {
+                    updateSetting('advanced', 'updatePolicy', defaultSettings.advanced.updatePolicy)
+                    return
+                  }
+                  resetCategory(activeCategory)
+                }}
                 className="px-3 py-1 text-sm border border-border hover:bg-destructive/10 text-destructive transition-colors inline-flex items-center gap-2"
               >
                 <RotateCcw className="h-4 w-4" />

@@ -190,6 +190,12 @@ export const settingsCategories = [
     icon: 'Volume2',
   },
   {
+    id: 'updates',
+    name: 'Updates',
+    description: 'Control how application updates are checked and installed',
+    icon: 'RefreshCw',
+  },
+  {
     id: 'advanced',
     name: 'Advanced',
     description: 'Advanced configuration and developer options',
