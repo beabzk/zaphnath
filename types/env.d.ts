@@ -20,7 +20,7 @@ interface ImportMetaEnv {
   /** Current app version */
   readonly VITE_APP_VERSION: string;
 
-  /** Release channel used by updater (e.g. release, dev) */
+  /** Optional updater channel override (e.g. beta, alpha). Stable builds should use latest/default. */
   readonly VITE_DISTRIBUTION_CHANNEL?: string;
 }
 
@@ -137,6 +137,9 @@ declare namespace Zaphnath {
       isUpdateAvailable: boolean;
       currentVersion: string;
       latestVersion: string;
+      channel: string;
+      status: 'ok' | 'no_updates_published' | 'metadata_unavailable';
+      message?: string;
     }>;
   }
 

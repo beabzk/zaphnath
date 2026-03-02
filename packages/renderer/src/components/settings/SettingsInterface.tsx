@@ -19,7 +19,6 @@ import {
   Download,
   Upload,
   AlertCircle,
-  CheckCircle,
 } from 'lucide-react';
 
 const iconMap = {
@@ -34,7 +33,6 @@ export function SettingsInterface() {
   const [activeCategory, setActiveCategory] = useState<SettingsCategory>('appearance');
   const [showImportExport, setShowImportExport] = useState(false);
   const {
-    settings,
     resetSettings,
     resetCategory,
     updateSetting,
@@ -97,7 +95,7 @@ export function SettingsInterface() {
 
   if (isLoading) {
     return (
-      <div className="h-full flex flex-col">
+      <div className="min-h-full flex flex-col">
         <div className="px-6 py-4 border-b border-border">
           <h2 className="text-lg font-semibold">Settings</h2>
           <p className="text-sm text-muted-foreground">Loading your preferences...</p>
@@ -110,13 +108,13 @@ export function SettingsInterface() {
   }
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="min-h-full flex flex-col">
       {/* Settings Header */}
       <div className="border-b border-border">
-        <div className="px-6 py-4">
+        <div className="px-6 py-3">
           <div className="flex items-center justify-between">
             <div>
-              <div className="flex items-center gap-2 mb-1">
+              <div className="flex items-center gap-2">
                 <SettingsIcon className="h-5 w-5" />
                 <h2 className="text-lg font-semibold">Settings</h2>
                 {hasUnsavedChanges && (
@@ -126,9 +124,6 @@ export function SettingsInterface() {
                   </Badge>
                 )}
               </div>
-              <p className="text-sm text-muted-foreground">
-                Configure your Bible reading experience and application preferences
-              </p>
             </div>
 
             <div className="flex items-center gap-2">
@@ -195,13 +190,13 @@ export function SettingsInterface() {
       </div>
 
       {/* Settings Content */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex">
         {/* Category Navigation */}
-        <div className="w-56 border-r border-border">
-          <div className="px-4 py-3 border-b border-border">
+        <div className="w-60 border-r border-border">
+          <div className="px-4 py-2.5 border-b border-border">
             <h3 className="text-sm font-medium">Categories</h3>
           </div>
-          <div className="py-2">
+          <div className="space-y-1.5 px-2 py-2">
             {settingsCategories.map((category) => {
               const Icon = iconMap[category.icon as keyof typeof iconMap];
               const isActive = activeCategory === category.id;
@@ -210,7 +205,7 @@ export function SettingsInterface() {
                 <Button
                   key={category.id}
                   variant={isActive ? 'secondary' : 'ghost'}
-                  className={`h-9 w-full justify-start px-3 text-sm ${
+                  className={`h-10 w-full justify-start gap-3 rounded-lg px-3.5 text-sm ${
                     isActive
                       ? 'border border-border/60 bg-accent/80 text-accent-foreground'
                       : 'hover:bg-accent/50'
@@ -226,11 +221,11 @@ export function SettingsInterface() {
         </div>
 
         {/* Category Content */}
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <div className="px-6 py-4 border-b border-border">
+        <div className="flex-1 min-w-0">
+          <div className="px-6 py-3 border-b border-border">
             <div className="flex items-center justify-between">
               <div>
-                <div className="flex items-center gap-2 mb-1">
+                <div className="flex items-center gap-2">
                   {(() => {
                     const category = settingsCategories.find((c) => c.id === activeCategory);
                     const Icon = iconMap[category?.icon as keyof typeof iconMap];
@@ -242,9 +237,6 @@ export function SettingsInterface() {
                     );
                   })()}
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  {settingsCategories.find((c) => c.id === activeCategory)?.description}
-                </p>
               </div>
 
               <Button
@@ -268,27 +260,7 @@ export function SettingsInterface() {
               </Button>
             </div>
           </div>
-          <div className="flex-1 overflow-y-auto px-6 py-4">{renderCategoryContent()}</div>
-        </div>
-      </div>
-
-      {/* Settings Info */}
-      <div className="px-6 py-3 border-t border-border bg-muted/20">
-        <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1">
-              <CheckCircle className="h-4 w-4" />
-              <span>Settings Version: {settings.version}</span>
-            </div>
-            <div>Last Modified: {new Date(settings.lastModified).toLocaleString()}</div>
-          </div>
-
-          {hasUnsavedChanges && (
-            <div className="flex items-center gap-1 text-amber-600">
-              <AlertCircle className="h-4 w-4" />
-              <span>You have unsaved changes</span>
-            </div>
-          )}
+          <div className="px-6 py-4">{renderCategoryContent()}</div>
         </div>
       </div>
     </div>

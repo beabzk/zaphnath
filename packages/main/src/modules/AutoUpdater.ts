@@ -13,6 +13,9 @@ export type UpdateCheckResult = {
   isUpdateAvailable: boolean;
   currentVersion: string;
   latestVersion: string;
+  channel: string;
+  status: 'ok' | 'no_updates_published' | 'metadata_unavailable';
+  message?: string;
 };
 
 let autoUpdaterInstance: AutoUpdater | null = null;
@@ -86,10 +89,8 @@ export class AutoUpdater implements AppModule {
 
       return await updater.checkForUpdatesAndNotify(this.#notification);
     } catch (error) {
-      if (error instanceof Error) {
-        if (error.message.includes('No published versions')) {
-          return null;
-        }
+      if (this.isNoPublishedVersionsError(error)) {
+        return null;
       }
 
       throw error;
@@ -100,6 +101,7 @@ export class AutoUpdater implements AppModule {
     const policy = this.#policy;
     const checkedAt = new Date().toISOString();
     const currentVersion = app.getVersion();
+    const channel = this.resolveConfiguredChannel() ?? 'latest';
 
     try {
       let result:
@@ -127,15 +129,34 @@ export class AutoUpdater implements AppModule {
         isUpdateAvailable: Boolean(result?.isUpdateAvailable),
         currentVersion,
         latestVersion: result?.updateInfo?.version || currentVersion,
+        channel,
+        status: 'ok',
       };
     } catch (error) {
-      if (error instanceof Error && error.message.includes('No published versions')) {
+      if (this.isNoPublishedVersionsError(error)) {
         return {
           checkedAt,
           policy,
           isUpdateAvailable: false,
           currentVersion,
           latestVersion: currentVersion,
+          channel,
+          status: 'no_updates_published',
+          message: 'No published updates are available for the configured channel.',
+        };
+      }
+
+      if (this.isMissingReleaseMetadataError(error)) {
+        return {
+          checkedAt,
+          policy,
+          isUpdateAvailable: false,
+          currentVersion,
+          latestVersion: 'Unknown',
+          channel,
+          status: 'metadata_unavailable',
+          message:
+            'Update metadata file is missing from the release assets. Upload the generated update YAML files (for example latest.yml/release.yml and blockmaps).',
         };
       }
 
@@ -151,11 +172,52 @@ export class AutoUpdater implements AppModule {
     updater.autoDownload = policy === 'auto';
     updater.autoInstallOnAppQuit = policy === 'auto';
 
-    if (import.meta.env.VITE_DISTRIBUTION_CHANNEL) {
-      updater.channel = import.meta.env.VITE_DISTRIBUTION_CHANNEL;
+    const channel = this.resolveConfiguredChannel();
+    if (channel) {
+      updater.channel = channel;
     }
 
     return updater;
+  }
+
+  private resolveConfiguredChannel(): string | null {
+    const raw = import.meta.env.VITE_DISTRIBUTION_CHANNEL;
+    if (!raw) {
+      return null;
+    }
+
+    const normalized = raw.trim().toLowerCase();
+    if (!normalized) {
+      return null;
+    }
+
+    // Stable builds should use electron-updater's default channel (latest).
+    if (normalized === 'latest' || normalized === 'release' || normalized === 'stable') {
+      return null;
+    }
+
+    return normalized;
+  }
+
+  private isNoPublishedVersionsError(error: unknown): boolean {
+    if (!(error instanceof Error)) {
+      return false;
+    }
+
+    return error.message.includes('No published versions');
+  }
+
+  private isMissingReleaseMetadataError(error: unknown): boolean {
+    if (!(error instanceof Error)) {
+      return false;
+    }
+
+    const message = error.message.toLowerCase();
+    return (
+      message.includes('cannot find') &&
+      message.includes('.yml') &&
+      (message.includes('release.yml') || message.includes('latest.yml'))
+    );
   }
 
   async loadPolicy(): Promise<UpdatePolicy> {

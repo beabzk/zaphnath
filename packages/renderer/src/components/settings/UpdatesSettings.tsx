@@ -108,9 +108,17 @@ export function UpdatesSettings() {
               Current version: {checkResult.currentVersion} | Latest version:{' '}
               {checkResult.latestVersion}
             </p>
+            <p className="text-xs text-muted-foreground">Channel: {checkResult.channel}</p>
             <p className="text-xs text-muted-foreground">
-              {checkResult.isUpdateAvailable ? 'An update is available.' : 'You are up to date.'}
+              {checkResult.status === 'metadata_unavailable'
+                ? 'Update metadata is unavailable.'
+                : checkResult.isUpdateAvailable
+                  ? 'An update is available.'
+                  : 'You are up to date.'}
             </p>
+            {checkResult.message && (
+              <p className="text-xs text-amber-600">{checkResult.message}</p>
+            )}
           </div>
         )}
         {checkError && <p className="mt-2 text-xs text-destructive">{checkError}</p>}
