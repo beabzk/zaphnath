@@ -15,6 +15,19 @@ Pre-release project. The app is actively evolving and schema/data internals may 
 - Create bookmarks, notes, and highlights
 - Manage appearance and reading settings
 
+## Terminology and Sources
+
+- **Repository**: a ZBRS source package that can contain one or more translations.
+- **Translation**: a specific Bible text variant selected in the reader.
+- Users can import **any valid ZBRS repository** (official or third-party).
+
+Official ecosystem sources:
+
+- Official translations repository: `https://github.com/beabzk/zbrs-official`
+- Official registry (trusted discovery index): `https://github.com/beabzk/zbrs-registry`
+
+The registry is used by in-app discovery and can include trusted third-party repositories, not only official project-owned repositories.
+
 ## Requirements
 
 - Node.js `24.x` (see `.nvmrc`)
@@ -78,7 +91,7 @@ Related repositories:
 ## Data Model (Current)
 
 - `repositories` stores parent repositories
-- `repository_translations` stores translation metadata under each parent
+- `repository_translations` stores translation metadata under each parent repository
 - `books` and `verses` store imported translation content
 - `user_settings` stores app-level preferences
 
