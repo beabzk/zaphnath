@@ -80,8 +80,10 @@ export function RepositoryManagement() {
   const currentVerseCount = currentRepository?.verse_count ?? null;
   const hasIndexedBooks = (currentBookCount ?? 0) > 0;
   const hasIndexedVerses = (currentVerseCount ?? 0) > 0;
+  const isTranslation = currentRepository?.type === 'translation';
   const isParentRepository = currentRepository?.type === 'parent';
   const isTranslationReady = !isParentRepository && hasIndexedBooks && hasIndexedVerses;
+  const selectedEntityLabel = isTranslation ? 'Translation' : 'Repository';
 
   return (
     <div className="h-full flex flex-col">
@@ -153,16 +155,16 @@ export function RepositoryManagement() {
         }}
       />
 
-      {/* Selected Repository Details */}
+      {/* Selected Repository/Translation Details */}
       {currentRepository && (
         <div className="border-b border-border">
           <div className="px-6 py-4">
             <div className="flex items-center gap-2 mb-1">
               <BookOpen className="h-5 w-5" />
-              <h2 className="text-lg font-semibold">Repository Details</h2>
+              <h2 className="text-lg font-semibold">{selectedEntityLabel} Details</h2>
             </div>
             <p className="text-sm text-muted-foreground">
-              Information about the selected repository
+              Information about the selected {selectedEntityLabel.toLowerCase()}
             </p>
           </div>
           <div className="px-6 pb-4">
@@ -196,11 +198,11 @@ export function RepositoryManagement() {
               </div>
 
               <div>
-                <h4 className="font-medium mb-3">Repository Status</h4>
+                <h4 className="font-medium mb-3">{selectedEntityLabel} Status</h4>
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <CheckCircle className="h-4 w-4 text-green-600" />
-                    <span className="text-sm">Repository metadata available</span>
+                    <span className="text-sm">{selectedEntityLabel} metadata available</span>
                   </div>
                   <div className="flex items-center gap-2">
                     {hasIndexedBooks ? (

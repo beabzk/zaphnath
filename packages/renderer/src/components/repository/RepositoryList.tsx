@@ -103,7 +103,7 @@ export function RepositoryList({
 
       return {
         ...repo,
-        translations: translationsByParent[repo.id] || [],
+        translations: translationsByParent[repo.id],
       };
     });
   }, [repositories, translationsByParent]);
@@ -337,8 +337,19 @@ export function RepositoryList({
         </p>
       </div>
       <div className="px-6 pb-4 space-y-3">
-        {filteredRepositories.map((repo) => (
-          <div key={repo.id} className="space-y-2">
+        {filteredRepositories.map((repo) => {
+          const hasLoadedTranslations =
+            repo.type === 'parent' && Object.prototype.hasOwnProperty.call(translationsByParent, repo.id);
+          const parentTranslations = repo.type === 'parent' ? repo.translations ?? [] : [];
+          const translationCount =
+            repo.type === 'parent'
+              ? hasLoadedTranslations
+                ? parentTranslations.length
+                : repo.translation_count ?? 0
+              : 0;
+
+          return (
+            <div key={repo.id} className="space-y-2">
             {/* Parent Repository or Standalone Translation */}
             <div
               className={`p-3 border-b border-border transition-all ${
@@ -388,7 +399,7 @@ export function RepositoryList({
                     {repo.type === 'parent' && (
                       <Badge variant="secondary" className="text-xs">
                         <Languages className="h-3 w-3 mr-1" />
-                        {repo.translations?.length ?? repo.translation_count ?? 0} translations
+                        {translationCount} translations
                       </Badge>
                     )}
 
@@ -450,7 +461,7 @@ export function RepositoryList({
             </div>
 
             {/* Expanded Translations for Parent Repositories */}
-            {repo.type === 'parent' && expandedParents.has(repo.id) && repo.translations && (
+            {repo.type === 'parent' && expandedParents.has(repo.id) && (
               <div className="ml-6 pl-4 border-l-2 border-border space-y-0">
                 {translationsLoadingByParent[repo.id] && (
                   <div className="p-2 text-xs text-muted-foreground border-b border-border/50">
@@ -464,12 +475,13 @@ export function RepositoryList({
                 )}
                 {!translationsLoadingByParent[repo.id] &&
                   !translationErrorByParent[repo.id] &&
-                  repo.translations.length === 0 && (
+                  hasLoadedTranslations &&
+                  parentTranslations.length === 0 && (
                     <div className="p-2 text-xs text-muted-foreground border-b border-border/50">
                       No translations available
                     </div>
                   )}
-                {repo.translations.map((translation) => (
+                {parentTranslations.map((translation) => (
                   <div
                     key={translation.id}
                     className={`p-2 border-b border-border/50 cursor-pointer transition-all hover:bg-accent/30 ${
@@ -541,8 +553,9 @@ export function RepositoryList({
                 ))}
               </div>
             )}
-          </div>
-        ))}
+            </div>
+          );
+        })}
       </div>
 
       {deleteTarget && (
