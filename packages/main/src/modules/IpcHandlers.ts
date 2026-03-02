@@ -253,6 +253,9 @@ export class IpcHandlers implements AppModule {
           overwrite_existing: false,
           ...options,
         };
+        importOptions.progress_callback = (progress: unknown) => {
+          event.sender.send('repository:importProgress', progress);
+        };
         return await this.repositoryService.importRepository(importOptions);
       } catch (error) {
         console.error('Import repository error:', error);

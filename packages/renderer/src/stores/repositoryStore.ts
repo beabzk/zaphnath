@@ -404,18 +404,26 @@ export const useRepositoryStore = create<RepositoryState>()(
 
         importRepository: async (url: string, options?: any) => {
           const { setLoading, setError, setImportProgress, loadRepositories } = get();
+          let unsubscribeProgress: (() => void) | null = null;
 
           try {
             setLoading(true);
             setError(null);
             setImportProgress({ stage: 'Starting import...', progress: 0 });
 
-            // @ts-ignore - APIs will be available at runtime
-            // Note: progress_callback cannot be passed through IPC, so we remove it
+            unsubscribeProgress = repository.onImportProgress((progress) => {
+              setImportProgress({
+                stage: progress.stage,
+                progress: progress.progress,
+                message: progress.message,
+                total_books: progress.total_books,
+                imported_books: progress.processed_books,
+              });
+            });
+
             const cleanOptions = { ...options };
             delete cleanOptions.progress_callback;
 
-            // @ts-ignore
             const result = await repository.import(url, cleanOptions);
 
             if (result?.success) {
@@ -452,6 +460,7 @@ export const useRepositoryStore = create<RepositoryState>()(
             setImportProgress(null);
             return false;
           } finally {
+            unsubscribeProgress?.();
             setLoading(false);
           }
         },

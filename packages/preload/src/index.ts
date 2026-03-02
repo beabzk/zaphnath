@@ -26,6 +26,16 @@ const repository: Zaphnath.RepositoryAPI = {
   list: () => ipcRenderer.invoke('repository:list'),
   discover: () => ipcRenderer.invoke('repository:discover'),
   import: (url: string, options?: any) => ipcRenderer.invoke('repository:import', url, options),
+  onImportProgress: (callback) => {
+    const listener = (_event: unknown, progress: Zaphnath.ImportProgress) => {
+      callback(progress);
+    };
+
+    ipcRenderer.on('repository:importProgress', listener);
+    return () => {
+      ipcRenderer.removeListener('repository:importProgress', listener);
+    };
+  },
   validate: (url: string) => ipcRenderer.invoke('repository:validate', url),
   getManifest: (url: string) => ipcRenderer.invoke('repository:getManifest', url),
   getSources: () => ipcRenderer.invoke('repository:getSources'),

@@ -15,12 +15,6 @@ import {
   Search,
 } from 'lucide-react';
 
-interface ImportProgress {
-  stage: string;
-  progress: number;
-  message?: string;
-}
-
 interface ValidationResult {
   valid: boolean;
   errors: Array<{ code: string; message: string; severity: string }>;
@@ -28,6 +22,7 @@ interface ValidationResult {
 }
 
 type ImportResult = Zaphnath.ImportResult;
+type ImportProgress = Zaphnath.ImportProgress;
 
 interface TranslationInfo {
   id: string;
@@ -78,6 +73,12 @@ export function RepositoryImportDialog({
   }> | null>(null);
   const [selectedRepository, setSelectedRepository] = useState<string | null>(null);
   const validationRequestIdRef = useRef(0);
+  const importProgressUnsubscribeRef = useRef<(() => void) | null>(null);
+
+  const clearImportProgressSubscription = useCallback(() => {
+    importProgressUnsubscribeRef.current?.();
+    importProgressUnsubscribeRef.current = null;
+  }, []);
 
   const applyManifestState = useCallback((manifestData: any) => {
     setManifest(manifestData);
@@ -223,23 +224,48 @@ export function RepositoryImportDialog({
 
     try {
       setIsImporting(true);
-      setImportProgress({ stage: 'Starting import...', progress: 0 });
+      setImportProgress({
+        stage: 'discovering',
+        progress: 0,
+        message: 'Starting import...',
+      });
       setImportResult(null);
+
+      clearImportProgressSubscription();
+      importProgressUnsubscribeRef.current = repository.onImportProgress((progress) => {
+        setImportProgress({
+          ...progress,
+          progress: Math.min(100, Math.max(0, progress.progress)),
+        });
+      });
 
       const importOptions = {
         validate_checksums: true,
         overwrite_existing: false,
         import_type: importMode,
         selected_translations: importMode === 'selective' ? selectedTranslations : undefined,
-        // Note: progress_callback cannot be passed through IPC, so we remove it
-        // Progress updates will be handled differently in the future
       };
 
       const result = await repository.import(importUrl.trim(), importOptions);
 
       setImportResult(result);
 
+      if (!result.success) {
+        setImportProgress({
+          stage: 'error',
+          progress: 100,
+          message: 'Import failed',
+        });
+      }
+
       if (result.success) {
+        setImportProgress({
+          stage: 'complete',
+          progress: 100,
+          message: `Imported ${result.books_imported} books successfully.`,
+          processed_books: result.books_imported,
+          total_books: result.books_imported,
+        });
         setTimeout(() => {
           onImportComplete();
           handleClose();
@@ -263,7 +289,13 @@ export function RepositoryImportDialog({
         warnings: [],
         duration_ms: 0,
       });
+      setImportProgress({
+        stage: 'error',
+        progress: 100,
+        message,
+      });
     } finally {
+      clearImportProgressSubscription();
       setIsImporting(false);
     }
   };
@@ -292,6 +324,7 @@ export function RepositoryImportDialog({
   };
 
   const handleClose = () => {
+    clearImportProgressSubscription();
     setImportUrl('');
     setImportType('discover');
     setValidation(null);
@@ -305,9 +338,34 @@ export function RepositoryImportDialog({
     onClose();
   };
 
+  useEffect(() => {
+    return () => {
+      clearImportProgressSubscription();
+    };
+  }, [clearImportProgressSubscription]);
+
   const getProgressPercentage = () => {
     if (!importProgress) return 0;
-    return Math.min(100, Math.max(0, importProgress.progress));
+    return Math.round(Math.min(100, Math.max(0, importProgress.progress)));
+  };
+
+  const getProgressStageLabel = (stage: ImportProgress['stage']) => {
+    switch (stage) {
+      case 'discovering':
+        return 'Discovering Repository';
+      case 'validating':
+        return 'Validating Content';
+      case 'downloading':
+        return 'Downloading Data';
+      case 'processing':
+        return 'Importing Books';
+      case 'complete':
+        return 'Import Complete';
+      case 'error':
+        return 'Import Error';
+      default:
+        return 'Importing';
+    }
   };
 
   if (!isOpen) return null;
@@ -691,10 +749,16 @@ export function RepositoryImportDialog({
                           style={{ width: `${getProgressPercentage()}%` }}
                         />
                       </div>
-                      <p className="text-sm text-muted-foreground">{importProgress.stage}</p>
-                      {importProgress.message && (
-                        <p className="text-xs text-muted-foreground">{importProgress.message}</p>
-                      )}
+                      <p className="text-sm font-medium">
+                        {getProgressStageLabel(importProgress.stage)}
+                      </p>
+                      <p className="text-xs text-muted-foreground">{importProgress.message}</p>
+                      {typeof importProgress.total_books === 'number' &&
+                        typeof importProgress.processed_books === 'number' && (
+                          <p className="text-xs text-muted-foreground">
+                            {importProgress.processed_books}/{importProgress.total_books} books
+                          </p>
+                        )}
                     </div>
                   </div>
                 )}

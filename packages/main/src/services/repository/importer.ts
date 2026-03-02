@@ -93,6 +93,11 @@ export class RepositoryImporter {
         return result;
       }
     } catch (error) {
+      this.reportProgress(options, {
+        stage: 'error',
+        progress: 100,
+        message: `Import failed: ${toErrorMessage(error)}`,
+      });
       result.errors.push(
         createValidationError('import-failed', `Import failed: ${toErrorMessage(error)}`)
       );
@@ -189,13 +194,46 @@ export class RepositoryImporter {
         return result;
       }
 
-      for (const translation of translationsToImport) {
+      const parentImportStart = 20;
+      const parentImportRange = 75;
+      const totalTranslations = translationsToImport.length;
+
+      for (const [translationIndex, translation] of translationsToImport.entries()) {
+        const slotStart =
+          parentImportStart + (translationIndex / totalTranslations) * parentImportRange;
+        const slotEnd =
+          parentImportStart + ((translationIndex + 1) / totalTranslations) * parentImportRange;
+
+        this.reportProgress(options, {
+          stage: 'processing',
+          progress: Math.round(slotStart),
+          message: `Importing translation ${translationIndex + 1}/${totalTranslations}: ${
+            translation.name
+          }`,
+        });
+
         const translationResult = await this.importTranslationFromParent(
           baseUrl,
           translation,
           manifest.repository.id,
-          options
+          {
+            ...options,
+            progress_callback: (translationProgress) => {
+              const boundedChildProgress = Math.max(0, Math.min(100, translationProgress.progress));
+              const mappedProgress =
+                slotStart + ((slotEnd - slotStart) * boundedChildProgress) / 100;
+              this.reportProgress(options, {
+                ...translationProgress,
+                progress: Math.round(mappedProgress),
+                message: `[${translationIndex + 1}/${totalTranslations}] ${
+                  translationProgress.message
+                }`,
+              });
+            },
+          }
         );
+        result.books_imported += translationResult.books_imported;
+
         if (translationResult.success) {
           result.translations_imported!.push(translation.id);
         } else {
@@ -205,7 +243,21 @@ export class RepositoryImporter {
         }
       }
       result.success = result.errors.length === 0;
+      this.reportProgress(options, {
+        stage: result.success ? 'complete' : 'error',
+        progress: 100,
+        message: result.success
+          ? `Parent import complete. Imported ${result.translations_imported!.length} translation${
+              result.translations_imported!.length === 1 ? '' : 's'
+            }.`
+          : 'Parent import completed with errors.',
+      });
     } catch (error) {
+      this.reportProgress(options, {
+        stage: 'error',
+        progress: 100,
+        message: `Parent import failed: ${toErrorMessage(error)}`,
+      });
       result.errors.push(
         createValidationError('parent-import-failed', `Import failed: ${toErrorMessage(error)}`)
       );
@@ -308,6 +360,11 @@ export class RepositoryImporter {
 
       result.success = true;
     } catch (error) {
+      this.reportProgress(options, {
+        stage: 'error',
+        progress: 100,
+        message: `Import failed: ${toErrorMessage(error)}`,
+      });
       result.errors.push(
         createValidationError(
           'translation-import-failed',
@@ -346,6 +403,11 @@ export class RepositoryImporter {
         translation.status
       );
     } catch (error) {
+      this.reportProgress(options, {
+        stage: 'error',
+        progress: 100,
+        message: `Failed to import translation ${translation.name}: ${toErrorMessage(error)}`,
+      });
       return {
         success: false,
         repository_id: translation.id,
@@ -656,6 +718,8 @@ export class RepositoryImporter {
     manifest: ZBRSTranslationManifest,
     options: ImportOptions
   ): Promise<number> {
+    const bookImportProgressStart = 60;
+    const bookImportProgressRange = 35;
     const baseUrl = this.normalizeRepositoryBaseUrl(options.repository_url);
     const bookFiles = await this.resolveBookFiles(manifest, options);
     let importedCount = 0;
@@ -667,12 +731,24 @@ export class RepositoryImporter {
       );
     }
 
+    this.reportProgress(options, {
+      stage: 'processing',
+      progress: bookImportProgressStart,
+      message: `Preparing to import ${bookFiles.length} books...`,
+      total_books: bookFiles.length,
+      processed_books: 0,
+    });
+
     for (const [index, bookFile] of bookFiles.entries()) {
       const bookFileName = bookFile.path;
+      const normalizedProgress = (index + 1) / bookFiles.length;
       this.reportProgress(options, {
-        stage: 'downloading',
-        progress: (index / bookFiles.length) * 100,
+        stage: 'processing',
+        progress: Math.round(bookImportProgressStart + normalizedProgress * bookImportProgressRange),
         message: `Importing book ${bookFileName}...`,
+        current_book: bookFileName,
+        total_books: bookFiles.length,
+        processed_books: index,
       });
 
       try {
@@ -681,6 +757,16 @@ export class RepositoryImporter {
 
         await this.databaseService.getQueries().importBook(book, manifest.repository.id);
         importedCount++;
+        this.reportProgress(options, {
+          stage: 'processing',
+          progress: Math.round(
+            bookImportProgressStart + normalizedProgress * bookImportProgressRange
+          ),
+          message: `Imported ${importedCount}/${bookFiles.length} books`,
+          current_book: bookFileName,
+          total_books: bookFiles.length,
+          processed_books: index + 1,
+        });
       } catch (error) {
         console.error(`Failed to import book ${bookFileName}:`, error);
         // Optionally add a warning to the result

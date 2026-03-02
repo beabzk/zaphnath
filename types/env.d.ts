@@ -88,6 +88,7 @@ declare namespace Zaphnath {
     list: () => Promise<BibleRepository[]>;
     discover: () => Promise<RepositoryIndexEntry[]>;
     import: (url: string, options?: any) => Promise<ImportResult>;
+    onImportProgress: (callback: (progress: ImportProgress) => void) => () => void;
     validate: (url: string) => Promise<ValidationResult>;
     getManifest: (url: string) => Promise<ZBRSManifest>;
     getSources: () => Promise<RepositorySource[]>;
@@ -185,6 +186,15 @@ declare namespace Zaphnath {
     errors: ValidationError[];
     warnings: ValidationWarning[];
     duration_ms: number;
+  }
+
+  interface ImportProgress {
+    stage: 'discovering' | 'validating' | 'downloading' | 'processing' | 'complete' | 'error';
+    progress: number;
+    message: string;
+    current_book?: string;
+    total_books?: number;
+    processed_books?: number;
   }
 
   interface ValidationResult {
