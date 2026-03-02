@@ -11,9 +11,11 @@ const packageJson = JSON.parse(
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
+  envDir: path.resolve(__dirname, '../../'),
   base: './',
   define: {
     __APP_VERSION__: JSON.stringify(packageJson.version),
+    'import.meta.env.VITE_SENTRY_RELEASE': JSON.stringify(`zaphnath@${packageJson.version}`),
   },
   resolve: {
     alias: {
@@ -21,6 +23,7 @@ export default defineConfig({
     },
   },
   build: {
+    sourcemap: 'hidden',
     outDir: 'dist',
     assetsDir: '.',
     rollupOptions: {

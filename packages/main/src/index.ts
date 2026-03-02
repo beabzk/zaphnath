@@ -1,3 +1,4 @@
+import './sentry.ts';
 import { app } from 'electron';
 import type { AppInitConfig } from './AppInitConfig.js';
 import { createModuleRunner } from './ModuleRunner.js';

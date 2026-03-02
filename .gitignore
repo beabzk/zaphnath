@@ -3,6 +3,8 @@ node_modules
 dist
 *.local
 thumbs.db
+.env
+.sentryclirc
 
 .eslintcache
 

@@ -1,5 +1,16 @@
 import { resolveModuleExportNames } from 'mlly';
 import { getChromeMajorVersion } from '@app/electron-versions';
+import { configDotenv } from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { readFileSync } from 'fs';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+configDotenv({ path: path.resolve(__dirname, '../../.env') });
+
+const packageJson = JSON.parse(
+  readFileSync(path.resolve(__dirname, '../../package.json'), 'utf-8')
+);
 
 export default /**
  * @type {import('vite').UserConfig}
@@ -8,7 +19,7 @@ export default /**
 ({
   build: {
     ssr: true,
-    sourcemap: 'inline',
+    sourcemap: 'hidden',
     outDir: 'dist',
     target: `chrome${getChromeMajorVersion()}`,
     assetsDir: '.',
@@ -26,6 +37,10 @@ export default /**
     },
     emptyOutDir: true,
     reportCompressedSize: false,
+  },
+  define: {
+    'process.env.SENTRY_DSN': JSON.stringify(process.env.SENTRY_DSN),
+    'process.env.SENTRY_RELEASE': JSON.stringify(`zaphnath@${packageJson.version}`),
   },
   plugins: [mockExposed(), handleHotReload()],
 });

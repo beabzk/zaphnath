@@ -1,5 +1,8 @@
 import * as exports from './index.js';
-import { contextBridge } from 'electron';
+import { bootstrapPreloadTelemetry } from './telemetry.js';
+import { contextBridge, ipcRenderer } from 'electron';
+
+void bootstrapPreloadTelemetry(() => ipcRenderer.invoke('database:getSetting', 'app_settings'));
 
 const isExport = (key: string): key is keyof typeof exports => Object.hasOwn(exports, key);
 

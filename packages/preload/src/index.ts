@@ -1,6 +1,7 @@
 import { sha256sum } from './nodeCrypto.js';
 import { versions } from './versions.js';
 import { ipcRenderer } from 'electron';
+import { applyPreloadTelemetryPreferences } from './telemetry.js';
 
 function send(channel: string, message: string) {
   return ipcRenderer.invoke(channel, message);
@@ -52,4 +53,24 @@ const updater: Zaphnath.UpdaterAPI = {
   checkForUpdates: () => ipcRenderer.invoke('updater:checkForUpdates'),
 };
 
-export { sha256sum, versions, send, database, repository, filesystem, updater };
+// Telemetry preferences API
+const telemetry: Zaphnath.TelemetryAPI = {
+  getPreferences: () => ipcRenderer.invoke('telemetry:getPreferences'),
+  setPreferences: async (preferences) => {
+    const normalized = {
+      crashReportingEnabled:
+        preferences.crashReportingEnabled === undefined
+          ? undefined
+          : Boolean(preferences.crashReportingEnabled),
+      sessionReplayEnabled:
+        preferences.sessionReplayEnabled === undefined
+          ? undefined
+          : Boolean(preferences.sessionReplayEnabled),
+    };
+
+    await applyPreloadTelemetryPreferences(normalized);
+    return ipcRenderer.invoke('telemetry:setPreferences', normalized);
+  },
+};
+
+export { sha256sum, versions, send, database, repository, filesystem, updater, telemetry };

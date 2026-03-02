@@ -17,6 +17,8 @@
   "dependencies": {
     "@app/preload": "workspace:*",
     "@radix-ui/react-separator": "^1.1.7",
+    "@sentry/electron": "^7.9.0",
+    "@sentry/react": "^7.9.0",
     "@tailwindcss/postcss": "^4.1.15",
     "autoprefixer": "^10.4.21",
     "class-variance-authority": "^0.7.1",

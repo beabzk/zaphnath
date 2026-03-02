@@ -1,5 +1,8 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { AppSettings, defaultSettings, settingsValidation } from '@/types/settings';
+import { logger } from '@/services/logger';
+import { performanceMonitor } from '@/services/performanceMonitor';
+import { applySentryPrivacySettings } from '@/services/sentry';
 
 const APP_SETTINGS_DB_KEY = 'app_settings';
 
@@ -40,6 +43,17 @@ const initialState: SettingsProviderState = {
 };
 
 const SettingsProviderContext = createContext<SettingsProviderState>(initialState);
+
+const isDoNotTrackEnabled = (): boolean => {
+  const navigatorWithLegacyDoNotTrack = navigator as Navigator & { msDoNotTrack?: string };
+  const windowWithDoNotTrack = window as Window & { doNotTrack?: string };
+
+  return (
+    navigator.doNotTrack === '1' ||
+    windowWithDoNotTrack.doNotTrack === '1' ||
+    navigatorWithLegacyDoNotTrack.msDoNotTrack === '1'
+  );
+};
 
 export function SettingsProvider({ children }: SettingsProviderProps) {
   const [settings, setSettings] = useState<AppSettings>(defaultSettings);
@@ -261,6 +275,94 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
       cancelled = true;
     };
   }, [isLoading, settings.advanced.updatePolicy]);
+
+  // Keep renderer logging and analytics runtime behavior in sync with settings.
+  useEffect(() => {
+    if (isLoading) return;
+
+    let cancelled = false;
+    const doNotTrackEnabled = isDoNotTrackEnabled();
+    const analyticsAllowedByPrivacy =
+      !settings.advanced.analyticsRespectDoNotTrack || !doNotTrackEnabled;
+    const analyticsEnabled = settings.advanced.enableAnalytics && analyticsAllowedByPrivacy;
+
+    logger.setConfig({
+      enabled: settings.advanced.enableLogging,
+      level: settings.advanced.logLevel,
+      enableConsole: settings.advanced.enableLogging && settings.advanced.logToConsole,
+      maxLogEntries: settings.advanced.loggingMaxEntries,
+      enableAnalytics: analyticsEnabled,
+      trackPerformanceMetrics: settings.advanced.analyticsTrackPerformance,
+      trackUserActions: settings.advanced.analyticsTrackUserActions,
+      respectDoNotTrack: settings.advanced.analyticsRespectDoNotTrack,
+    });
+
+    performanceMonitor.setEnabled(
+      analyticsEnabled && settings.advanced.analyticsTrackPerformance
+    );
+
+    logger.info(
+      'Applied runtime diagnostics settings',
+      {
+        loggingEnabled: settings.advanced.enableLogging,
+        logLevel: settings.advanced.logLevel,
+        analyticsEnabled,
+        trackPerformance: settings.advanced.analyticsTrackPerformance,
+        trackUserActions: settings.advanced.analyticsTrackUserActions,
+        respectDoNotTrack: settings.advanced.analyticsRespectDoNotTrack,
+        doNotTrackEnabled,
+      },
+      'system'
+    );
+
+    const syncSentryPrivacySettings = async () => {
+      const privacySettings = {
+        enableCrashReporting: settings.advanced.enableCrashReporting,
+        enableSessionReplay: settings.advanced.enableSessionReplay,
+      };
+
+      try {
+        await applySentryPrivacySettings(privacySettings);
+      } catch (error) {
+        if (!cancelled) {
+          console.error('Failed to apply renderer Sentry privacy settings:', error);
+        }
+      }
+
+      if (!window.telemetry || typeof window.telemetry.setPreferences !== 'function') {
+        return;
+      }
+
+      try {
+        await window.telemetry.setPreferences({
+          crashReportingEnabled: privacySettings.enableCrashReporting,
+          sessionReplayEnabled: privacySettings.enableSessionReplay,
+        });
+      } catch (error) {
+        if (!cancelled) {
+          console.error('Failed to sync telemetry preferences to main process:', error);
+        }
+      }
+    };
+
+    void syncSentryPrivacySettings();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    isLoading,
+    settings.advanced.enableLogging,
+    settings.advanced.logLevel,
+    settings.advanced.logToConsole,
+    settings.advanced.loggingMaxEntries,
+    settings.advanced.enableAnalytics,
+    settings.advanced.analyticsTrackPerformance,
+    settings.advanced.analyticsTrackUserActions,
+    settings.advanced.analyticsRespectDoNotTrack,
+    settings.advanced.enableCrashReporting,
+    settings.advanced.enableSessionReplay,
+  ]);
 
   const value = {
     settings,

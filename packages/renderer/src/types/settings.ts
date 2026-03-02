@@ -60,7 +60,14 @@ export interface AdvancedSettings {
   cacheSize: number; // MB
   enableLogging: boolean;
   logLevel: 'error' | 'warn' | 'info' | 'debug';
+  logToConsole: boolean;
+  loggingMaxEntries: number;
   enableAnalytics: boolean;
+  analyticsTrackPerformance: boolean;
+  analyticsTrackUserActions: boolean;
+  analyticsRespectDoNotTrack: boolean;
+  enableCrashReporting: boolean;
+  enableSessionReplay: boolean;
   updatePolicy: 'auto' | 'notify' | 'manual';
   experimentalFeatures: boolean;
   developerMode: boolean;
@@ -126,7 +133,14 @@ export const defaultSettings: AppSettings = {
     cacheSize: 500,
     enableLogging: true,
     logLevel: 'info',
+    logToConsole: true,
+    loggingMaxEntries: 1000,
     enableAnalytics: false,
+    analyticsTrackPerformance: true,
+    analyticsTrackUserActions: true,
+    analyticsRespectDoNotTrack: true,
+    enableCrashReporting: false,
+    enableSessionReplay: false,
     updatePolicy: 'auto',
     experimentalFeatures: false,
     developerMode: false,
@@ -164,6 +178,7 @@ export const settingsValidation: Record<string, SettingsValidationRule> = {
   'audio.speechVolume': { type: 'number', min: 0.0, max: 1.0 },
   'audio.pauseBetweenVerses': { type: 'number', min: 0, max: 3000 },
   'advanced.cacheSize': { type: 'number', min: 100, max: 2000 },
+  'advanced.loggingMaxEntries': { type: 'number', min: 200, max: 5000 },
   'advanced.updatePolicy': { type: 'string', enum: ['auto', 'notify', 'manual'] },
   'advanced.database.backupInterval': { type: 'number', min: 1, max: 168 },
   'advanced.database.maxBackups': { type: 'number', min: 1, max: 30 },

@@ -11,10 +11,15 @@ import { getAppVersion } from '@/lib/version';
 
 class LoggerService implements Logger {
   private config: LoggerConfig = {
+    enabled: true,
     level: 'info',
     enableConsole: true,
     enableFile: false,
     enableRemote: false,
+    enableAnalytics: false,
+    trackPerformanceMetrics: true,
+    trackUserActions: true,
+    respectDoNotTrack: true,
     maxLogEntries: 1000,
     maxFileSize: 10 * 1024 * 1024, // 10MB
     categories: {},
@@ -85,7 +90,34 @@ class LoggerService implements Logger {
     });
   }
 
+  private isDoNotTrackEnabled(): boolean {
+    const navigatorWithLegacyDoNotTrack = navigator as Navigator & { msDoNotTrack?: string };
+    const windowWithDoNotTrack = window as Window & { doNotTrack?: string };
+
+    return (
+      navigator.doNotTrack === '1' ||
+      windowWithDoNotTrack.doNotTrack === '1' ||
+      navigatorWithLegacyDoNotTrack.msDoNotTrack === '1'
+    );
+  }
+
+  private isAnalyticsEnabled(): boolean {
+    if (!this.config.enableAnalytics) {
+      return false;
+    }
+
+    if (!this.config.respectDoNotTrack) {
+      return true;
+    }
+
+    return !this.isDoNotTrackEnabled();
+  }
+
   private shouldLog(level: LogLevel, category?: string): boolean {
+    if (!this.config.enabled) {
+      return false;
+    }
+
     const levels: Record<LogLevel, number> = {
       debug: 0,
       info: 1,
@@ -225,6 +257,8 @@ class LoggerService implements Logger {
   logPerformance(
     metric: Omit<PerformanceMetric, 'id' | 'timestamp' | 'sessionId' | 'version'>
   ): void {
+    if (!this.isAnalyticsEnabled() || !this.config.trackPerformanceMetrics) return;
+
     const fullMetric: PerformanceMetric = {
       ...metric,
       id: this.generateId(),
@@ -246,6 +280,8 @@ class LoggerService implements Logger {
   }
 
   logUserAction(action: Omit<UserAction, 'id' | 'timestamp'>): void {
+    if (!this.isAnalyticsEnabled() || !this.config.trackUserActions) return;
+
     const fullAction: UserAction = {
       ...action,
       id: this.generateId(),
@@ -301,8 +337,22 @@ class LoggerService implements Logger {
   }
 
   setConfig(config: Partial<LoggerConfig>): void {
+    const wasEnabled = this.config.enabled;
     this.config = { ...this.config, ...config };
-    this.info('Logger config updated', { config }, 'system');
+
+    if (this.logs.length > this.config.maxLogEntries) {
+      this.logs = this.logs.slice(-this.config.maxLogEntries);
+    }
+
+    if (this.config.enabled) {
+      const changedKeys = Object.keys(config);
+      this.info('Logger config updated', { changedKeys }, 'system');
+      return;
+    }
+
+    if (wasEnabled && this.config.enableConsole) {
+      console.info('[INFO] system: Logger disabled via settings');
+    }
   }
 
   // Additional utility methods
@@ -320,6 +370,13 @@ class LoggerService implements Logger {
 
   getAllMetrics(): PerformanceMetric[] {
     return [...this.metrics];
+  }
+
+  getConfig(): LoggerConfig {
+    return {
+      ...this.config,
+      categories: { ...this.config.categories },
+    };
   }
 }
 

@@ -1,6 +1,7 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { ErrorBoundaryState, ErrorInfo as LogErrorInfo } from '@/types/logging';
 import { logger } from '@/services/logger';
+import { captureRendererException } from '@/services/sentry';
 import { ErrorFallback } from './ErrorFallback';
 
 interface ErrorBoundaryProps {
@@ -72,6 +73,15 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       },
       'ui'
     );
+
+    // Capture with Sentry
+    captureRendererException(error, {
+      extra: {
+        componentStack: errorInfo.componentStack,
+        boundaryName: this.name,
+        retryCount: this.state.retryCount,
+      },
+    });
 
     // Update state with error info
     this.setState({

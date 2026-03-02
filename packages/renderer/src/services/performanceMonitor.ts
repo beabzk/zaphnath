@@ -14,6 +14,7 @@ class PerformanceMonitorService implements PerformanceMonitor {
   private activeTimings: Map<string, ActiveTiming> = new Map();
   private metrics: PerformanceMetric[] = [];
   private maxMetrics: number = 1000;
+  private enabled: boolean = false;
 
   constructor() {
     this.setupPerformanceObserver();
@@ -47,6 +48,10 @@ class PerformanceMonitorService implements PerformanceMonitor {
   }
 
   private handlePerformanceEntry(entry: PerformanceEntry): void {
+    if (!this.enabled) {
+      return;
+    }
+
     let category: PerformanceCategory = 'user-interaction';
     let name = entry.name;
 
@@ -88,6 +93,10 @@ class PerformanceMonitorService implements PerformanceMonitor {
   }
 
   private addMetric(metric: PerformanceMetric): void {
+    if (!this.enabled) {
+      return;
+    }
+
     this.metrics.push(metric);
 
     // Maintain max metrics
@@ -111,6 +120,10 @@ class PerformanceMonitorService implements PerformanceMonitor {
   }
 
   startTiming(name: string, category: PerformanceCategory): string {
+    if (!this.enabled) {
+      return '';
+    }
+
     const id = this.generateId();
     const startMark = `${name}-start-${id}`;
     const endMark = `${name}-end-${id}`;
@@ -142,6 +155,10 @@ class PerformanceMonitorService implements PerformanceMonitor {
   }
 
   endTiming(timingId: string, context?: Record<string, any>): PerformanceMetric | null {
+    if (!this.enabled || !timingId) {
+      return null;
+    }
+
     const timing = this.activeTimings.get(timingId);
     if (!timing) {
       logger.warn('Attempted to end unknown timing', { timingId }, 'performance');
@@ -264,6 +281,29 @@ class PerformanceMonitorService implements PerformanceMonitor {
     }
 
     logger.info('Performance metrics cleared', {}, 'performance');
+  }
+
+  setEnabled(enabled: boolean): void {
+    if (this.enabled === enabled) {
+      return;
+    }
+
+    this.enabled = enabled;
+
+    if (!this.enabled) {
+      this.activeTimings.clear();
+      this.metrics = [];
+    }
+
+    logger.info(
+      `Performance monitoring ${this.enabled ? 'enabled' : 'disabled'}`,
+      { enabled: this.enabled },
+      'performance'
+    );
+  }
+
+  isEnabled(): boolean {
+    return this.enabled;
   }
 
   // Additional utility methods

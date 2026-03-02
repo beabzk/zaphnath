@@ -2,6 +2,7 @@ import { ipcMain, dialog, BrowserWindow, type IpcMainInvokeEvent } from 'electro
 import { AppModule } from '../AppModule.js';
 import { DatabaseService } from '../services/database/index.js';
 import { RepositoryService } from '../services/repository/index.js';
+import { telemetryService } from '../services/telemetry/index.js';
 import type { ModuleContext } from '../ModuleContext.js';
 import type { AppInitConfig } from '../AppInitConfig.js';
 import { getAutoUpdaterModuleInstance, isUpdatePolicy, type UpdatePolicy } from './AutoUpdater.js';
@@ -23,12 +24,14 @@ export class IpcHandlers implements AppModule {
     // Initialize services
     await this.databaseService.initialize();
     await this.repositoryService.initialize();
+    telemetryService.applyAppSettingsPayload(this.databaseService.getSetting('app_settings'));
 
     // Register IPC handlers
     this.registerDatabaseHandlers();
     this.registerRepositoryHandlers();
     this.registerFileSystemHandlers();
     this.registerUpdaterHandlers();
+    this.registerTelemetryHandlers();
 
     console.log('IPC handlers registered');
 
@@ -54,6 +57,8 @@ export class IpcHandlers implements AppModule {
     ipcMain.removeAllListeners('updater:getPolicy');
     ipcMain.removeAllListeners('updater:setPolicy');
     ipcMain.removeAllListeners('updater:checkForUpdates');
+    ipcMain.removeAllListeners('telemetry:getPreferences');
+    ipcMain.removeAllListeners('telemetry:setPreferences');
 
     // Shutdown database service
     await this.databaseService.shutdown();
@@ -415,5 +420,34 @@ export class IpcHandlers implements AppModule {
         throw error;
       }
     });
+  }
+
+  private registerTelemetryHandlers(): void {
+    ipcMain.handle('telemetry:getPreferences', async (event) => {
+      this.assertTrustedIpcSender(event, 'telemetry:getPreferences');
+      try {
+        return telemetryService.getPreferences();
+      } catch (error) {
+        console.error('Get telemetry preferences error:', error);
+        throw error;
+      }
+    });
+
+    ipcMain.handle(
+      'telemetry:setPreferences',
+      async (event, preferences: Partial<Zaphnath.TelemetryPreferences>) => {
+        this.assertTrustedIpcSender(event, 'telemetry:setPreferences');
+        try {
+          const updatedPreferences = telemetryService.applyPreferences(preferences);
+          return {
+            success: true,
+            preferences: updatedPreferences,
+          };
+        } catch (error) {
+          console.error('Set telemetry preferences error:', error);
+          throw error;
+        }
+      }
+    );
   }
 }

@@ -143,6 +143,18 @@ declare namespace Zaphnath {
     }>;
   }
 
+  interface TelemetryPreferences {
+    crashReportingEnabled: boolean;
+    sessionReplayEnabled: boolean;
+  }
+
+  interface TelemetryAPI {
+    getPreferences: () => Promise<TelemetryPreferences>;
+    setPreferences: (
+      preferences: Partial<TelemetryPreferences>
+    ) => Promise<{ success: boolean; preferences: TelemetryPreferences }>;
+  }
+
   // ZBRS Types
   interface RepositoryIndexEntry {
     id: string;
@@ -263,4 +275,5 @@ interface Window {
   repository: Zaphnath.RepositoryAPI;
   filesystem: Zaphnath.FileSystemAPI;
   updater: Zaphnath.UpdaterAPI;
+  telemetry: Zaphnath.TelemetryAPI;
 }

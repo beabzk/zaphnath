@@ -1,7 +1,11 @@
+import { useMemo, useState } from 'react';
 import { useSettings } from './SettingsProvider';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { logger } from '@/services/logger';
+import { performanceMonitor } from '@/services/performanceMonitor';
+import type { AdvancedSettings as AdvancedSettingsType } from '@/types/settings';
 import {
   HardDrive,
   Database,
@@ -12,12 +16,68 @@ import {
   Folder,
   RefreshCw,
   Trash2,
+  Download,
+  MousePointerClick,
+  Activity,
   Settings as SettingsIcon,
 } from 'lucide-react';
 
 export function AdvancedSettings() {
   const { settings, updateSetting } = useSettings();
   const { advanced } = settings;
+  const [diagnosticsRefreshTick, setDiagnosticsRefreshTick] = useState(0);
+
+  const doNotTrackEnabled = useMemo(() => {
+    const navigatorWithLegacyDoNotTrack = navigator as Navigator & { msDoNotTrack?: string };
+    const windowWithDoNotTrack = window as Window & { doNotTrack?: string };
+
+    return (
+      navigator.doNotTrack === '1' ||
+      windowWithDoNotTrack.doNotTrack === '1' ||
+      navigatorWithLegacyDoNotTrack.msDoNotTrack === '1'
+    );
+  }, []);
+
+  const analyticsActive =
+    advanced.enableAnalytics && (!advanced.analyticsRespectDoNotTrack || !doNotTrackEnabled);
+
+  const diagnosticsStats = useMemo(
+    () => ({
+      logs: logger.getRecentLogs(5000).length,
+      errors: logger.getRecentErrors(500).length,
+      metrics: performanceMonitor.getMetrics().length,
+      actions: logger.getUserActions(1000).length,
+    }),
+    [
+      advanced.enableLogging,
+      advanced.logLevel,
+      advanced.loggingMaxEntries,
+      advanced.enableAnalytics,
+      advanced.analyticsTrackPerformance,
+      advanced.analyticsTrackUserActions,
+      advanced.analyticsRespectDoNotTrack,
+      diagnosticsRefreshTick,
+    ]
+  );
+
+  const exportSessionLogs = () => {
+    const logsJson = logger.exportLogs();
+    const blob = new Blob([logsJson], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `zaphnath-session-logs-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const clearDiagnostics = () => {
+    logger.clearLogs();
+    performanceMonitor.clearMetrics();
+    setDiagnosticsRefreshTick((tick) => tick + 1);
+  };
 
   const SettingGroup = ({ title, children }: { title: string; children: React.ReactNode }) => (
     <div className="space-y-3">
@@ -76,7 +136,11 @@ export function AdvancedSettings() {
     { code: 'he', name: 'עברית' },
   ];
 
-  const logLevels = [
+  const logLevels: Array<{
+    value: AdvancedSettingsType['logLevel'];
+    name: string;
+    description: string;
+  }> = [
     { value: 'error', name: 'Error', description: 'Only critical errors' },
     { value: 'warn', name: 'Warning', description: 'Errors and warnings' },
     { value: 'info', name: 'Info', description: 'General information' },
@@ -157,7 +221,7 @@ export function AdvancedSettings() {
 
       {/* Logging Settings */}
       <SettingGroup title="Logging & Debugging">
-        <div className="space-y-3">
+        <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Bug className="h-4 w-4" />
@@ -173,14 +237,14 @@ export function AdvancedSettings() {
           </div>
 
           {advanced.enableLogging && (
-            <div className="space-y-2">
+            <div className="space-y-4">
               <label className="text-sm font-medium">Log Level</label>
               <div className="grid grid-cols-2 gap-2">
                 {logLevels.map((level) => (
                   <Button
                     key={level.value}
                     variant={advanced.logLevel === level.value ? 'default' : 'outline'}
-                    onClick={() => updateSetting('advanced', 'logLevel', level.value as any)}
+                    onClick={() => updateSetting('advanced', 'logLevel', level.value)}
                     className="flex-col gap-1 h-auto p-3"
                   >
                     <span className="text-xs font-medium">{level.name}</span>
@@ -188,8 +252,69 @@ export function AdvancedSettings() {
                   </Button>
                 ))}
               </div>
+
+              <SliderSetting
+                label="Max Retained Log Entries"
+                value={advanced.loggingMaxEntries}
+                min={200}
+                max={5000}
+                step={100}
+                onChange={(value) => updateSetting('advanced', 'loggingMaxEntries', value)}
+              />
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <SettingsIcon className="h-4 w-4" />
+                  <span className="text-sm font-medium">Mirror Logs to Console</span>
+                </div>
+                <Button
+                  variant={advanced.logToConsole ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => updateSetting('advanced', 'logToConsole', !advanced.logToConsole)}
+                >
+                  {advanced.logToConsole ? 'On' : 'Off'}
+                </Button>
+              </div>
             </div>
           )}
+
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <div className="rounded-md border border-border/70 bg-muted/20 px-2 py-2 text-center">
+              <div className="text-xs text-muted-foreground">Logs</div>
+              <div className="text-sm font-semibold">{diagnosticsStats.logs}</div>
+            </div>
+            <div className="rounded-md border border-border/70 bg-muted/20 px-2 py-2 text-center">
+              <div className="text-xs text-muted-foreground">Errors</div>
+              <div className="text-sm font-semibold">{diagnosticsStats.errors}</div>
+            </div>
+            <div className="rounded-md border border-border/70 bg-muted/20 px-2 py-2 text-center">
+              <div className="text-xs text-muted-foreground">Metrics</div>
+              <div className="text-sm font-semibold">{diagnosticsStats.metrics}</div>
+            </div>
+            <div className="rounded-md border border-border/70 bg-muted/20 px-2 py-2 text-center">
+              <div className="text-xs text-muted-foreground">Actions</div>
+              <div className="text-sm font-semibold">{diagnosticsStats.actions}</div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setDiagnosticsRefreshTick((tick) => tick + 1)}
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh Stats
+            </Button>
+            <Button variant="outline" size="sm" onClick={exportSessionLogs}>
+              <Download className="h-4 w-4 mr-2" />
+              Export Session Logs
+            </Button>
+            <Button variant="outline" size="sm" onClick={clearDiagnostics}>
+              <Trash2 className="h-4 w-4 mr-2" />
+              Clear Diagnostics
+            </Button>
+          </div>
 
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -211,7 +336,48 @@ export function AdvancedSettings() {
 
       {/* Privacy Settings */}
       <SettingGroup title="Privacy & Security">
-        <div className="space-y-3">
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4" />
+              <span className="text-sm font-medium">Enable Crash Reporting</span>
+            </div>
+            <Button
+              variant={advanced.enableCrashReporting ? 'default' : 'outline'}
+              size="sm"
+              onClick={() =>
+                updateSetting('advanced', 'enableCrashReporting', !advanced.enableCrashReporting)
+              }
+            >
+              {advanced.enableCrashReporting ? 'On' : 'Off'}
+            </Button>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Bug className="h-4 w-4" />
+              <span className="text-sm font-medium">Enable Session Replay</span>
+            </div>
+            <Button
+              variant={advanced.enableSessionReplay ? 'default' : 'outline'}
+              size="sm"
+              onClick={() =>
+                updateSetting('advanced', 'enableSessionReplay', !advanced.enableSessionReplay)
+              }
+              disabled={!advanced.enableCrashReporting}
+            >
+              {advanced.enableSessionReplay ? 'On' : 'Off'}
+            </Button>
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            Crash reporting sends anonymized error diagnostics to Sentry. Session replay records UI
+            behavior around failures and requires crash reporting. Restart the app after changing
+            these options for full effect.
+          </p>
+
+          <Separator />
+
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Shield className="h-4 w-4" />
@@ -227,8 +393,83 @@ export function AdvancedSettings() {
               {advanced.enableAnalytics ? 'On' : 'Off'}
             </Button>
           </div>
+
+          <div className="rounded-md border border-border/70 bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+            Analytics status:{' '}
+            <span className="font-medium text-foreground">
+              {analyticsActive
+                ? 'Active'
+                : advanced.enableAnalytics && advanced.analyticsRespectDoNotTrack && doNotTrackEnabled
+                  ? 'Paused (Do Not Track enabled)'
+                  : 'Disabled'}
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Activity className="h-4 w-4" />
+              <span className="text-sm font-medium">Collect Performance Metrics</span>
+            </div>
+            <Button
+              variant={advanced.analyticsTrackPerformance ? 'default' : 'outline'}
+              size="sm"
+              onClick={() =>
+                updateSetting(
+                  'advanced',
+                  'analyticsTrackPerformance',
+                  !advanced.analyticsTrackPerformance
+                )
+              }
+              disabled={!advanced.enableAnalytics}
+            >
+              {advanced.analyticsTrackPerformance ? 'On' : 'Off'}
+            </Button>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <MousePointerClick className="h-4 w-4" />
+              <span className="text-sm font-medium">Track Anonymous Interaction Events</span>
+            </div>
+            <Button
+              variant={advanced.analyticsTrackUserActions ? 'default' : 'outline'}
+              size="sm"
+              onClick={() =>
+                updateSetting(
+                  'advanced',
+                  'analyticsTrackUserActions',
+                  !advanced.analyticsTrackUserActions
+                )
+              }
+              disabled={!advanced.enableAnalytics}
+            >
+              {advanced.analyticsTrackUserActions ? 'On' : 'Off'}
+            </Button>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Shield className="h-4 w-4" />
+              <span className="text-sm font-medium">Respect Browser Do Not Track</span>
+            </div>
+            <Button
+              variant={advanced.analyticsRespectDoNotTrack ? 'default' : 'outline'}
+              size="sm"
+              onClick={() =>
+                updateSetting(
+                  'advanced',
+                  'analyticsRespectDoNotTrack',
+                  !advanced.analyticsRespectDoNotTrack
+                )
+              }
+            >
+              {advanced.analyticsRespectDoNotTrack ? 'On' : 'Off'}
+            </Button>
+          </div>
+
           <p className="text-xs text-muted-foreground">
-            Help improve the app by sharing anonymous usage data
+            Analytics uses anonymous usage signals to improve reliability and performance. Personal
+            content is not collected.
           </p>
         </div>
       </SettingGroup>

@@ -136,10 +136,15 @@ export type UserActionType =
   | 'settings-change';
 
 export interface LoggerConfig {
+  enabled: boolean;
   level: LogLevel;
   enableConsole: boolean;
   enableFile: boolean;
   enableRemote: boolean;
+  enableAnalytics: boolean;
+  trackPerformanceMetrics: boolean;
+  trackUserActions: boolean;
+  respectDoNotTrack: boolean;
   maxLogEntries: number;
   maxFileSize: number;
   remoteEndpoint?: string;

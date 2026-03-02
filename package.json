@@ -52,7 +52,10 @@
     "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
     "lint:fix": "eslint . --ext .ts,.tsx,.js,.jsx --fix",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,mjs,cjs,json,css,scss,html,md,yml,yaml}\"",
-    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,mjs,cjs,json,css,scss,html,md,yml,yaml}\""
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,mjs,cjs,json,css,scss,html,md,yml,yaml}\"",
+    "sentry:sourcemaps": "sentry-cli releases files zaphnath@$(node -p \"require('./package.json').version\") upload-sourcemaps packages/main/dist packages/preload/dist packages/renderer/dist",
+    "sentry:create-release": "sentry-cli releases new zaphnath@$(node -p \"require('./package.json').version\")",
+    "sentry:deploy": "sentry-cli releases deploys zaphnath@$(node -p \"require('./package.json').version\") new -e production"
   },
   "devDependencies": {
     "@electron/rebuild": "^4.0.3",
