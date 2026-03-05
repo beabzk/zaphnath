@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Search, X, Filter } from 'lucide-react';
 import Fuse from 'fuse.js';
 import { useRepositoryStore, useReadingStore, useSearch } from '@/stores';
 import { useNavigation } from '@/components/layout/Navigation';
 import { Button } from '@/components/ui/button';
+import type { SearchResult } from '@/types/store';
 import { repository } from '@app/preload';
 
 interface SearchFilters {
@@ -11,6 +12,11 @@ interface SearchFilters {
   testament: 'all' | 'old' | 'new';
   books: string[];
 }
+
+type SearchMode = 'fuzzy' | 'exact_phrase' | 'all_words';
+
+const MIN_SEARCH_LENGTH = 2;
+const MAX_SEARCH_RESULTS = 100;
 
 export function SearchInterface() {
   const { query, results, loading, setQuery, setResults, setLoading } = useSearch();
@@ -31,9 +37,21 @@ export function SearchInterface() {
     testament: 'all',
     books: [],
   });
+  const [searchMode, setSearchMode] = useState<SearchMode>('fuzzy');
   const [showFilters, setShowFilters] = useState(false);
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
   const [fuse, setFuse] = useState<Fuse<Zaphnath.BibleVerse> | null>(null);
+  const [allVerses, setAllVerses] = useState<Zaphnath.BibleVerse[]>([]);
+  const [resultsCapped, setResultsCapped] = useState(false);
+
+  const repositoryIndexSignature = useMemo(
+    () =>
+      repositories
+        .map((repo) => `${repo.id}:${repo.updated_at}`)
+        .sort()
+        .join('|'),
+    [repositories]
+  );
 
   const resolveRepositoryForResult = useCallback(
     async (repositoryId: string) => {
@@ -108,118 +126,185 @@ export function SearchInterface() {
     [repositories]
   );
 
-  // Initialize Fuse.js index
+  const verseMatchesFilters = useCallback(
+    (verse: Zaphnath.BibleVerse) => {
+      if (filters.repositories.length > 0 && !filters.repositories.includes(verse.repository_id)) {
+        return false;
+      }
+
+      if (filters.testament !== 'all') {
+        const testamentMap = { old: 'OT', new: 'NT' } as const;
+        const targetTestament = testamentMap[filters.testament];
+        if (verse.testament !== targetTestament) {
+          return false;
+        }
+      }
+
+      if (filters.books.length > 0 && !filters.books.includes(verse.book_id.toString())) {
+        return false;
+      }
+
+      return true;
+    },
+    [filters]
+  );
+
+  // Initialize/rebuild Fuse.js index when repository data changes
   useEffect(() => {
+    let isCancelled = false;
+
     const initializeSearch = async () => {
       try {
-        console.log('[SearchInterface] Initializing search index...');
         setLoading(true);
 
         if (!window.database?.searchVerses) {
           console.error('[SearchInterface] window.database.searchVerses is not available');
-          setLoading(false);
+          if (!isCancelled) {
+            setAllVerses([]);
+            setFuse(null);
+          }
           return;
         }
 
-        console.log('[SearchInterface] Calling window.database.searchVerses("")...');
-        const allVerses = (await window.database.searchVerses('')) || [];
-        console.log(`[SearchInterface] Loaded ${allVerses.length} verses for indexing`);
-
-        if (allVerses.length > 0) {
-          console.log('[SearchInterface] Sample verse:', allVerses[0]);
+        const loadedVerses = (await window.database.searchVerses('')) || [];
+        if (isCancelled) {
+          return;
         }
 
-        const fuseInstance = new Fuse(allVerses, {
+        const fuseInstance = new Fuse(loadedVerses, {
           keys: ['text', 'book_name'],
           threshold: 0.3,
           includeScore: true,
           includeMatches: true,
         });
 
-        console.log('[SearchInterface] Fuse.js index created successfully');
+        setAllVerses(loadedVerses);
         setFuse(fuseInstance);
-        setLoading(false);
       } catch (error) {
         console.error('[SearchInterface] Failed to initialize search:', error);
-        setLoading(false);
+        if (!isCancelled) {
+          setAllVerses([]);
+          setFuse(null);
+          setResults([]);
+        }
+      } finally {
+        if (!isCancelled) {
+          setLoading(false);
+        }
       }
     };
 
     initializeSearch();
-  }, [setLoading]);
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [repositoryIndexSignature, setLoading, setResults]);
 
   // Perform search
   const performSearch = useCallback(
     (searchQuery: string) => {
-      console.log(`[SearchInterface] performSearch called with query: "${searchQuery}"`);
-
-      if (!fuse) {
-        console.error('[SearchInterface] Fuse instance is null, cannot search');
+      const trimmedQuery = searchQuery.trim();
+      const normalizedQuery = trimmedQuery.toLowerCase();
+      if (!normalizedQuery || normalizedQuery.length < MIN_SEARCH_LENGTH) {
         setResults([]);
+        setResultsCapped(false);
+        setLoading(false);
         return;
       }
 
-      if (!searchQuery.trim()) {
-        console.log('[SearchInterface] Empty query, clearing results');
-        setResults([]);
-        return;
-      }
-
-      console.log('[SearchInterface] Starting Fuse.js search...');
       setLoading(true);
 
-      // Search with Fuse.js
-      let fuseResults = fuse.search(searchQuery);
-      console.log(`[SearchInterface] Fuse.js found ${fuseResults.length} results`);
+      let searchResults: SearchResult[] = [];
+      let totalMatches = 0;
 
-      // Apply filters
-      if (filters.repositories.length > 0) {
-        fuseResults = fuseResults.filter((r) =>
-          filters.repositories.includes(r.item.repository_id)
-        );
+      if (searchMode === 'fuzzy') {
+        if (!fuse) {
+          setResults([]);
+          setResultsCapped(false);
+          setLoading(false);
+          return;
+        }
+
+        const filteredFuseResults = fuse
+          .search(trimmedQuery)
+          .filter((match) => verseMatchesFilters(match.item));
+
+        totalMatches = filteredFuseResults.length;
+
+        searchResults = filteredFuseResults.slice(0, MAX_SEARCH_RESULTS).map((match) => ({
+          id: match.item.id.toString(),
+          repository_id: match.item.repository_id,
+          book_id: match.item.book_id.toString(),
+          book_name: match.item.book_name || 'Unknown',
+          chapter_number: match.item.chapter,
+          verse_number: match.item.verse,
+          verse_text: match.item.text,
+          highlight_start: match.matches?.[0]?.indices?.[0]?.[0],
+          highlight_end: match.matches?.[0]?.indices?.[0]?.[1],
+        }));
+      } else {
+        const queryTerms = normalizedQuery.split(/\s+/).filter(Boolean);
+        const literalMatches = allVerses.filter((verse) => {
+          if (!verseMatchesFilters(verse)) {
+            return false;
+          }
+
+          const verseText = verse.text.toLowerCase();
+          if (searchMode === 'exact_phrase') {
+            return verseText.includes(normalizedQuery);
+          }
+
+          return queryTerms.every((term) => verseText.includes(term));
+        });
+
+        totalMatches = literalMatches.length;
+
+        searchResults = literalMatches.slice(0, MAX_SEARCH_RESULTS).map((verse) => ({
+          id: verse.id.toString(),
+          repository_id: verse.repository_id,
+          book_id: verse.book_id.toString(),
+          book_name: verse.book_name || 'Unknown',
+          chapter_number: verse.chapter,
+          verse_number: verse.verse,
+          verse_text: verse.text,
+        }));
       }
 
-      if (filters.testament !== 'all') {
-        const testamentMap = { old: 'OT', new: 'NT' } as const;
-        const targetTestament = testamentMap[filters.testament as 'old' | 'new'];
-        fuseResults = fuseResults.filter((r) => r.item.testament === targetTestament);
-      }
-
-      if (filters.books.length > 0) {
-        fuseResults = fuseResults.filter((r) => filters.books.includes(r.item.book_id.toString()));
-      }
-
-      // Convert to SearchResult format
-      const searchResults = fuseResults.map((r) => ({
-        id: r.item.id.toString(),
-        repository_id: r.item.repository_id,
-        book_id: r.item.book_id.toString(),
-        book_name: r.item.book_name || 'Unknown',
-        chapter_number: r.item.chapter,
-        verse_number: r.item.verse,
-        verse_text: r.item.text,
-        highlight_start: r.matches?.[0]?.indices?.[0]?.[0],
-        highlight_end: r.matches?.[0]?.indices?.[0]?.[1],
-      }));
-
+      setResultsCapped(totalMatches > MAX_SEARCH_RESULTS);
       setResults(searchResults);
       setLoading(false);
 
       // Add to history
-      if (searchQuery && !searchHistory.includes(searchQuery)) {
-        setSearchHistory([searchQuery, ...searchHistory].slice(0, 10));
-      }
+      setSearchHistory((previousHistory) => {
+        if (previousHistory.includes(trimmedQuery)) {
+          return previousHistory;
+        }
+
+        return [trimmedQuery, ...previousHistory].slice(0, 10);
+      });
     },
-    [fuse, filters, setResults, setLoading, searchHistory]
+    [allVerses, fuse, searchMode, setResults, setLoading, verseMatchesFilters]
   );
+
+  // Re-run search whenever active query dependencies (filters, mode, index) change
+  useEffect(() => {
+    if (query.trim().length >= MIN_SEARCH_LENGTH) {
+      performSearch(query);
+    } else {
+      setResults([]);
+      setResultsCapped(false);
+      setLoading(false);
+    }
+  }, [performSearch, query, setLoading, setResults]);
 
   // Handle search input change
   const handleSearchChange = (value: string) => {
     setQuery(value);
-    if (value.length >= 2) {
-      performSearch(value);
-    } else {
+    if (value.trim().length < MIN_SEARCH_LENGTH) {
       setResults([]);
+      setResultsCapped(false);
+      setLoading(false);
     }
   };
 
@@ -227,11 +312,28 @@ export function SearchInterface() {
   const handleClearSearch = () => {
     setQuery('');
     setResults([]);
+    setResultsCapped(false);
+    setLoading(false);
   };
+
+  const handleTestamentChange = (testament: SearchFilters['testament']) => {
+    setFilters((previous) => ({ ...previous, testament }));
+  };
+
+  const handleSearchModeChange = (mode: SearchMode) => {
+    setSearchMode(mode);
+  };
+
+  const searchModeDescription =
+    searchMode === 'fuzzy'
+      ? 'Typo-tolerant matching'
+      : searchMode === 'exact_phrase'
+        ? 'Literal contiguous phrase matching'
+        : 'All words must appear in the verse';
 
   // Handle result click
   const handleResultClick = useCallback(
-    async (result: (typeof results)[0]) => {
+    async (result: SearchResult) => {
       const repositoryId = result.repository_id;
       const bookId = result.book_id;
       const chapterNumber = result.chapter_number;
@@ -315,11 +417,25 @@ export function SearchInterface() {
           <div className="mt-3 rounded-lg border border-border/70 bg-muted/50 p-3">
             <div className="space-y-3">
               <div>
-                <label className="text-sm font-medium mb-1 block">Testament</label>
+                <label className="mb-1 block text-sm font-medium">Search Type</label>
+                <select
+                  value={searchMode}
+                  onChange={(e) => handleSearchModeChange(e.target.value as SearchMode)}
+                  className="w-full border border-border/70 bg-background/90 px-2 py-1 text-sm"
+                >
+                  <option value="fuzzy">Fuzzy (default)</option>
+                  <option value="exact_phrase">Exact Phrase</option>
+                  <option value="all_words">All Words</option>
+                </select>
+                <div className="mt-1 text-xs text-muted-foreground">{searchModeDescription}</div>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium">Testament</label>
                 <select
                   value={filters.testament}
-                  onChange={(e) => setFilters({ ...filters, testament: e.target.value as any })}
-                  className="w-full px-2 py-1 bg-background/90 border border-border/70 text-sm"
+                  onChange={(e) => handleTestamentChange(e.target.value as SearchFilters['testament'])}
+                  className="w-full border border-border/70 bg-background/90 px-2 py-1 text-sm"
                 >
                   <option value="all">All</option>
                   <option value="old">Old Testament</option>
@@ -375,6 +491,7 @@ export function SearchInterface() {
           <div>
             <div className="px-4 py-2 text-sm text-muted-foreground border-b border-border/70 bg-muted/15">
               {results.length} result{results.length !== 1 ? 's' : ''} found
+              {resultsCapped && ` (showing first ${MAX_SEARCH_RESULTS})`}
             </div>
             <div className="divide-y divide-border/70">
               {results.map((result) => (
