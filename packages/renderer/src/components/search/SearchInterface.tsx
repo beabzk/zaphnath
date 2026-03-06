@@ -5,7 +5,7 @@ import { useRepositoryStore, useReadingStore, useSearch } from '@/stores';
 import { useNavigation } from '@/components/layout/Navigation';
 import { Button } from '@/components/ui/button';
 import type { SearchResult } from '@/types/store';
-import { repository } from '@app/preload';
+import { createTranslationRepository } from '@/lib/repositoryTranslations';
 
 interface SearchFilters {
   repositories: string[];
@@ -21,11 +21,13 @@ const MAX_SEARCH_RESULTS = 100;
 export function SearchInterface() {
   const { query, results, loading, setQuery, setResults, setLoading } = useSearch();
   const {
-    repositories,
     currentRepository,
     books,
     setCurrentRepository,
+    repositories,
     loadBooks,
+    loadRepositories,
+    loadTranslations,
     setCurrentBook,
     loadChapter,
   } = useRepositoryStore();
@@ -55,54 +57,42 @@ export function SearchInterface() {
 
   const resolveRepositoryForResult = useCallback(
     async (repositoryId: string) => {
-      const existingRepository = repositories.find((repo) => repo.id === repositoryId) || null;
+      const currentState = useRepositoryStore.getState();
+      const existingRepository =
+        currentState.repositories.find((repo) => repo.id === repositoryId) || null;
       if (existingRepository) {
         return existingRepository;
       }
 
       try {
-        const listedRepositories = (await repository.list()) || [];
-        const directMatch =
-          listedRepositories.find((repo: any) => repo.id === repositoryId) || null;
+        if (currentState.repositories.length === 0) {
+          await loadRepositories();
+        }
+
+        const listedRepositories = useRepositoryStore.getState().repositories;
+        const directMatch = listedRepositories.find((repo) => repo.id === repositoryId) || null;
         if (directMatch) {
           return directMatch;
         }
 
-        for (const parentRepository of listedRepositories as any[]) {
+        for (const parentRepository of listedRepositories) {
           if (parentRepository.type !== 'parent') {
             continue;
           }
 
-          const translations = (await repository.getTranslations(parentRepository.id)) || [];
-          const translation = translations.find((item: any) => {
-            const translationId = item.translation_id || item.id;
-            return translationId === repositoryId;
-          });
+          const translations =
+            useRepositoryStore.getState().translationsByParent[parentRepository.id] ||
+            (await loadTranslations(parentRepository.id));
+          const translation =
+            translations.find((item) => item.id === repositoryId) || null;
 
           if (!translation) {
             continue;
           }
 
-          const now = new Date().toISOString();
-          return {
-            id: translation.translation_id || translation.id || repositoryId,
-            name: translation.translation_name || translation.name || repositoryId,
-            description:
-              translation.translation_description ||
-              `${translation.translation_name || translation.name || repositoryId} from ${parentRepository.name}`,
-            language:
-              translation.language_code ||
-              translation.language ||
-              parentRepository.language ||
-              'en',
-            version: translation.translation_version || parentRepository.version || '1.0.0',
-            created_at: translation.created_at || parentRepository.created_at || now,
-            updated_at: translation.updated_at || parentRepository.updated_at || now,
-            type: 'translation' as const,
-            parent_id: parentRepository.id,
-            book_count: translation.book_count,
-            verse_count: translation.verse_count,
-          };
+          return createTranslationRepository(parentRepository, translation, {
+            id: repositoryId,
+          });
         }
       } catch (error) {
         console.error(
@@ -123,7 +113,7 @@ export function SearchInterface() {
         type: 'translation' as const,
       };
     },
-    [repositories]
+    [loadRepositories, loadTranslations]
   );
 
   const verseMatchesFilters = useCallback(

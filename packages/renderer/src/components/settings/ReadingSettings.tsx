@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useSettings } from './SettingsProvider';
+import { useRepositoryStore } from '@/stores';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { repository } from '@app/preload';
 import {
   BookOpen,
   Scroll,
@@ -23,6 +23,7 @@ type RepositoryOption = {
 
 export function ReadingSettings() {
   const { settings, updateSetting } = useSettings();
+  const { repositories, loadRepositories, loadTranslations } = useRepositoryStore();
   const { reading } = settings;
   const [repositoryOptions, setRepositoryOptions] = useState<RepositoryOption[]>([]);
   const [repositoriesLoading, setRepositoriesLoading] = useState(false);
@@ -33,21 +34,23 @@ export function ReadingSettings() {
     setRepositoriesError(null);
 
     try {
-      const listedRepositories = (await repository.list()) || [];
+      if (repositories.length === 0) {
+        await loadRepositories();
+      }
+
+      const { repositories: listedRepositories, translationsByParent: cachedTranslations } =
+        useRepositoryStore.getState();
       const optionsById = new Map<string, RepositoryOption>();
 
       for (const repo of listedRepositories) {
         if (repo.type === 'parent') {
-          const translations = (await repository.getTranslations(repo.id)) || [];
+          const translations = cachedTranslations[repo.id] || (await loadTranslations(repo.id));
           for (const translation of translations) {
-            const translationId = translation.translation_id || translation.id;
-            const translationName =
-              translation.translation_name || translation.name || translationId;
-            if (!translationId) continue;
+            if (!translation.id) continue;
 
-            optionsById.set(translationId, {
-              id: translationId,
-              label: `${translationName} (${repo.name})`,
+            optionsById.set(translation.id, {
+              id: translation.id,
+              label: `${translation.name} (${repo.name})`,
             });
           }
           continue;
@@ -68,7 +71,7 @@ export function ReadingSettings() {
     } finally {
       setRepositoriesLoading(false);
     }
-  }, []);
+  }, [loadRepositories, loadTranslations, repositories.length]);
 
   useEffect(() => {
     loadRepositoryOptions();
