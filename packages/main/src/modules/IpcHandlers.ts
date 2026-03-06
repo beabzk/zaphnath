@@ -43,8 +43,6 @@ export class IpcHandlers implements AppModule {
 
   public async shutdown(): Promise<void> {
     // Remove all IPC handlers
-    ipcMain.removeAllListeners('database:query');
-    ipcMain.removeAllListeners('database:execute');
     ipcMain.removeAllListeners('database:getBooks');
     ipcMain.removeAllListeners('database:getVerses');
     ipcMain.removeAllListeners('database:getChapter');
@@ -107,30 +105,6 @@ export class IpcHandlers implements AppModule {
   }
 
   private registerDatabaseHandlers(): void {
-    // Raw database query handler (for advanced usage)
-    ipcMain.handle('database:query', async (event, sql: string, params?: any[]) => {
-      this.assertTrustedIpcSender(event, 'database:query');
-      try {
-        const queries = this.databaseService.getQueries();
-        return queries.executeRaw(sql, params || []);
-      } catch (error) {
-        console.error('Database query error:', error);
-        throw error;
-      }
-    });
-
-    // Raw database execute handler (for advanced usage)
-    ipcMain.handle('database:execute', async (event, sql: string, params?: any[]) => {
-      this.assertTrustedIpcSender(event, 'database:execute');
-      try {
-        const queries = this.databaseService.getQueries();
-        return queries.executeRawRun(sql, params || []);
-      } catch (error) {
-        console.error('Database execute error:', error);
-        throw error;
-      }
-    });
-
     // Get all books
     ipcMain.handle('database:getBooks', async (event, repositoryId?: string) => {
       this.assertTrustedIpcSender(event, 'database:getBooks');

@@ -344,22 +344,6 @@ export class DatabaseQueries {
     );
   }
 
-  // Utility methods
-  public executeRaw(sql: string, params: any[] = []): any {
-    const stmt = this.db.prepare(sql);
-    return stmt.all(...params);
-  }
-
-  public executeRawSingle(sql: string, params: any[] = []): any {
-    const stmt = this.db.prepare(sql);
-    return stmt.get(...params);
-  }
-
-  public executeRawRun(sql: string, params: any[] = []): Database.RunResult {
-    const stmt = this.db.prepare(sql);
-    return stmt.run(...params);
-  }
-
   // Transaction support
   public transaction<T>(fn: () => T): T {
     const transaction = this.db.transaction(fn);

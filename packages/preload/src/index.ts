@@ -9,8 +9,6 @@ function send(channel: string, message: string) {
 
 // Database API
 const database: Zaphnath.DatabaseAPI = {
-  query: (sql: string, params?: any[]) => ipcRenderer.invoke('database:query', sql, params),
-  execute: (sql: string, params?: any[]) => ipcRenderer.invoke('database:execute', sql, params),
   getBooks: () => ipcRenderer.invoke('database:getBooks'),
   getVerses: (bookId: number, chapter: number) =>
     ipcRenderer.invoke('database:getVerses', bookId, chapter),

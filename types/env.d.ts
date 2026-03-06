@@ -69,8 +69,6 @@ declare namespace Zaphnath {
 
   // IPC Communication interfaces
   interface DatabaseAPI {
-    query: (sql: string, params?: any[]) => Promise<any[]>;
-    execute: (sql: string, params?: any[]) => Promise<void>;
     getBooks: () => Promise<BibleBook[]>;
     getVerses: (bookId: number, chapter: number) => Promise<BibleVerse[]>;
     searchVerses: (query: string, repositoryId?: string) => Promise<BibleVerse[]>;
