@@ -90,14 +90,12 @@ export const useBookmarks = () => {
   const addBookmark = useReadingStore((state) => state.addBookmark);
   const removeBookmark = useReadingStore((state) => state.removeBookmark);
   const updateBookmark = useReadingStore((state) => state.updateBookmark);
-  const loadBookmarks = useReadingStore((state) => state.loadBookmarks);
 
   return {
     bookmarks,
     addBookmark,
     removeBookmark,
     updateBookmark,
-    loadBookmarks,
   };
 };
 
@@ -106,14 +104,12 @@ export const useNotes = () => {
   const addNote = useReadingStore((state) => state.addNote);
   const removeNote = useReadingStore((state) => state.removeNote);
   const updateNote = useReadingStore((state) => state.updateNote);
-  const loadNotes = useReadingStore((state) => state.loadNotes);
 
   return {
     notes,
     addNote,
     removeNote,
     updateNote,
-    loadNotes,
   };
 };
 
@@ -122,14 +118,12 @@ export const useHighlights = () => {
   const addHighlight = useReadingStore((state) => state.addHighlight);
   const removeHighlight = useReadingStore((state) => state.removeHighlight);
   const updateHighlight = useReadingStore((state) => state.updateHighlight);
-  const loadHighlights = useReadingStore((state) => state.loadHighlights);
 
   return {
     highlights,
     addHighlight,
     removeHighlight,
     updateHighlight,
-    loadHighlights,
   };
 };
 

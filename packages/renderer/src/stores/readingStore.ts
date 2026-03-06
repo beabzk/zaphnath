@@ -145,16 +145,6 @@ export const useReadingStore = create<ReadingState>()(
             );
           },
 
-          loadBookmarks: async () => {
-            try {
-              // @ts-ignore - APIs will be available at runtime
-              const bookmarks = await window.reading?.getBookmarks?.();
-              set({ bookmarks: bookmarks || [] }, false, 'loadBookmarks');
-            } catch (error) {
-              console.error('Failed to load bookmarks:', error);
-            }
-          },
-
           // Note Actions
           addNote: (note: Omit<Note, 'id' | 'created_at' | 'updated_at'>) => {
             const now = new Date().toISOString();
@@ -196,16 +186,6 @@ export const useReadingStore = create<ReadingState>()(
             );
           },
 
-          loadNotes: async () => {
-            try {
-              // @ts-ignore - APIs will be available at runtime
-              const notes = await window.reading?.getNotes?.();
-              set({ notes: notes || [] }, false, 'loadNotes');
-            } catch (error) {
-              console.error('Failed to load notes:', error);
-            }
-          },
-
           // Highlight Actions
           addHighlight: (highlight: Omit<Highlight, 'id' | 'created_at'>) => {
             const newHighlight: Highlight = {
@@ -243,16 +223,6 @@ export const useReadingStore = create<ReadingState>()(
               false,
               'updateHighlight'
             );
-          },
-
-          loadHighlights: async () => {
-            try {
-              // @ts-ignore - APIs will be available at runtime
-              const highlights = await window.reading?.getHighlights?.();
-              set({ highlights: highlights || [] }, false, 'loadHighlights');
-            } catch (error) {
-              console.error('Failed to load highlights:', error);
-            }
           },
 
           getVerseHighlight: (verseId: string): Highlight | undefined => {

@@ -14,7 +14,7 @@ const APP_SETTINGS_DB_KEY = 'app_settings';
 
 class DebugCollectorService implements DebugCollector {
   async collectSystemInfo(): Promise<SystemInfo> {
-    const systemInfo: SystemInfo = {
+    return {
       platform: navigator.platform,
       arch: 'unknown',
       version: navigator.appVersion,
@@ -25,25 +25,6 @@ class DebugCollectorService implements DebugCollector {
       cpu: this.getCPUInfo(),
       screen: this.getScreenInfo(),
     };
-
-    try {
-      // Try to get system info from main process
-      // @ts-ignore - APIs will be available at runtime
-      const mainProcessInfo = await window.system?.getSystemInfo?.();
-      if (mainProcessInfo) {
-        Object.assign(systemInfo, mainProcessInfo);
-      }
-    } catch (_error) {
-      logger.warn(
-        'Failed to get system info from main process',
-        {
-          error: _error instanceof Error ? _error.message : String(_error),
-        },
-        'debug'
-      );
-    }
-
-    return systemInfo;
   }
 
   private getChromeVersion(): string {
@@ -249,7 +230,7 @@ class DebugCollectorService implements DebugCollector {
         const size = new Blob([value]).size;
         items[key] = size;
         totalSize += size;
-      } catch (error) {
+      } catch {
         items[key] = 0;
       }
     }

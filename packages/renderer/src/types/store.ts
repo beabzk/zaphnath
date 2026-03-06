@@ -291,17 +291,14 @@ export interface ReadingState {
   addBookmark: (bookmark: Omit<Bookmark, 'id' | 'created_at'>) => void;
   removeBookmark: (bookmarkId: string) => void;
   updateBookmark: (bookmarkId: string, updates: Partial<Bookmark>) => void;
-  loadBookmarks: () => Promise<void>;
 
   addNote: (note: Omit<Note, 'id' | 'created_at' | 'updated_at'>) => void;
   removeNote: (noteId: string) => void;
   updateNote: (noteId: string, updates: Partial<Note>) => void;
-  loadNotes: () => Promise<void>;
 
   addHighlight: (highlight: Omit<Highlight, 'id' | 'created_at'>) => void;
   removeHighlight: (highlightId: string) => void;
   updateHighlight: (highlightId: string, updates: Partial<Highlight>) => void;
-  loadHighlights: () => Promise<void>;
   getVerseHighlight: (verseId: string) => Highlight | undefined;
 
   setReadingMode: (mode: 'verse' | 'paragraph' | 'chapter') => void;
