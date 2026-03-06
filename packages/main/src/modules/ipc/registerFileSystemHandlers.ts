@@ -1,4 +1,5 @@
 import { BrowserWindow, dialog, ipcMain, type OpenDialogOptions } from 'electron';
+import { createIpcInvokeHandler } from './createIpcInvokeHandler.js';
 import type { IpcHandlerDependencies } from './types.js';
 
 export const FILESYSTEM_IPC_CHANNELS = ['filesystem:showOpenDialog'] as const;
@@ -8,9 +9,11 @@ export function registerFileSystemHandlers({
 }: IpcHandlerDependencies): void {
   ipcMain.handle(
     'filesystem:showOpenDialog',
-    async (event, options?: Zaphnath.FileSystemDialogOptions) => {
-      assertTrustedIpcSender(event, 'filesystem:showOpenDialog');
-      try {
+    createIpcInvokeHandler({
+      assertTrustedIpcSender,
+      channel: 'filesystem:showOpenDialog',
+      errorLabel: 'Show open dialog error',
+      handler: async (_event, options?: Zaphnath.FileSystemDialogOptions) => {
         const focusedWindow = BrowserWindow.getFocusedWindow();
         const dialogOptions: OpenDialogOptions = {
           ...options,
@@ -21,11 +24,7 @@ export function registerFileSystemHandlers({
         return focusedWindow
           ? await dialog.showOpenDialog(focusedWindow, dialogOptions)
           : await dialog.showOpenDialog(dialogOptions);
-      } catch (error) {
-        console.error('Show open dialog error:', error);
-        throw error;
-      }
-    }
+      },
+    })
   );
 }
-

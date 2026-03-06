@@ -1,5 +1,6 @@
 import { ipcMain } from 'electron';
 import type { ImportOptions } from '../../services/repository/types.js';
+import { createIpcInvokeHandler } from './createIpcInvokeHandler.js';
 import type { RepositoryIpcHandlerDependencies } from './types.js';
 
 export const REPOSITORY_IPC_CHANNELS = [
@@ -21,31 +22,33 @@ export function registerRepositoryHandlers({
   repositoryService,
   assertTrustedIpcSender,
 }: RepositoryIpcHandlerDependencies): void {
-  ipcMain.handle('repository:list', async (event) => {
-    assertTrustedIpcSender(event, 'repository:list');
-    try {
-      return databaseService.getRepositories();
-    } catch (error) {
-      console.error('List repositories error:', error);
-      throw error;
-    }
-  });
+  ipcMain.handle(
+    'repository:list',
+    createIpcInvokeHandler({
+      assertTrustedIpcSender,
+      channel: 'repository:list',
+      errorLabel: 'List repositories error',
+      handler: async () => databaseService.getRepositories(),
+    })
+  );
 
-  ipcMain.handle('repository:discover', async (event) => {
-    assertTrustedIpcSender(event, 'repository:discover');
-    try {
-      return await repositoryService.discoverRepositories();
-    } catch (error) {
-      console.error('Discover repositories error:', error);
-      throw error;
-    }
-  });
+  ipcMain.handle(
+    'repository:discover',
+    createIpcInvokeHandler({
+      assertTrustedIpcSender,
+      channel: 'repository:discover',
+      errorLabel: 'Discover repositories error',
+      handler: async () => repositoryService.discoverRepositories(),
+    })
+  );
 
   ipcMain.handle(
     'repository:import',
-    async (event, repositoryUrl: string, options?: Zaphnath.RepositoryImportOptions) => {
-      assertTrustedIpcSender(event, 'repository:import');
-      try {
+    createIpcInvokeHandler({
+      assertTrustedIpcSender,
+      channel: 'repository:import',
+      errorLabel: 'Import repository error',
+      handler: async (event, repositoryUrl: string, options?: Zaphnath.RepositoryImportOptions) => {
         const importOptions: ImportOptions = {
           repository_url: repositoryUrl,
           validate_checksums: true,
@@ -58,94 +61,96 @@ export function registerRepositoryHandlers({
           event.sender.send('repository:importProgress', progress);
         };
 
-        return await repositoryService.importRepository(importOptions);
-      } catch (error) {
-        console.error('Import repository error:', error);
-        throw error;
-      }
-    }
+        return repositoryService.importRepository(importOptions);
+      },
+    })
   );
 
-  ipcMain.handle('repository:validate', async (event, url: string) => {
-    assertTrustedIpcSender(event, 'repository:validate');
-    try {
-      return await repositoryService.validateRepositoryUrl(url);
-    } catch (error) {
-      console.error('Validate repository error:', error);
-      throw error;
-    }
-  });
+  ipcMain.handle(
+    'repository:validate',
+    createIpcInvokeHandler({
+      assertTrustedIpcSender,
+      channel: 'repository:validate',
+      errorLabel: 'Validate repository error',
+      handler: async (_event, url: string) => repositoryService.validateRepositoryUrl(url),
+    })
+  );
 
-  ipcMain.handle('repository:getManifest', async (event, url: string) => {
-    assertTrustedIpcSender(event, 'repository:getManifest');
-    try {
-      return await repositoryService.getRepositoryManifest(url);
-    } catch (error) {
-      console.error('Get repository manifest error:', error);
-      throw error;
-    }
-  });
+  ipcMain.handle(
+    'repository:getManifest',
+    createIpcInvokeHandler({
+      assertTrustedIpcSender,
+      channel: 'repository:getManifest',
+      errorLabel: 'Get repository manifest error',
+      handler: async (_event, url: string) => repositoryService.getRepositoryManifest(url),
+    })
+  );
 
-  ipcMain.handle('repository:getSources', async (event) => {
-    assertTrustedIpcSender(event, 'repository:getSources');
-    try {
-      return repositoryService.getRepositorySources();
-    } catch (error) {
-      console.error('Get repository sources error:', error);
-      throw error;
-    }
-  });
+  ipcMain.handle(
+    'repository:getSources',
+    createIpcInvokeHandler({
+      assertTrustedIpcSender,
+      channel: 'repository:getSources',
+      errorLabel: 'Get repository sources error',
+      handler: async () => repositoryService.getRepositorySources(),
+    })
+  );
 
-  ipcMain.handle('repository:addSource', async (event, source: Zaphnath.RepositorySource) => {
-    assertTrustedIpcSender(event, 'repository:addSource');
-    try {
-      repositoryService.addRepositorySource(source);
-      return true;
-    } catch (error) {
-      console.error('Add repository source error:', error);
-      throw error;
-    }
-  });
+  ipcMain.handle(
+    'repository:addSource',
+    createIpcInvokeHandler({
+      assertTrustedIpcSender,
+      channel: 'repository:addSource',
+      errorLabel: 'Add repository source error',
+      handler: async (_event, source: Zaphnath.RepositorySource) => {
+        repositoryService.addRepositorySource(source);
+        return true;
+      },
+    })
+  );
 
-  ipcMain.handle('repository:scanDirectory', async (event, directoryPath: string) => {
-    assertTrustedIpcSender(event, 'repository:scanDirectory');
-    try {
-      return await repositoryService.scanDirectoryForRepositories(directoryPath);
-    } catch (error) {
-      console.error('Scan directory for repositories error:', error);
-      throw error;
-    }
-  });
+  ipcMain.handle(
+    'repository:scanDirectory',
+    createIpcInvokeHandler({
+      assertTrustedIpcSender,
+      channel: 'repository:scanDirectory',
+      errorLabel: 'Scan directory for repositories error',
+      handler: async (_event, directoryPath: string) =>
+        repositoryService.scanDirectoryForRepositories(directoryPath),
+    })
+  );
 
-  ipcMain.handle('repository:delete', async (event, repositoryId: string) => {
-    assertTrustedIpcSender(event, 'repository:delete');
-    try {
-      databaseService.getQueries().deleteRepository(repositoryId);
-      return { success: true };
-    } catch (error) {
-      console.error('Delete repository error:', error);
-      throw error;
-    }
-  });
+  ipcMain.handle(
+    'repository:delete',
+    createIpcInvokeHandler({
+      assertTrustedIpcSender,
+      channel: 'repository:delete',
+      errorLabel: 'Delete repository error',
+      handler: async (_event, repositoryId: string) => {
+        databaseService.getQueries().deleteRepository(repositoryId);
+        return { success: true };
+      },
+    })
+  );
 
-  ipcMain.handle('repository:getParentRepositories', async (event) => {
-    assertTrustedIpcSender(event, 'repository:getParentRepositories');
-    try {
-      return databaseService.getQueries().getParentRepositories();
-    } catch (error) {
-      console.error('Get parent repositories error:', error);
-      throw error;
-    }
-  });
+  ipcMain.handle(
+    'repository:getParentRepositories',
+    createIpcInvokeHandler({
+      assertTrustedIpcSender,
+      channel: 'repository:getParentRepositories',
+      errorLabel: 'Get parent repositories error',
+      handler: async () => databaseService.getQueries().getParentRepositories(),
+    })
+  );
 
-  ipcMain.handle('repository:getTranslations', async (event, parentId: string) => {
-    assertTrustedIpcSender(event, 'repository:getTranslations');
-    try {
-      return databaseService.getQueries().getRepositoryTranslations(parentId);
-    } catch (error) {
-      console.error('Get translations error:', error);
-      throw error;
-    }
-  });
+  ipcMain.handle(
+    'repository:getTranslations',
+    createIpcInvokeHandler({
+      assertTrustedIpcSender,
+      channel: 'repository:getTranslations',
+      errorLabel: 'Get translations error',
+      handler: async (_event, parentId: string) =>
+        databaseService.getQueries().getRepositoryTranslations(parentId),
+    })
+  );
 }
-
