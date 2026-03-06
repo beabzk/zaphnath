@@ -4,7 +4,7 @@ import { RepositoryImportDialog } from './RepositoryImportDialog';
 import { useRepositoryStore, useModal, useNotifications } from '@/stores';
 import { useNavigation } from '@/components/layout/Navigation';
 import { database } from '@app/preload';
-import { Database, BookOpen, HardDrive, RefreshCw, AlertCircle, CheckCircle } from 'lucide-react';
+import { Database, BookOpen, RefreshCw, AlertCircle, CheckCircle } from 'lucide-react';
 
 // Types are now imported from stores
 
@@ -253,7 +253,7 @@ export function RepositoryManagement() {
         <h2 className="text-lg font-semibold mb-1">Quick Actions</h2>
         <p className="text-sm text-muted-foreground mb-4">Common maintenance tasks</p>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3">
           <button
             onClick={() => void loadOverviewData()}
             className="p-4 border border-border hover:bg-accent/50 transition-colors flex flex-col items-center gap-2"
@@ -262,17 +262,6 @@ export function RepositoryManagement() {
             <div className="text-center">
               <div className="font-medium text-sm">Refresh Database</div>
               <div className="text-xs text-muted-foreground">Update statistics</div>
-            </div>
-          </button>
-
-          <button
-            className="p-4 border border-border bg-muted/20 opacity-50 cursor-not-allowed flex flex-col items-center gap-2"
-            disabled
-          >
-            <HardDrive className="h-5 w-5" />
-            <div className="text-center">
-              <div className="font-medium text-sm">Backup Data</div>
-              <div className="text-xs text-muted-foreground">Coming soon</div>
             </div>
           </button>
         </div>

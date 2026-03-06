@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useSettings } from './SettingsProvider';
+import { useNotifications } from '@/stores';
 import { AppearanceSettings } from './AppearanceSettings';
 import { ReadingSettings } from './ReadingSettings';
 import { AudioSettings } from './AudioSettings';
@@ -32,6 +33,7 @@ const iconMap = {
 export function SettingsInterface() {
   const [activeCategory, setActiveCategory] = useState<SettingsCategory>('appearance');
   const [showImportExport, setShowImportExport] = useState(false);
+  const { addNotification } = useNotifications();
   const {
     resetSettings,
     resetCategory,
@@ -64,12 +66,27 @@ export function SettingsInterface() {
       const text = await file.text();
       const success = await importSettings(text);
       if (success) {
-        alert('Settings imported successfully!');
+        addNotification({
+          type: 'success',
+          title: 'Settings imported',
+          message: 'Your preferences were imported successfully.',
+          duration: 4000,
+        });
       } else {
-        alert('Failed to import settings. Please check the file format.');
+        addNotification({
+          type: 'error',
+          title: 'Import failed',
+          message: 'Please check that the selected file is a valid settings export.',
+          duration: 5000,
+        });
       }
     } catch {
-      alert('Failed to read settings file.');
+      addNotification({
+        type: 'error',
+        title: 'File read failed',
+        message: 'The selected settings file could not be read.',
+        duration: 5000,
+      });
     }
 
     // Reset the input

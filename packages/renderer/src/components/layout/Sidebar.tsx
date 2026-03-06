@@ -39,15 +39,14 @@ const studyItems: NavItem[] = [
   { icon: Calendar, label: 'Reading Plans', view: 'reading-plans' },
 ];
 
-const systemItems: NavItem[] = [
-  { icon: Download, label: 'Downloads', view: 'downloads' },
-  { icon: Settings, label: 'Settings', view: 'settings' },
-  { icon: Bug, label: 'Debug', view: 'debug' },
-];
-
 export function Sidebar() {
   const { currentView, setCurrentView } = useNavigation();
   const { isOpen, close, width } = useSidebar();
+  const systemItems: NavItem[] = [
+    { icon: Download, label: 'Downloads', view: 'downloads' },
+    { icon: Settings, label: 'Settings', view: 'settings' },
+    ...(import.meta.env.DEV ? [{ icon: Bug, label: 'Debug', view: 'debug' as AppView }] : []),
+  ];
 
   const NavSection = ({ title, items }: { title: string; items: NavItem[] }) => (
     <div className="space-y-1.5">

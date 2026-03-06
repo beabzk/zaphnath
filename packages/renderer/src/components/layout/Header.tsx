@@ -24,7 +24,7 @@ interface WorkspaceTab {
   icon: ComponentType<{ className?: string }>;
 }
 
-const workspaceTabs: WorkspaceTab[] = [
+const baseWorkspaceTabs: WorkspaceTab[] = [
   { view: 'reader', label: 'Reader', icon: BookOpen },
   { view: 'repositories', label: 'Repositories', icon: Library },
   { view: 'search', label: 'Search', icon: Search },
@@ -34,7 +34,6 @@ const workspaceTabs: WorkspaceTab[] = [
   { view: 'reading-plans', label: 'Reading Plans', icon: Calendar },
   { view: 'downloads', label: 'Downloads', icon: Download },
   { view: 'settings', label: 'Settings', icon: Settings },
-  { view: 'debug', label: 'Debug', icon: Bug },
 ];
 
 export function Header() {
@@ -42,6 +41,10 @@ export function Header() {
   const platform = getDesktopPlatform();
   const isMac = platform === 'macos';
   const isWindows = platform === 'windows';
+  const workspaceTabs = [
+    ...baseWorkspaceTabs,
+    ...(import.meta.env.DEV ? ([{ view: 'debug', label: 'Debug', icon: Bug }] as const) : []),
+  ];
 
   return (
     <header className="drag-region h-[var(--titlebar-height)] border-b border-border/70 bg-background/90 backdrop-blur-md">

@@ -6,6 +6,7 @@ import { ThemeProvider } from '@/components/theme/ThemeProvider';
 import { SettingsProvider } from '@/components/settings/SettingsProvider';
 import { StoreDebuggerWrapper } from '@/components/debug/StoreDebugger';
 import { ErrorBoundary } from '@/components/error/ErrorBoundary';
+import { NotificationStack } from '@/components/layout/NotificationStack';
 import { logger } from '@/services/logger';
 import { performanceMonitor } from '@/services/performanceMonitor';
 import { getDesktopPlatform } from '@/lib/platform';
@@ -63,6 +64,7 @@ function App() {
                     <ViewRouter />
                   </ErrorBoundary>
                 </Layout>
+                <NotificationStack />
               </ErrorBoundary>
               <StoreDebuggerWrapper />
             </NavigationProvider>
