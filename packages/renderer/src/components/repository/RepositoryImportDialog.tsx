@@ -373,7 +373,7 @@ export function RepositoryImportDialog({
                   <CardTitle>Import Repository</CardTitle>
                   <CardDescription>Add a new Bible repository using ZBRS standard</CardDescription>
                 </div>
-                <Button variant="ghost" size="icon" onClick={handleClose}>
+                <Button variant="ghost" size="icon" onClick={handleClose} aria-label="Close import dialog">
                   <X className="h-4 w-4" />
                 </Button>
               </div>
@@ -624,14 +624,16 @@ export function RepositoryImportDialog({
                       </p>
                       <div className="space-y-2">
                         {multipleRepositories.map((repo, index) => (
-                          <div
+                          <button
                             key={index}
-                            className={`border rounded-lg p-3 cursor-pointer transition-colors ${
+                            type="button"
+                            className={`w-full rounded-lg border p-3 text-left transition-colors ${
                               selectedRepository === repo.path
                                 ? 'border-primary bg-primary/5'
                                 : 'border-border hover:border-primary/50'
                             }`}
                             onClick={() => handleRepositorySelection(repo.path)}
+                            aria-pressed={selectedRepository === repo.path}
                           >
                             <div className="flex items-start justify-between">
                               <div className="flex-1">
@@ -674,7 +676,7 @@ export function RepositoryImportDialog({
                                 <CheckCircle className="h-5 w-5 text-primary" />
                               )}
                             </div>
-                          </div>
+                          </button>
                         ))}
                       </div>
                     </div>
