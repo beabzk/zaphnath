@@ -13,10 +13,9 @@ import {
   Zap,
   Bug,
   AlertTriangle,
-  Folder,
+  Download,
   RefreshCw,
   Trash2,
-  Download,
   MousePointerClick,
   Activity,
   Settings as SettingsIcon,
@@ -176,10 +175,6 @@ export function AdvancedSettings() {
                 readOnly
                 className="flex-1 rounded-md border border-input bg-muted px-3 py-2 text-sm"
               />
-              <Button variant="outline" size="sm" disabled>
-                <Folder className="h-4 w-4 mr-2" />
-                Browse
-              </Button>
             </div>
             <p className="text-xs text-muted-foreground">
               Location where application data is stored
@@ -195,17 +190,6 @@ export function AdvancedSettings() {
             unit=" MB"
             onChange={(value) => updateSetting('advanced', 'cacheSize', value)}
           />
-
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" disabled>
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Clear Cache
-            </Button>
-            <Button variant="outline" size="sm" disabled>
-              <Trash2 className="h-4 w-4 mr-2" />
-              Reset Data
-            </Button>
-          </div>
         </div>
       </SettingGroup>
 
