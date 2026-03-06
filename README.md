@@ -78,6 +78,7 @@ pnpm start
 ## ZBRS Docs
 
 - Implementation guide: `docs/ZBRS-IMPLEMENTATION-GUIDE.md`
+- Engineering architecture: `docs/ENGINEERING-ARCHITECTURE.md`
 - Standard v1.1: `docs/standards/zbrs-v1.1.md`
 - Schemas:
   - `docs/schemas/manifest.schema.json`
