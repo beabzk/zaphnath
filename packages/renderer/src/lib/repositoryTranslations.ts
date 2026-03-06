@@ -1,6 +1,6 @@
 import type { Repository, TranslationInfo } from '@/types/store';
 
-export interface TranslationRecord {
+export interface TranslationRecord extends Record<string, unknown> {
   id?: unknown;
   name?: unknown;
   translation_id?: unknown;

@@ -309,6 +309,56 @@ export function Reader() {
     return books.filter((b) => b.testament === testament);
   }, [books, testament]);
 
+  const chapterVerseState = useMemo(() => {
+    const highlightsByVerseNumber = new Map<number, (typeof highlights)[number]>();
+    const bookmarkedVerseNumbers = new Set<number>();
+    const notedVerseNumbers = new Set<number>();
+
+    if (!currentRepository || !currentBook || !currentChapter) {
+      return {
+        highlightsByVerseNumber,
+        bookmarkedVerseNumbers,
+        notedVerseNumbers,
+      };
+    }
+
+    for (const highlight of highlights) {
+      if (
+        highlight.repository_id === currentRepository.id &&
+        highlight.book_id === currentBook.id &&
+        highlight.chapter_number === currentChapter.number
+      ) {
+        highlightsByVerseNumber.set(highlight.verse_number, highlight);
+      }
+    }
+
+    for (const bookmark of bookmarks) {
+      if (
+        bookmark.repository_id === currentRepository.id &&
+        bookmark.book_id === currentBook.id &&
+        bookmark.chapter_number === currentChapter.number
+      ) {
+        bookmarkedVerseNumbers.add(bookmark.verse_number);
+      }
+    }
+
+    for (const note of notes) {
+      if (
+        note.repository_id === currentRepository.id &&
+        note.book_id === currentBook.id &&
+        note.chapter_number === currentChapter.number
+      ) {
+        notedVerseNumbers.add(note.verse_number);
+      }
+    }
+
+    return {
+      highlightsByVerseNumber,
+      bookmarkedVerseNumbers,
+      notedVerseNumbers,
+    };
+  }, [bookmarks, currentBook, currentChapter, currentRepository, highlights, notes]);
+
   const handleSelectBook = (bookId: string) => {
     const book = books.find((b) => b.id === bookId);
     if (book) {
@@ -566,25 +616,10 @@ export function Reader() {
               }}
             >
               {verses.map((v) => {
-                const highlight = highlights.find(
-                  (h) =>
-                    h.repository_id === currentRepository?.id &&
-                    h.book_id === currentBook?.id &&
-                    h.chapter_number === currentChapter?.number &&
-                    h.verse_number === v.number
-                );
-                const isBookmarked = bookmarks.some(
-                  (b) =>
-                    b.book_id === currentBook?.id &&
-                    b.chapter_number === currentChapter?.number &&
-                    b.verse_number === v.number
-                );
-                const hasNote = notes.some(
-                  (n) =>
-                    n.book_id === currentBook?.id &&
-                    n.chapter_number === currentChapter?.number &&
-                    n.verse_number === v.number
-                );
+                const highlight = chapterVerseState.highlightsByVerseNumber.get(v.number);
+                const isBookmarked = chapterVerseState.bookmarkedVerseNumbers.has(v.number);
+                const hasNote = chapterVerseState.notedVerseNumbers.has(v.number);
+
                 return (
                   <VerseItem
                     key={v.id}
@@ -624,19 +659,8 @@ export function Reader() {
             onNote={handleNote}
             onClearHighlight={handleClearHighlight}
             onCompare={handleCompare}
-            hasHighlight={highlights.some(
-              (h) =>
-                h.repository_id === currentRepository?.id &&
-                h.book_id === currentBook?.id &&
-                h.chapter_number === currentChapter?.number &&
-                h.verse_number === contextMenu.verseNumber
-            )}
-            hasBookmark={bookmarks.some(
-              (b) =>
-                b.book_id === currentBook?.id &&
-                b.chapter_number === currentChapter?.number &&
-                b.verse_number === contextMenu.verseNumber
-            )}
+            hasHighlight={chapterVerseState.highlightsByVerseNumber.has(contextMenu.verseNumber)}
+            hasBookmark={chapterVerseState.bookmarkedVerseNumbers.has(contextMenu.verseNumber)}
           />
         )}
 
