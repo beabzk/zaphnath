@@ -182,13 +182,6 @@ export function RepositoryList({
     onRepositorySelect?.(repository);
   };
 
-  const handleRowKeyDown = (event: React.KeyboardEvent<HTMLElement>, action: () => void) => {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      action();
-    }
-  };
-
   const handleDeleteRepository = async (repositoryId: string) => {
     try {
       await repository.delete(repositoryId);
@@ -304,31 +297,28 @@ export function RepositoryList({
             <div key={repo.id} className="space-y-2">
               {/* Parent Repository or Standalone Translation */}
               <div
-                className={`p-3 border-b border-border transition-all ${
-                  repo.type === 'parent' ? 'cursor-default' : 'cursor-pointer hover:bg-accent/30'
-                } ${currentRepositoryId === repo.id ? 'bg-accent/20' : ''}`}
-                role="button"
-                tabIndex={0}
-                aria-expanded={repo.type === 'parent' ? expandedParents.has(repo.id) : undefined}
-                onClick={() => {
-                  if (repo.type === 'parent') {
-                    toggleParentExpansion(repo.id);
-                  } else {
-                    handleRepositorySelect(repo);
+                className={`flex items-start gap-2 border-b border-border p-3 transition-all ${
+                  currentRepositoryId === repo.id ? 'bg-accent/20' : ''
+                }`}
+              >
+                <button
+                  type="button"
+                  className={`flex-1 space-y-2 text-left transition-colors ${
+                    repo.type === 'parent' ? 'hover:text-foreground' : 'hover:bg-accent/30'
+                  }`}
+                  aria-expanded={repo.type === 'parent' ? expandedParents.has(repo.id) : undefined}
+                  aria-pressed={
+                    repo.type !== 'parent' ? currentRepositoryId === repo.id : undefined
                   }
-                }}
-                onKeyDown={(event) =>
-                  handleRowKeyDown(event, () => {
+                  onClick={() => {
                     if (repo.type === 'parent') {
                       toggleParentExpansion(repo.id);
                     } else {
                       handleRepositorySelect(repo);
                     }
-                  })
-                }
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 space-y-2">
+                  }}
+                >
+                  <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-2">
                       {repo.type === 'parent' && (
                         <div className="p-1">
@@ -362,60 +352,57 @@ export function RepositoryList({
                         </Badge>
                       )}
                     </div>
-
-                    <p className="text-sm text-muted-foreground">{repo.description}</p>
-
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                      {repo.language && (
-                        <div className="flex items-center gap-1">
-                          <Globe className="h-3 w-3" />
-                          <span>{getLanguageDisplay(repo.language)}</span>
-                        </div>
-                      )}
-                      <div className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        <span>v{repo.version}</span>
-                      </div>
-                      {repo.type !== 'parent' && (
-                        <div className="flex items-center gap-1">
-                          <BookOpen className="h-3 w-3" />
-                          <span>{repo.book_count || 'Unknown'} books</span>
-                        </div>
-                      )}
-                    </div>
                   </div>
 
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label={`Repository actions for ${repo.name}`}
-                        onClick={(event) => event.stopPropagation()}
-                        onKeyDown={(event) => event.stopPropagation()}
-                      >
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={(event) => event.stopPropagation()}>
-                        <Info className="h-4 w-4 mr-2" />
-                        View Details
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        className="text-destructive"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDeleteTarget({ id: repo.id, name: repo.name });
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
+                  <p className="text-sm text-muted-foreground">{repo.description}</p>
+
+                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                    {repo.language && (
+                      <div className="flex items-center gap-1">
+                        <Globe className="h-3 w-3" />
+                        <span>{getLanguageDisplay(repo.language)}</span>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />
+                      <span>v{repo.version}</span>
+                    </div>
+                    {repo.type !== 'parent' && (
+                      <div className="flex items-center gap-1">
+                        <BookOpen className="h-3 w-3" />
+                        <span>{repo.book_count || 'Unknown'} books</span>
+                      </div>
+                    )}
+                  </div>
+                </button>
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={`Repository actions for ${repo.name}`}
+                    >
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem>
+                      <Info className="h-4 w-4 mr-2" />
+                      View Details
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      className="text-destructive"
+                      onClick={() => {
+                        setDeleteTarget({ id: repo.id, name: repo.name });
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
 
               {/* Expanded Translations for Parent Repositories */}
@@ -442,46 +429,44 @@ export function RepositoryList({
                   {parentTranslations.map((translation) => (
                     <div
                       key={translation.id}
-                      className={`p-2 border-b border-border/50 cursor-pointer transition-all hover:bg-accent/30 ${
+                      className={`border-b border-border/50 p-2 transition-all ${
                         currentRepositoryId === translation.id ? 'bg-accent/20' : ''
                       }`}
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => {
-                        const translationRepo = createTranslationRepository(repo, translation);
-                        handleRepositorySelect(translationRepo);
-                      }}
-                      onKeyDown={(event) =>
-                        handleRowKeyDown(event, () => {
+                    >
+                      <button
+                        type="button"
+                        className="w-full text-left transition-colors hover:bg-accent/30"
+                        aria-pressed={currentRepositoryId === translation.id}
+                        onClick={() => {
                           const translationRepo = createTranslationRepository(repo, translation);
                           handleRepositorySelect(translationRepo);
-                        })
-                      }
-                    >
-                      <div className="flex items-center gap-2 mb-2">
-                        {currentRepositoryId === translation.id && (
-                          <CheckCircle className="h-3 w-3 text-primary" />
-                        )}
-                        <BookOpen className="h-3 w-3 text-green-600" />
-                        <span className="font-medium text-sm">{translation.name}</span>
-                        <Badge variant="outline" className="text-xs">
-                          {translation.language}
-                        </Badge>
-                        {translation.status !== 'active' && (
-                          <Badge variant="secondary" className="text-xs">
-                            {translation.status}
+                        }}
+                      >
+                        <div className="mb-2 flex items-center gap-2">
+                          {currentRepositoryId === translation.id && (
+                            <CheckCircle className="h-3 w-3 text-primary" />
+                          )}
+                          <BookOpen className="h-3 w-3 text-green-600" />
+                          <span className="font-medium text-sm">{translation.name}</span>
+                          <Badge variant="outline" className="text-xs">
+                            {translation.language}
                           </Badge>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                        <div className="flex items-center gap-1">
-                          <BookOpen className="h-3 w-3" />
-                          <span>{translation.book_count || 'Unknown'} books</span>
+                          {translation.status !== 'active' && (
+                            <Badge variant="secondary" className="text-xs">
+                              {translation.status}
+                            </Badge>
+                          )}
                         </div>
-                        <div className="flex items-center gap-1">
-                          <span>Directory: {translation.directory}</span>
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <BookOpen className="h-3 w-3" />
+                            <span>{translation.book_count || 'Unknown'} books</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span>Directory: {translation.directory}</span>
+                          </div>
                         </div>
-                      </div>
+                      </button>
                     </div>
                   ))}
                 </div>
