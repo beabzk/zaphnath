@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -39,6 +39,155 @@ function getManifestBookCount(manifest: RepositoryManifest | null): number | str
   return !manifest || isParentManifest(manifest) ? 'Multiple' : manifest.content.books_count;
 }
 
+interface DialogAsyncState {
+  validationStatus: 'idle' | 'validating';
+  validation: ValidationResult | null;
+  manifest: RepositoryManifest | null;
+  multipleRepositories: Zaphnath.ScannedRepository[] | null;
+  selectedRepository: string | null;
+  importStatus: 'idle' | 'running';
+  importProgress: ImportProgress | null;
+  importResult: ImportResult | null;
+}
+
+type DialogAsyncAction =
+  | { type: 'startValidation' }
+  | {
+      type: 'completeValidation';
+      validation: ValidationResult;
+      manifest?: RepositoryManifest | null;
+      multipleRepositories?: Zaphnath.ScannedRepository[] | null;
+      selectedRepository?: string | null;
+    }
+  | {
+      type: 'selectScannedRepository';
+      repositoryPath: string;
+      validation: ValidationResult;
+      manifest: RepositoryManifest | null;
+    }
+  | { type: 'resetValidation' }
+  | { type: 'startImport'; progress: ImportProgress }
+  | { type: 'updateImportProgress'; progress: ImportProgress | null }
+  | { type: 'finishImport'; result: ImportResult; progress: ImportProgress }
+  | { type: 'failImport'; result: ImportResult; progress: ImportProgress }
+  | { type: 'resetImport' }
+  | { type: 'resetAll' };
+
+const initialDialogAsyncState: DialogAsyncState = {
+  validationStatus: 'idle',
+  validation: null,
+  manifest: null,
+  multipleRepositories: null,
+  selectedRepository: null,
+  importStatus: 'idle',
+  importProgress: null,
+  importResult: null,
+};
+
+function dialogAsyncReducer(
+  state: DialogAsyncState,
+  action: DialogAsyncAction
+): DialogAsyncState {
+  switch (action.type) {
+    case 'startValidation':
+      return {
+        ...state,
+        validationStatus: 'validating',
+        validation: null,
+        manifest: null,
+        multipleRepositories: null,
+        selectedRepository: null,
+      };
+    case 'completeValidation':
+      return {
+        ...state,
+        validationStatus: 'idle',
+        validation: action.validation,
+        manifest: action.manifest ?? null,
+        multipleRepositories: action.multipleRepositories ?? null,
+        selectedRepository: action.selectedRepository ?? null,
+      };
+    case 'selectScannedRepository':
+      return {
+        ...state,
+        validation: action.validation,
+        manifest: action.manifest,
+        selectedRepository: action.repositoryPath,
+      };
+    case 'resetValidation':
+      return {
+        ...state,
+        validationStatus: 'idle',
+        validation: null,
+        manifest: null,
+        multipleRepositories: null,
+        selectedRepository: null,
+      };
+    case 'startImport':
+      return {
+        ...state,
+        importStatus: 'running',
+        importProgress: action.progress,
+        importResult: null,
+      };
+    case 'updateImportProgress':
+      return {
+        ...state,
+        importProgress: action.progress,
+      };
+    case 'finishImport':
+    case 'failImport':
+      return {
+        ...state,
+        importStatus: 'idle',
+        importResult: action.result,
+        importProgress: action.progress,
+      };
+    case 'resetImport':
+      return {
+        ...state,
+        importStatus: 'idle',
+        importProgress: null,
+        importResult: null,
+      };
+    case 'resetAll':
+      return initialDialogAsyncState;
+    default:
+      return state;
+  }
+}
+
+function toScanValidationResult(errors: string[]): ValidationResult {
+  return {
+    valid: true,
+    errors: [],
+    warnings: errors.map((error) => ({
+      code: 'SCAN_WARNING',
+      message: error,
+      severity: 'warning' as const,
+    })),
+  };
+}
+
+function createImportFailureResult(message: string): ImportResult {
+  return {
+    success: false,
+    repository_id: '',
+    books_imported: 0,
+    translations_imported: [],
+    translations_skipped: [],
+    errors: [
+      {
+        code: 'import-failed',
+        message,
+        severity: 'error',
+      },
+    ],
+    warnings: [],
+    duration_ms: 0,
+  };
+}
+
 interface RepositoryImportDialogProps {
   isOpen: boolean;
   onClose: () => void;
@@ -50,24 +199,25 @@ export function RepositoryImportDialog({
   onClose,
   onImportComplete,
 }: RepositoryImportDialogProps) {
+  const [dialogState, dispatch] = useReducer(dialogAsyncReducer, initialDialogAsyncState);
   const [importUrl, setImportUrl] = useState('');
   const [importType, setImportType] = useState<'url' | 'file' | 'discover'>('discover');
-  const [isValidating, setIsValidating] = useState(false);
-  const [isImporting, setIsImporting] = useState(false);
-  const [validation, setValidation] = useState<ValidationResult | null>(null);
-  const [importProgress, setImportProgress] = useState<ImportProgress | null>(null);
-  const [importResult, setImportResult] = useState<ImportResult | null>(null);
-
-  // New state for hierarchical repositories
-  const [manifest, setManifest] = useState<RepositoryManifest | null>(null);
   const [selectedTranslations, setSelectedTranslations] = useState<string[]>([]);
   const [importMode, setImportMode] = useState<'full' | 'selective'>('full');
-  const [multipleRepositories, setMultipleRepositories] = useState<
-    Zaphnath.ScannedRepository[] | null
-  >(null);
-  const [selectedRepository, setSelectedRepository] = useState<string | null>(null);
   const validationRequestIdRef = useRef(0);
   const importProgressUnsubscribeRef = useRef<(() => void) | null>(null);
+  const {
+    validationStatus,
+    validation,
+    manifest,
+    multipleRepositories,
+    selectedRepository,
+    importStatus,
+    importProgress,
+    importResult,
+  } = dialogState;
+  const isValidating = validationStatus === 'validating';
+  const isImporting = importStatus === 'running';
 
   const clearImportProgressSubscription = useCallback(() => {
     importProgressUnsubscribeRef.current?.();
@@ -75,8 +225,6 @@ export function RepositoryImportDialog({
   }, []);
 
   const applyManifestState = useCallback((manifestData: RepositoryManifest) => {
-    setManifest(manifestData);
-
     if (isParentManifest(manifestData)) {
       setImportMode('full');
       setSelectedTranslations(manifestData.translations.map((translation) => translation.id));
@@ -94,11 +242,7 @@ export function RepositoryImportDialog({
       const requestId = ++validationRequestIdRef.current;
 
       try {
-        setIsValidating(true);
-        setValidation(null);
-        setManifest(null);
-        setMultipleRepositories(null);
-        setSelectedRepository(null);
+        dispatch({ type: 'startValidation' });
 
         // Check if this is a local directory path
         const isLocalPath = sourceType === 'file' && !trimmedUrl.startsWith('http');
@@ -110,21 +254,20 @@ export function RepositoryImportDialog({
 
           if (scanResult.repositories.length > 1) {
             // Multiple repositories found - show selection UI
-            setMultipleRepositories(scanResult.repositories);
-            setValidation({
-              valid: true,
-              errors: [],
-              warnings: scanResult.errors.map((error: string) => ({
-                code: 'SCAN_WARNING',
-                message: error,
-                severity: 'warning' as const,
-              })),
+            dispatch({
+              type: 'completeValidation',
+              validation: toScanValidationResult(scanResult.errors),
+              multipleRepositories: scanResult.repositories,
             });
             return;
           } else if (scanResult.repositories.length === 1) {
             // Single repository found - use it directly
             const repo = scanResult.repositories[0];
-            setValidation(repo.validation);
+            dispatch({
+              type: 'completeValidation',
+              validation: repo.validation,
+              manifest: repo.validation.valid ? repo.manifest : null,
+            });
             if (repo.validation.valid) {
               applyManifestState(repo.manifest);
               // Update the import URL to the specific repository path
@@ -138,30 +281,39 @@ export function RepositoryImportDialog({
         // Regular single repository validation
         const validationResult = await repository.validate(trimmedUrl);
         if (requestId !== validationRequestIdRef.current) return;
-        setValidation(validationResult);
 
         if (validationResult.valid) {
           const manifestData = await repository.getManifest(trimmedUrl);
           if (requestId !== validationRequestIdRef.current) return;
+          dispatch({
+            type: 'completeValidation',
+            validation: validationResult,
+            manifest: manifestData,
+          });
           applyManifestState(manifestData);
+          return;
         }
+
+        dispatch({
+          type: 'completeValidation',
+          validation: validationResult,
+        });
       } catch (error) {
         if (requestId !== validationRequestIdRef.current) return;
-        setValidation({
-          valid: false,
-          errors: [
-            {
-              code: 'VALIDATION_ERROR',
-              message: error instanceof Error ? error.message : 'Validation failed',
-              severity: 'error',
-            },
-          ],
-          warnings: [],
+        dispatch({
+          type: 'completeValidation',
+          validation: {
+            valid: false,
+            errors: [
+              {
+                code: 'VALIDATION_ERROR',
+                message: error instanceof Error ? error.message : 'Validation failed',
+                severity: 'error',
+              },
+            ],
+            warnings: [],
+          },
         });
-      } finally {
-        if (requestId === validationRequestIdRef.current) {
-          setIsValidating(false);
-        }
       }
     },
     [applyManifestState]
@@ -175,11 +327,7 @@ export function RepositoryImportDialog({
     const trimmedUrl = importUrl.trim();
     if (!trimmedUrl) {
       validationRequestIdRef.current += 1;
-      setValidation(null);
-      setManifest(null);
-      setMultipleRepositories(null);
-      setSelectedRepository(null);
-      setIsValidating(false);
+      dispatch({ type: 'resetValidation' });
       return;
     }
 
@@ -195,13 +343,17 @@ export function RepositoryImportDialog({
 
     const selectedRepo = multipleRepositories.find((repo) => repo.path === repositoryPath);
     if (selectedRepo) {
-      setSelectedRepository(repositoryPath);
       setImportUrl(repositoryPath);
-      setValidation(selectedRepo.validation);
-      if (selectedRepo.validation.valid) {
-        applyManifestState(selectedRepo.manifest);
-      } else {
-        setManifest(null);
+      const manifestData = selectedRepo.validation.valid ? selectedRepo.manifest : null;
+      dispatch({
+        type: 'selectScannedRepository',
+        repositoryPath,
+        validation: selectedRepo.validation,
+        manifest: manifestData,
+      });
+
+      if (manifestData) {
+        applyManifestState(manifestData);
       }
     }
   };
@@ -210,19 +362,23 @@ export function RepositoryImportDialog({
     if (!validation?.valid || !importUrl.trim()) return;
 
     try {
-      setIsImporting(true);
-      setImportProgress({
-        stage: 'discovering',
-        progress: 0,
-        message: 'Starting import...',
+      dispatch({
+        type: 'startImport',
+        progress: {
+          stage: 'discovering',
+          progress: 0,
+          message: 'Starting import...',
+        },
       });
-      setImportResult(null);
 
       clearImportProgressSubscription();
       importProgressUnsubscribeRef.current = repository.onImportProgress((progress) => {
-        setImportProgress({
-          ...progress,
-          progress: Math.min(100, Math.max(0, progress.progress)),
+        dispatch({
+          type: 'updateImportProgress',
+          progress: {
+            ...progress,
+            progress: Math.min(100, Math.max(0, progress.progress)),
+          },
         });
       });
 
@@ -235,55 +391,47 @@ export function RepositoryImportDialog({
 
       const result = await repository.import(importUrl.trim(), importOptions);
 
-      setImportResult(result);
-
       if (!result.success) {
-        setImportProgress({
-          stage: 'error',
-          progress: 100,
-          message: 'Import failed',
+        dispatch({
+          type: 'failImport',
+          result,
+          progress: {
+            stage: 'error',
+            progress: 100,
+            message: 'Import failed',
+          },
         });
+        return;
       }
 
-      if (result.success) {
-        setImportProgress({
+      dispatch({
+        type: 'finishImport',
+        result,
+        progress: {
           stage: 'complete',
           progress: 100,
           message: `Imported ${result.books_imported} books successfully.`,
           processed_books: result.books_imported,
           total_books: result.books_imported,
-        });
-        setTimeout(() => {
-          onImportComplete();
-          handleClose();
-        }, 2000);
-      }
+        },
+      });
+      setTimeout(() => {
+        onImportComplete();
+        handleClose();
+      }, 2000);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Import failed';
-      setImportResult({
-        success: false,
-        repository_id: '',
-        books_imported: 0,
-        translations_imported: [],
-        translations_skipped: [],
-        errors: [
-          {
-            code: 'import-failed',
-            message,
-            severity: 'error',
-          },
-        ],
-        warnings: [],
-        duration_ms: 0,
-      });
-      setImportProgress({
-        stage: 'error',
-        progress: 100,
-        message,
+      dispatch({
+        type: 'failImport',
+        result: createImportFailureResult(message),
+        progress: {
+          stage: 'error',
+          progress: 100,
+          message,
+        },
       });
     } finally {
       clearImportProgressSubscription();
-      setIsImporting(false);
     }
   };
 
@@ -314,14 +462,7 @@ export function RepositoryImportDialog({
     clearImportProgressSubscription();
     setImportUrl('');
     setImportType('discover');
-    setValidation(null);
-    setManifest(null);
-    setImportProgress(null);
-    setImportResult(null);
-    setMultipleRepositories(null);
-    setSelectedRepository(null);
-    setIsValidating(false);
-    setIsImporting(false);
+    dispatch({ type: 'resetAll' });
     onClose();
   };
 
