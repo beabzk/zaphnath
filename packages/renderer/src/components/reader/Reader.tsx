@@ -40,6 +40,9 @@ export function Reader() {
   const [readingPrefs, setReadingPrefs] = useState<ReadingPreferences>(PRESETS.reading);
   const [comparisonVerse, setComparisonVerse] = useState<{
     bookId: string;
+    bookName: string;
+    bookAbbreviation: string;
+    bookOrder: number;
     chapter: number;
     verse: number;
   } | null>(null);
@@ -172,6 +175,9 @@ export function Reader() {
 
     setComparisonVerse({
       bookId: currentBook.id,
+      bookName: currentBook.name,
+      bookAbbreviation: currentBook.abbreviation,
+      bookOrder: currentBook.order,
       chapter: currentChapter.number,
       verse: contextMenu.verseNumber,
     });
@@ -659,6 +665,9 @@ export function Reader() {
         {comparisonVerse && (
           <VerseComparison
             bookId={comparisonVerse.bookId}
+            bookName={comparisonVerse.bookName}
+            bookAbbreviation={comparisonVerse.bookAbbreviation}
+            bookOrder={comparisonVerse.bookOrder}
             chapterNumber={comparisonVerse.chapter}
             verseNumber={comparisonVerse.verse}
             onClose={() => setComparisonVerse(null)}

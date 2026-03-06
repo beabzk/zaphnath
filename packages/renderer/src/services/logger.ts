@@ -14,14 +14,12 @@ class LoggerService implements Logger {
     enabled: true,
     level: 'info',
     enableConsole: true,
-    enableFile: false,
     enableRemote: false,
     enableAnalytics: false,
     trackPerformanceMetrics: true,
     trackUserActions: true,
     respectDoNotTrack: true,
     maxLogEntries: 1000,
-    maxFileSize: 10 * 1024 * 1024, // 10MB
     categories: {},
   };
 
@@ -177,23 +175,9 @@ class LoggerService implements Logger {
       );
     }
 
-    // File output (if enabled)
-    if (this.config.enableFile) {
-      this.writeToFile(entry);
-    }
-
     // Remote output (if enabled)
     if (this.config.enableRemote) {
       this.sendToRemote(entry);
-    }
-  }
-
-  private async writeToFile(entry: LogEntry): Promise<void> {
-    try {
-      // @ts-ignore - APIs will be available at runtime
-      await window.logger?.writeToFile?.(entry);
-    } catch (error) {
-      console.error('Failed to write log to file:', error);
     }
   }
 

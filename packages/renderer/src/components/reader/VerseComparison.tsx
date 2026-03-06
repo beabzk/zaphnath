@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { X, Plus, Copy, Download } from 'lucide-react';
 import { useRepositoryStore } from '@/stores';
+import { repository } from '@app/preload';
 
 interface ComparisonVerse {
   repositoryId: string;
@@ -10,6 +11,9 @@ interface ComparisonVerse {
 
 interface VerseComparisonProps {
   bookId: string;
+  bookName: string;
+  bookAbbreviation: string;
+  bookOrder: number;
   chapterNumber: number;
   verseNumber: number;
   onClose: () => void;
@@ -17,6 +21,9 @@ interface VerseComparisonProps {
 
 export function VerseComparison({
   bookId,
+  bookName,
+  bookAbbreviation,
+  bookOrder,
   chapterNumber,
   verseNumber,
   onClose,
@@ -25,62 +32,87 @@ export function VerseComparison({
   const [selectedRepos, setSelectedRepos] = useState<string[]>([]);
   const [verses, setVerses] = useState<ComparisonVerse[]>([]);
   const [loading, setLoading] = useState(false);
-  const [availableRepos, setAvailableRepos] = useState<typeof repositories>([]);
+  const availableRepos = useMemo(
+    () => repositories.filter((r) => r.type === 'translation' || !r.parent_id),
+    [repositories]
+  );
 
-  // Filter repositories that are translations (not parent repositories)
   useEffect(() => {
-    const translationRepos = repositories.filter((r) => r.type === 'translation' || !r.parent_id);
-    setAvailableRepos(translationRepos);
-
-    // Auto-select first two repositories
-    if (translationRepos.length > 0 && selectedRepos.length === 0) {
-      const initialSelection = translationRepos
-        .slice(0, Math.min(2, translationRepos.length))
+    if (availableRepos.length > 0 && selectedRepos.length === 0) {
+      const initialSelection = availableRepos
+        .slice(0, Math.min(2, availableRepos.length))
         .map((r) => r.id);
       setSelectedRepos(initialSelection);
     }
-  }, [repositories, selectedRepos.length]);
+  }, [availableRepos, selectedRepos.length]);
 
-  // Load verses when selected repositories change
   useEffect(() => {
-    if (selectedRepos.length === 0) return;
+    if (selectedRepos.length === 0) {
+      setVerses([]);
+      return;
+    }
+
+    let ignore = false;
 
     const loadVerses = async () => {
       setLoading(true);
       try {
-        const loadedVerses: ComparisonVerse[] = [];
+        const loadedVerses = await Promise.all(
+          selectedRepos.map(async (repoId): Promise<ComparisonVerse | null> => {
+            const repo = availableRepos.find((candidate) => candidate.id === repoId);
+            if (!repo) {
+              return null;
+            }
 
-        for (const repoId of selectedRepos) {
-          const repo = availableRepos.find((r) => r.id === repoId);
-          if (!repo) continue;
+            const books = await repository.getBooks(repoId);
+            const matchingBook =
+              books.find((candidate) => candidate.order === bookOrder) ??
+              books.find((candidate) => candidate.abbreviation === bookAbbreviation) ??
+              books.find(
+                (candidate) => candidate.name.toLowerCase() === bookName.toLowerCase()
+              );
 
-          // @ts-ignore - APIs will be available at runtime
-          const verse = await window.repository?.getVerse?.(
-            repoId,
-            bookId,
-            chapterNumber,
-            verseNumber
-          );
+            if (!matchingBook) {
+              return null;
+            }
 
-          if (verse) {
-            loadedVerses.push({
+            const chapter = await repository.getChapter(String(matchingBook.id), chapterNumber);
+            const verse = chapter.verses.find((candidate) => candidate.verse === verseNumber);
+            if (!verse) {
+              return null;
+            }
+
+            return {
               repositoryId: repoId,
               repositoryName: repo.name,
               text: verse.text,
-            });
-          }
-        }
+            };
+          })
+        );
 
-        setVerses(loadedVerses);
+        if (!ignore) {
+          setVerses(
+            loadedVerses.filter((verse): verse is ComparisonVerse => verse !== null)
+          );
+        }
       } catch (error) {
-        console.error('Failed to load comparison verses:', error);
+        if (!ignore) {
+          console.error('Failed to load comparison verses:', error);
+          setVerses([]);
+        }
       } finally {
-        setLoading(false);
+        if (!ignore) {
+          setLoading(false);
+        }
       }
     };
 
-    loadVerses();
-  }, [selectedRepos, bookId, chapterNumber, verseNumber, availableRepos]);
+    void loadVerses();
+
+    return () => {
+      ignore = true;
+    };
+  }, [availableRepos, bookAbbreviation, bookName, bookOrder, chapterNumber, selectedRepos, verseNumber]);
 
   const handleToggleRepo = (repoId: string) => {
     setSelectedRepos((prev) =>
@@ -112,7 +144,7 @@ export function VerseComparison({
           <div>
             <h2 className="text-lg font-semibold">Verse Comparison</h2>
             <p className="text-sm text-muted-foreground">
-              {bookId} {chapterNumber}:{verseNumber}
+              {bookName} {chapterNumber}:{verseNumber}
             </p>
           </div>
           <div className="flex items-center gap-2">
