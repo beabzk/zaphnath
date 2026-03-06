@@ -3,10 +3,10 @@ import { RepositoryList } from './RepositoryList';
 import { RepositoryImportDialog } from './RepositoryImportDialog';
 import { useRepositoryStore, useModal, useNotifications } from '@/stores';
 import { useNavigation } from '@/components/layout/Navigation';
+import { Button } from '@/components/ui/button';
 import { database } from '@app/preload';
 import { Database, BookOpen, RefreshCw, AlertCircle, CheckCircle } from 'lucide-react';
-
-// Types are now imported from stores
+import type { Repository } from '@/types/store';
 
 interface OverviewStats {
   repositories: number;
@@ -70,7 +70,7 @@ export function RepositoryManagement() {
     overviewStats?.verses ?? repositories.reduce((sum, repo) => sum + (repo.verse_count || 0), 0);
   const databaseSize = overviewStats?.databaseSize ?? '-';
 
-  const handleRepositorySelect = (repository: any) => {
+  const handleRepositorySelect = (repository: Repository) => {
     setCurrentRepository(repository);
     // Navigate to Reader so the user can read immediately
     setCurrentView('reader');
@@ -107,13 +107,15 @@ export function RepositoryManagement() {
             <div className="flex items-center gap-2 text-destructive">
               <AlertCircle className="h-4 w-4" />
               <span>{error.message}</span>
-              <button
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => void loadOverviewData()}
-                className="ml-auto px-3 py-1 text-sm border border-border hover:bg-accent transition-colors"
+                className="ml-auto"
               >
-                <RefreshCw className="h-4 w-4 mr-2 inline" />
+                <RefreshCw className="mr-2 h-4 w-4" />
                 Retry
-              </button>
+              </Button>
             </div>
           ) : (
             <div className="grid grid-cols-4 gap-px bg-border">
@@ -254,16 +256,17 @@ export function RepositoryManagement() {
         <p className="text-sm text-muted-foreground mb-4">Common maintenance tasks</p>
 
         <div className="grid grid-cols-1 gap-3">
-          <button
+          <Button
+            variant="outline"
             onClick={() => void loadOverviewData()}
-            className="p-4 border border-border hover:bg-accent/50 transition-colors flex flex-col items-center gap-2"
+            className="h-auto flex-col gap-2 p-4"
           >
             <RefreshCw className="h-5 w-5" />
             <div className="text-center">
               <div className="font-medium text-sm">Refresh Database</div>
               <div className="text-xs text-muted-foreground">Update statistics</div>
             </div>
-          </button>
+          </Button>
         </div>
       </div>
 

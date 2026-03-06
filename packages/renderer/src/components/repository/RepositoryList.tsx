@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   BookOpen,
   Calendar,
@@ -23,21 +24,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import type { Repository as BaseRepository } from '@/types/store';
 
-interface Repository {
-  id: string;
-  name: string;
-  description: string;
-  language?: string; // Optional for parent repositories
-  version: string;
-  created_at: string;
-  updated_at: string;
-  type?: 'parent' | 'translation';
-  parent_id?: string;
-  book_count?: number;
-  verse_count?: number;
+interface Repository extends BaseRepository {
   translation_count?: number;
-  translations?: TranslationInfo[];
 }
 
 interface TranslationInfo {
@@ -282,12 +272,7 @@ export function RepositoryList({
             <AlertCircle className="h-4 w-4" />
             <span>{errorMessage}</span>
           </div>
-          <button
-            onClick={onRefresh}
-            className="px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-          >
-            Try Again
-          </button>
+          <Button onClick={onRefresh}>Try Again</Button>
         </div>
       </div>
     );
@@ -306,13 +291,10 @@ export function RepositoryList({
           <p className="text-muted-foreground mb-4">
             Import your first Bible repository to get started with reading and studying.
           </p>
-          <button
-            onClick={onImportClick}
-            className="px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 transition-colors inline-flex items-center gap-2"
-          >
+          <Button onClick={onImportClick} className="inline-flex items-center gap-2">
             <Download className="h-4 w-4" />
             Import Repository
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -323,13 +305,10 @@ export function RepositoryList({
       <div className="px-6 py-4">
         <div className="flex items-center justify-between mb-1">
           <h2 className="text-lg font-semibold">Installed Repositories</h2>
-          <button
-            onClick={onImportClick}
-            className="px-3 py-1 text-sm bg-primary text-primary-foreground hover:bg-primary/90 transition-colors inline-flex items-center gap-2"
-          >
+          <Button size="sm" onClick={onImportClick} className="inline-flex items-center gap-2">
             <Download className="h-4 w-4" />
             Import
-          </button>
+          </Button>
         </div>
         <p className="text-sm text-muted-foreground">
           {filteredRepositories.length} repository{filteredRepositories.length !== 1 ? 's' : ''}{' '}
@@ -339,175 +318,165 @@ export function RepositoryList({
       <div className="px-6 pb-4 space-y-3">
         {filteredRepositories.map((repo) => {
           const hasLoadedTranslations =
-            repo.type === 'parent' && Object.prototype.hasOwnProperty.call(translationsByParent, repo.id);
-          const parentTranslations = repo.type === 'parent' ? repo.translations ?? [] : [];
+            repo.type === 'parent' &&
+            Object.prototype.hasOwnProperty.call(translationsByParent, repo.id);
+          const parentTranslations = repo.type === 'parent' ? (repo.translations ?? []) : [];
           const translationCount =
             repo.type === 'parent'
               ? hasLoadedTranslations
                 ? parentTranslations.length
-                : repo.translation_count ?? 0
+                : (repo.translation_count ?? 0)
               : 0;
 
           return (
             <div key={repo.id} className="space-y-2">
-            {/* Parent Repository or Standalone Translation */}
-            <div
-              className={`p-3 border-b border-border transition-all ${
-                repo.type === 'parent' ? 'cursor-default' : 'cursor-pointer hover:bg-accent/30'
-              } ${currentRepositoryId === repo.id ? 'bg-accent/20' : ''}`}
-              role="button"
-              tabIndex={0}
-              aria-expanded={repo.type === 'parent' ? expandedParents.has(repo.id) : undefined}
-              onClick={() => {
-                if (repo.type === 'parent') {
-                  toggleParentExpansion(repo.id);
-                } else {
-                  handleRepositorySelect(repo);
-                }
-              }}
-              onKeyDown={(event) =>
-                handleRowKeyDown(event, () => {
+              {/* Parent Repository or Standalone Translation */}
+              <div
+                className={`p-3 border-b border-border transition-all ${
+                  repo.type === 'parent' ? 'cursor-default' : 'cursor-pointer hover:bg-accent/30'
+                } ${currentRepositoryId === repo.id ? 'bg-accent/20' : ''}`}
+                role="button"
+                tabIndex={0}
+                aria-expanded={repo.type === 'parent' ? expandedParents.has(repo.id) : undefined}
+                onClick={() => {
                   if (repo.type === 'parent') {
                     toggleParentExpansion(repo.id);
                   } else {
                     handleRepositorySelect(repo);
                   }
-                })
-              }
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex-1 space-y-2">
-                  <div className="flex items-center gap-2">
-                    {repo.type === 'parent' && (
-                      <div className="p-1">
-                        {expandedParents.has(repo.id) ? (
-                          <ChevronDown className="h-4 w-4" />
-                        ) : (
-                          <ChevronRight className="h-4 w-4" />
-                        )}
-                      </div>
-                    )}
+                }}
+                onKeyDown={(event) =>
+                  handleRowKeyDown(event, () => {
+                    if (repo.type === 'parent') {
+                      toggleParentExpansion(repo.id);
+                    } else {
+                      handleRepositorySelect(repo);
+                    }
+                  })
+                }
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 space-y-2">
+                    <div className="flex items-center gap-2">
+                      {repo.type === 'parent' && (
+                        <div className="p-1">
+                          {expandedParents.has(repo.id) ? (
+                            <ChevronDown className="h-4 w-4" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4" />
+                          )}
+                        </div>
+                      )}
 
-                    {repo.type === 'parent' ? (
-                      <FolderOpen className="h-4 w-4 text-blue-600" />
-                    ) : (
-                      <BookOpen className="h-4 w-4 text-green-600" />
-                    )}
+                      {repo.type === 'parent' ? (
+                        <FolderOpen className="h-4 w-4 text-blue-600" />
+                      ) : (
+                        <BookOpen className="h-4 w-4 text-green-600" />
+                      )}
 
-                    <h3 className="font-medium">{repo.name}</h3>
+                      <h3 className="font-medium">{repo.name}</h3>
 
-                    {repo.type === 'parent' && (
-                      <Badge variant="secondary" className="text-xs">
-                        <Languages className="h-3 w-3 mr-1" />
-                        {translationCount} translations
-                      </Badge>
-                    )}
+                      {repo.type === 'parent' && (
+                        <Badge variant="secondary" className="text-xs">
+                          <Languages className="h-3 w-3 mr-1" />
+                          {translationCount} translations
+                        </Badge>
+                      )}
 
-                    {currentRepositoryId === repo.id && (
-                      <Badge variant="default" className="text-xs">
-                        <CheckCircle className="h-3 w-3 mr-1" />
-                        Current
-                      </Badge>
-                    )}
-                  </div>
-
-                  <p className="text-sm text-muted-foreground">{repo.description}</p>
-
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                    {repo.language && (
-                      <div className="flex items-center gap-1">
-                        <Globe className="h-3 w-3" />
-                        <span>{getLanguageDisplay(repo.language)}</span>
-                      </div>
-                    )}
-                    <div className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      <span>v{repo.version}</span>
+                      {currentRepositoryId === repo.id && (
+                        <Badge variant="default" className="text-xs">
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                          Current
+                        </Badge>
+                      )}
                     </div>
-                    {repo.type !== 'parent' && (
+
+                    <p className="text-sm text-muted-foreground">{repo.description}</p>
+
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                      {repo.language && (
+                        <div className="flex items-center gap-1">
+                          <Globe className="h-3 w-3" />
+                          <span>{getLanguageDisplay(repo.language)}</span>
+                        </div>
+                      )}
                       <div className="flex items-center gap-1">
-                        <BookOpen className="h-3 w-3" />
-                        <span>{repo.book_count || 'Unknown'} books</span>
+                        <Calendar className="h-3 w-3" />
+                        <span>v{repo.version}</span>
                       </div>
-                    )}
+                      {repo.type !== 'parent' && (
+                        <div className="flex items-center gap-1">
+                          <BookOpen className="h-3 w-3" />
+                          <span>{repo.book_count || 'Unknown'} books</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Repository actions for ${repo.name}`}
+                        onClick={(event) => event.stopPropagation()}
+                        onKeyDown={(event) => event.stopPropagation()}
+                      >
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={(event) => event.stopPropagation()}>
+                        <Info className="h-4 w-4 mr-2" />
+                        View Details
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        className="text-destructive"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteTarget({ id: repo.id, name: repo.name });
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
-
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button className="h-8 w-8 inline-flex items-center justify-center hover:bg-accent transition-colors">
-                      <MoreVertical className="h-4 w-4" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem>
-                      <Info className="h-4 w-4 mr-2" />
-                      View Details
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      className="text-destructive"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setDeleteTarget({ id: repo.id, name: repo.name });
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
               </div>
-            </div>
 
-            {/* Expanded Translations for Parent Repositories */}
-            {repo.type === 'parent' && expandedParents.has(repo.id) && (
-              <div className="ml-6 pl-4 border-l-2 border-border space-y-0">
-                {translationsLoadingByParent[repo.id] && (
-                  <div className="p-2 text-xs text-muted-foreground border-b border-border/50">
-                    Loading translations...
-                  </div>
-                )}
-                {translationErrorByParent[repo.id] && (
-                  <div className="p-2 text-xs text-destructive border-b border-border/50">
-                    {translationErrorByParent[repo.id]}
-                  </div>
-                )}
-                {!translationsLoadingByParent[repo.id] &&
-                  !translationErrorByParent[repo.id] &&
-                  hasLoadedTranslations &&
-                  parentTranslations.length === 0 && (
+              {/* Expanded Translations for Parent Repositories */}
+              {repo.type === 'parent' && expandedParents.has(repo.id) && (
+                <div className="ml-6 pl-4 border-l-2 border-border space-y-0">
+                  {translationsLoadingByParent[repo.id] && (
                     <div className="p-2 text-xs text-muted-foreground border-b border-border/50">
-                      No translations available
+                      Loading translations...
                     </div>
                   )}
-                {parentTranslations.map((translation) => (
-                  <div
-                    key={translation.id}
-                    className={`p-2 border-b border-border/50 cursor-pointer transition-all hover:bg-accent/30 ${
-                      currentRepositoryId === translation.id ? 'bg-accent/20' : ''
-                    }`}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => {
-                      // Create a repository object for the translation
-                      const translationRepo: Repository = {
-                        id: translation.id,
-                        name: translation.name,
-                        description: `${translation.name} from ${repo.name}`,
-                        language: translation.language,
-                        version: repo.version,
-                        created_at: repo.created_at,
-                        updated_at: repo.updated_at,
-                        type: 'translation',
-                        parent_id: repo.id,
-                        book_count: translation.book_count,
-                        verse_count: translation.verse_count,
-                      };
-                      handleRepositorySelect(translationRepo);
-                    }}
-                    onKeyDown={(event) =>
-                      handleRowKeyDown(event, () => {
+                  {translationErrorByParent[repo.id] && (
+                    <div className="p-2 text-xs text-destructive border-b border-border/50">
+                      {translationErrorByParent[repo.id]}
+                    </div>
+                  )}
+                  {!translationsLoadingByParent[repo.id] &&
+                    !translationErrorByParent[repo.id] &&
+                    hasLoadedTranslations &&
+                    parentTranslations.length === 0 && (
+                      <div className="p-2 text-xs text-muted-foreground border-b border-border/50">
+                        No translations available
+                      </div>
+                    )}
+                  {parentTranslations.map((translation) => (
+                    <div
+                      key={translation.id}
+                      className={`p-2 border-b border-border/50 cursor-pointer transition-all hover:bg-accent/30 ${
+                        currentRepositoryId === translation.id ? 'bg-accent/20' : ''
+                      }`}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => {
+                        // Create a repository object for the translation
                         const translationRepo: Repository = {
                           id: translation.id,
                           name: translation.name,
@@ -522,37 +491,54 @@ export function RepositoryList({
                           verse_count: translation.verse_count,
                         };
                         handleRepositorySelect(translationRepo);
-                      })
-                    }
-                  >
-                    <div className="flex items-center gap-2 mb-2">
-                      {currentRepositoryId === translation.id && (
-                        <CheckCircle className="h-3 w-3 text-primary" />
-                      )}
-                      <BookOpen className="h-3 w-3 text-green-600" />
-                      <span className="font-medium text-sm">{translation.name}</span>
-                      <Badge variant="outline" className="text-xs">
-                        {translation.language}
-                      </Badge>
-                      {translation.status !== 'active' && (
-                        <Badge variant="secondary" className="text-xs">
-                          {translation.status}
+                      }}
+                      onKeyDown={(event) =>
+                        handleRowKeyDown(event, () => {
+                          const translationRepo: Repository = {
+                            id: translation.id,
+                            name: translation.name,
+                            description: `${translation.name} from ${repo.name}`,
+                            language: translation.language,
+                            version: repo.version,
+                            created_at: repo.created_at,
+                            updated_at: repo.updated_at,
+                            type: 'translation',
+                            parent_id: repo.id,
+                            book_count: translation.book_count,
+                            verse_count: translation.verse_count,
+                          };
+                          handleRepositorySelect(translationRepo);
+                        })
+                      }
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        {currentRepositoryId === translation.id && (
+                          <CheckCircle className="h-3 w-3 text-primary" />
+                        )}
+                        <BookOpen className="h-3 w-3 text-green-600" />
+                        <span className="font-medium text-sm">{translation.name}</span>
+                        <Badge variant="outline" className="text-xs">
+                          {translation.language}
                         </Badge>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <BookOpen className="h-3 w-3" />
-                        <span>{translation.book_count || 'Unknown'} books</span>
+                        {translation.status !== 'active' && (
+                          <Badge variant="secondary" className="text-xs">
+                            {translation.status}
+                          </Badge>
+                        )}
                       </div>
-                      <div className="flex items-center gap-1">
-                        <span>Directory: {translation.directory}</span>
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                        <div className="flex items-center gap-1">
+                          <BookOpen className="h-3 w-3" />
+                          <span>{translation.book_count || 'Unknown'} books</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span>Directory: {translation.directory}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
             </div>
           );
         })}
@@ -577,18 +563,16 @@ export function RepositoryList({
               </p>
             </div>
             <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-border">
-              <button
-                onClick={() => setDeleteTarget(null)}
-                className="px-3 py-1.5 text-sm hover:bg-accent rounded-md transition-colors"
-              >
+              <Button variant="ghost" size="sm" onClick={() => setDeleteTarget(null)}>
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
                 onClick={() => void handleDeleteRepository(deleteTarget.id)}
-                className="px-3 py-1.5 text-sm bg-destructive text-destructive-foreground rounded-md hover:opacity-90 transition-opacity"
               >
                 Delete
-              </button>
+              </Button>
             </div>
           </div>
         </div>
