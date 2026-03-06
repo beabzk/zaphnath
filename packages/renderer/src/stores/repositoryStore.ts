@@ -2,6 +2,11 @@ import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { repository } from '@app/preload';
 import {
+  createTranslationRepository,
+  findTranslationRecordById,
+  toTranslationInfoList,
+} from '@/lib/repositoryTranslations';
+import {
   RepositoryState,
   Repository,
   Book,
@@ -181,11 +186,16 @@ export const useRepositoryStore = create<RepositoryState>()(
             // Update the parent repository with its translations
             const { repositories } = get();
             const updatedRepositories = repositories.map((repo) =>
-              repo.id === parentId ? { ...repo, translations: translations || [] } : repo
+              repo.id === parentId
+                ? {
+                    ...repo,
+                    translations: toTranslationInfoList(translations as Record<string, unknown>[]),
+                  }
+                : repo
             );
 
             set({ repositories: updatedRepositories }, false, 'loadTranslations');
-            return translations || [];
+            return toTranslationInfoList(translations as Record<string, unknown>[]);
           } catch (error) {
             setError({
               hasError: true,
@@ -243,12 +253,9 @@ export const useRepositoryStore = create<RepositoryState>()(
               } | null = null;
 
               for (const parent of parentCandidates) {
-                const translations = (await repository.getTranslations(parent.id)) || [];
-                const row = (translations as Record<string, unknown>[]).find(
-                  (translation) =>
-                    String(translation.translation_id ?? translation.id ?? '') ===
-                    currentRepository.id
-                );
+                const translations = ((await repository.getTranslations(parent.id)) ||
+                  []) as Record<string, unknown>[];
+                const row = findTranslationRecordById(translations, currentRepository.id);
 
                 if (row) {
                   matchedTranslation = { parent, row };
@@ -265,56 +272,9 @@ export const useRepositoryStore = create<RepositoryState>()(
 
               set(
                 (state) => ({
-                  currentRepository: {
+                  currentRepository: createTranslationRepository(parent, row, {
                     ...(state.currentRepository || currentRepository),
-                    id: String(row.translation_id ?? row.id ?? currentRepository.id),
-                    name: String(
-                      row.translation_name ??
-                        row.name ??
-                        state.currentRepository?.name ??
-                        currentRepository.name
-                    ),
-                    description: String(
-                      row.translation_description ??
-                        state.currentRepository?.description ??
-                        `${String(row.translation_name ?? row.name ?? currentRepository.id)} from ${parent.name}`
-                    ),
-                    language: String(
-                      row.language_code ??
-                        row.language ??
-                        state.currentRepository?.language ??
-                        parent.language ??
-                        'en'
-                    ),
-                    version: String(
-                      row.translation_version ??
-                        state.currentRepository?.version ??
-                        parent.version ??
-                        '1.0.0'
-                    ),
-                    type: 'translation' as const,
-                    parent_id: parent.id,
-                    created_at: String(
-                      row.created_at ??
-                        state.currentRepository?.created_at ??
-                        parent.created_at ??
-                        new Date().toISOString()
-                    ),
-                    updated_at: String(
-                      row.updated_at ??
-                        state.currentRepository?.updated_at ??
-                        parent.updated_at ??
-                        new Date().toISOString()
-                    ),
-                    book_count:
-                      typeof row.book_count === 'number'
-                        ? row.book_count
-                        : state.currentRepository?.book_count,
-                    verse_count:
-                      typeof row.verse_count === 'number'
-                        ? row.verse_count
-                        : state.currentRepository?.verse_count,
-                  },
+                  }),
                 }),
                 false,
                 'syncCurrentTranslation'

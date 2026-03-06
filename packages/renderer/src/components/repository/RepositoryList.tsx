@@ -24,6 +24,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { createTranslationRepository, toTranslationInfoList } from '@/lib/repositoryTranslations';
 import type { Repository as BaseRepository } from '@/types/store';
 
 interface Repository extends BaseRepository {
@@ -113,21 +114,10 @@ export function RepositoryList({
 
       try {
         const translations = await repository.getTranslations(parentId);
-        const mappedTranslations: TranslationInfo[] = (translations || []).map(
-          (t: Record<string, unknown>) => {
-            const id = String(t.translation_id ?? t.id ?? '');
-            const name = String(t.translation_name ?? t.name ?? '');
-            const directory = String(t.directory_name ?? t.directory ?? '');
-            const language = String(t.language_code ?? t.language ?? '');
-            const status = String(t.status ?? 'active');
-            const book_count = typeof t.book_count === 'number' ? t.book_count : undefined;
-            const verse_count = typeof t.verse_count === 'number' ? t.verse_count : undefined;
-
-            return { id, name, directory, language, status, book_count, verse_count };
-          }
-        );
-
-        setTranslationsByParent((prev) => ({ ...prev, [parentId]: mappedTranslations }));
+        setTranslationsByParent((prev) => ({
+          ...prev,
+          [parentId]: toTranslationInfoList(translations as Record<string, unknown>[]),
+        }));
       } catch (translationError) {
         console.error(`Failed to fetch translations for ${parentId}:`, translationError);
         setTranslationErrorByParent((prev) => ({
@@ -476,37 +466,12 @@ export function RepositoryList({
                       role="button"
                       tabIndex={0}
                       onClick={() => {
-                        // Create a repository object for the translation
-                        const translationRepo: Repository = {
-                          id: translation.id,
-                          name: translation.name,
-                          description: `${translation.name} from ${repo.name}`,
-                          language: translation.language,
-                          version: repo.version,
-                          created_at: repo.created_at,
-                          updated_at: repo.updated_at,
-                          type: 'translation',
-                          parent_id: repo.id,
-                          book_count: translation.book_count,
-                          verse_count: translation.verse_count,
-                        };
+                        const translationRepo = createTranslationRepository(repo, translation);
                         handleRepositorySelect(translationRepo);
                       }}
                       onKeyDown={(event) =>
                         handleRowKeyDown(event, () => {
-                          const translationRepo: Repository = {
-                            id: translation.id,
-                            name: translation.name,
-                            description: `${translation.name} from ${repo.name}`,
-                            language: translation.language,
-                            version: repo.version,
-                            created_at: repo.created_at,
-                            updated_at: repo.updated_at,
-                            type: 'translation',
-                            parent_id: repo.id,
-                            book_count: translation.book_count,
-                            verse_count: translation.verse_count,
-                          };
+                          const translationRepo = createTranslationRepository(repo, translation);
                           handleRepositorySelect(translationRepo);
                         })
                       }
