@@ -180,6 +180,7 @@ export function RepositoryImportDialog({
   const [importMode, setImportMode] = useState<ImportMode>('full');
   const validationRequestIdRef = useRef(0);
   const importProgressUnsubscribeRef = useRef<(() => void) | null>(null);
+  const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const {
     validationStatus,
@@ -198,6 +199,17 @@ export function RepositoryImportDialog({
   const clearImportProgressSubscription = useCallback(() => {
     importProgressUnsubscribeRef.current?.();
     importProgressUnsubscribeRef.current = null;
+  }, []);
+
+  const invalidatePendingValidation = useCallback(() => {
+    validationRequestIdRef.current += 1;
+  }, []);
+
+  const clearCloseTimeout = useCallback(() => {
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = null;
+    }
   }, []);
 
   const applyManifestState = useCallback((manifestData: RepositoryManifest) => {
@@ -337,6 +349,7 @@ export function RepositoryImportDialog({
     if (!validation?.valid || !importUrl.trim()) return;
 
     try {
+      invalidatePendingValidation();
       dispatch({
         type: 'startImport',
         progress: {
@@ -389,7 +402,8 @@ export function RepositoryImportDialog({
         },
       });
 
-      setTimeout(() => {
+      clearCloseTimeout();
+      closeTimeoutRef.current = setTimeout(() => {
         onImportComplete();
         handleClose();
       }, 2000);
@@ -431,7 +445,9 @@ export function RepositoryImportDialog({
   };
 
   const handleClose = () => {
+    invalidatePendingValidation();
     clearImportProgressSubscription();
+    clearCloseTimeout();
     setImportUrl('');
     setImportType('discover');
     dispatch({ type: 'resetAll' });
@@ -440,9 +456,11 @@ export function RepositoryImportDialog({
 
   useEffect(() => {
     return () => {
+      invalidatePendingValidation();
       clearImportProgressSubscription();
+      clearCloseTimeout();
     };
-  }, [clearImportProgressSubscription]);
+  }, [clearCloseTimeout, clearImportProgressSubscription, invalidatePendingValidation]);
 
   if (!isOpen) return null;
 
