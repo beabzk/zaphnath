@@ -195,12 +195,13 @@ export class MigrationRunner {
       if (!migration.down) {
         throw new Error(`Migration ${migration.version} does not have a rollback script`);
       }
+      const rollbackScript = migration.down;
 
       try {
         console.log(`Rolling back migration ${migration.version}: ${migration.name}`);
 
         const transaction = this.db.transaction(() => {
-          this.db.exec(migration.down!);
+          this.db.exec(rollbackScript);
           this.db.prepare('DELETE FROM migrations WHERE version = ?').run(migration.version);
         });
 

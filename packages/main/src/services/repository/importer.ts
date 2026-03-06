@@ -121,6 +121,8 @@ export class RepositoryImporter {
       translations_imported: [],
       translations_skipped: [],
     };
+    const translationsImported = result.translations_imported ?? [];
+    const translationsSkipped = result.translations_skipped ?? [];
 
     try {
       this.reportProgress(options, {
@@ -164,7 +166,7 @@ export class RepositoryImporter {
       if (useSelectiveImport) {
         for (const translation of manifest.translations) {
           if (!selectedTranslationIds.has(translation.id)) {
-            result.translations_skipped!.push(translation.id);
+            translationsSkipped.push(translation.id);
           }
         }
 
@@ -235,9 +237,9 @@ export class RepositoryImporter {
         result.books_imported += translationResult.books_imported;
 
         if (translationResult.success) {
-          result.translations_imported!.push(translation.id);
+          translationsImported.push(translation.id);
         } else {
-          result.translations_skipped!.push(translation.id);
+          translationsSkipped.push(translation.id);
           result.errors.push(...translationResult.errors);
           result.warnings.push(...translationResult.warnings);
         }
@@ -247,9 +249,9 @@ export class RepositoryImporter {
         stage: result.success ? 'complete' : 'error',
         progress: 100,
         message: result.success
-          ? `Parent import complete. Imported ${result.translations_imported!.length} translation${
-              result.translations_imported!.length === 1 ? '' : 's'
-            }.`
+          ? `Parent import complete. Imported ${translationsImported.length} translation${
+              translationsImported.length === 1 ? '' : 's'
+             }.`
           : 'Parent import completed with errors.',
       });
     } catch (error) {
@@ -802,6 +804,8 @@ export class RepositoryImporter {
       warnings: [],
       duration_ms: 0,
     };
+    const translationsImported = result.translations_imported ?? [];
+    const translationsSkipped = result.translations_skipped ?? [];
 
     try {
       // Fetch the parent repository manifest
@@ -868,14 +872,14 @@ export class RepositoryImporter {
             );
 
             if (translationResult.success) {
-              result.translations_imported!.push(translation.id);
+              translationsImported.push(translation.id);
               totalBooksImported += translationResult.books_imported;
             } else {
-              result.translations_skipped!.push(translation.id);
+              translationsSkipped.push(translation.id);
               result.errors.push(...translationResult.errors);
             }
           } catch (error) {
-            result.translations_skipped!.push(translation.id);
+            translationsSkipped.push(translation.id);
             result.errors.push(
               createValidationError(
                 'translation-import-failed',
@@ -884,12 +888,12 @@ export class RepositoryImporter {
             );
           }
         } else {
-          result.translations_skipped!.push(translation.id);
+          translationsSkipped.push(translation.id);
         }
       }
 
       result.books_imported = totalBooksImported;
-      result.success = result.translations_imported!.length > 0;
+      result.success = translationsImported.length > 0;
       result.duration_ms = Date.now() - startTime;
 
       return result;
