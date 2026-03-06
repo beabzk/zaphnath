@@ -53,6 +53,11 @@ declare namespace Zaphnath {
     chapter_count: number;
   }
 
+  interface BibleChapter {
+    number: number;
+    book_id: number;
+  }
+
   interface BibleRepository {
     id: string;
     name: string;
@@ -104,7 +109,7 @@ declare namespace Zaphnath {
       bookId: string,
       chapterNumber: number
     ) => Promise<{
-      chapter: any;
+      chapter: BibleChapter;
       verses: BibleVerse[];
     }>;
     getParentRepositories: () => Promise<BibleRepository[]>;

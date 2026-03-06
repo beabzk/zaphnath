@@ -104,6 +104,16 @@ export class IpcHandlers implements AppModule {
     );
   }
 
+  private parsePositiveInteger(value: number | string, fieldName: string): number {
+    const parsedValue = typeof value === 'number' ? value : Number.parseInt(value, 10);
+
+    if (!Number.isInteger(parsedValue) || parsedValue < 1) {
+      throw new Error(`Invalid ${fieldName}: ${value}`);
+    }
+
+    return parsedValue;
+  }
+
   private registerDatabaseHandlers(): void {
     // Get all books
     ipcMain.handle('database:getBooks', async (event, repositoryId?: string) => {
@@ -131,12 +141,7 @@ export class IpcHandlers implements AppModule {
     ipcMain.handle('database:searchVerses', async (event, query: string, repositoryId?: string) => {
       this.assertTrustedIpcSender(event, 'database:searchVerses');
       try {
-        console.log(
-          `[IPC] searchVerses called with query: "${query}", repositoryId: ${repositoryId}`
-        );
-        const results = this.databaseService.searchVerses(query, repositoryId);
-        console.log(`[IPC] searchVerses returned ${results.length} results`);
-        return results;
+        return this.databaseService.searchVerses(query, repositoryId);
       } catch (error) {
         console.error('Search verses error:', error);
         throw error;
@@ -181,10 +186,13 @@ export class IpcHandlers implements AppModule {
     ipcMain.handle('database:getChapter', async (event, bookId: string, chapterNumber: number) => {
       this.assertTrustedIpcSender(event, 'database:getChapter');
       try {
-        const verses = this.databaseService.getVerses(parseInt(bookId), chapterNumber);
+        const parsedBookId = this.parsePositiveInteger(bookId, 'bookId');
+        const parsedChapterNumber = this.parsePositiveInteger(chapterNumber, 'chapterNumber');
+        const verses = this.databaseService.getVerses(parsedBookId, parsedChapterNumber);
+
         return {
-          chapter: { number: chapterNumber, book_id: parseInt(bookId) },
-          verses: verses,
+          chapter: { number: parsedChapterNumber, book_id: parsedBookId },
+          verses,
         };
       } catch (error) {
         console.error('Get chapter error:', error);
