@@ -26,6 +26,12 @@ export interface TranslationInfo {
   verse_count?: number;
 }
 
+export interface RepositorySelection {
+  id: string;
+  type?: 'parent' | 'translation';
+  parent_id?: string;
+}
+
 export interface Book {
   id: string;
   repository_id: string;
@@ -164,6 +170,7 @@ export interface RepositoryState {
   // Data
   repositories: Repository[];
   translationsByParent: Record<string, TranslationInfo[]>;
+  currentRepositorySelection: RepositorySelection | null;
   currentRepository: Repository | null;
   books: Book[];
   currentBook: Book | null;
@@ -179,6 +186,7 @@ export interface RepositoryState {
   // Actions
   setRepositories: (repositories: Repository[]) => void;
   setTranslationsForParent: (parentId: string, translations: TranslationInfo[]) => void;
+  setCurrentRepositorySelection: (selection: RepositorySelection | null) => void;
   setCurrentRepository: (repository: Repository | null) => void;
   addRepository: (repository: Repository) => void;
   removeRepository: (repositoryId: string) => void;

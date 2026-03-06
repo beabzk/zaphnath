@@ -13,6 +13,7 @@ import { NoteDialog } from './NoteDialog';
 export function Reader() {
   const {
     repositories,
+    currentRepositorySelection,
     currentRepository,
     books,
     currentBook,
@@ -24,6 +25,7 @@ export function Reader() {
     loadTranslations,
     setCurrentBook,
     loadChapter,
+    isLoading: isRepositoryLoading,
   } = useRepositoryStore();
   const { settings, isLoading: isSettingsLoading } = useSettings();
 
@@ -186,7 +188,12 @@ export function Reader() {
 
   // Ensure the configured default repository is selected when entering Reader.
   useEffect(() => {
-    if (currentRepository || isSettingsLoading) {
+    if (currentRepository || isSettingsLoading || isRepositoryLoading) {
+      return;
+    }
+
+    if (currentRepositorySelection) {
+      void loadRepositories();
       return;
     }
 
@@ -241,8 +248,10 @@ export function Reader() {
   }, [
     currentRepository,
     isSettingsLoading,
+    isRepositoryLoading,
     settings.reading.defaultRepository,
     repositories,
+    currentRepositorySelection,
     loadRepositories,
     loadTranslations,
     setCurrentRepository,
