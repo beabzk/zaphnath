@@ -59,10 +59,9 @@ export function RepositoryImportDialog({
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
 
   // New state for hierarchical repositories
-  const [repositoryManifest, setRepositoryManifest] = useState<RepositoryManifest | null>(null);
+  const [manifest, setManifest] = useState<RepositoryManifest | null>(null);
   const [selectedTranslations, setSelectedTranslations] = useState<string[]>([]);
   const [importMode, setImportMode] = useState<'full' | 'selective'>('full');
-  const [manifest, setManifest] = useState<RepositoryManifest | null>(null);
   const [multipleRepositories, setMultipleRepositories] = useState<
     Zaphnath.ScannedRepository[] | null
   >(null);
@@ -77,7 +76,6 @@ export function RepositoryImportDialog({
 
   const applyManifestState = useCallback((manifestData: RepositoryManifest) => {
     setManifest(manifestData);
-    setRepositoryManifest(manifestData);
 
     if (isParentManifest(manifestData)) {
       setImportMode('full');
@@ -99,7 +97,6 @@ export function RepositoryImportDialog({
         setIsValidating(true);
         setValidation(null);
         setManifest(null);
-        setRepositoryManifest(null);
         setMultipleRepositories(null);
         setSelectedRepository(null);
 
@@ -180,7 +177,6 @@ export function RepositoryImportDialog({
       validationRequestIdRef.current += 1;
       setValidation(null);
       setManifest(null);
-      setRepositoryManifest(null);
       setMultipleRepositories(null);
       setSelectedRepository(null);
       setIsValidating(false);
@@ -206,7 +202,6 @@ export function RepositoryImportDialog({
         applyManifestState(selectedRepo.manifest);
       } else {
         setManifest(null);
-        setRepositoryManifest(null);
       }
     }
   };
@@ -520,7 +515,7 @@ export function RepositoryImportDialog({
 
                 {/* Translation Selection for Parent Repositories */}
                 {validation?.valid &&
-                  isParentManifest(repositoryManifest) && (
+                  isParentManifest(manifest) && (
                     <div className="space-y-4">
                       <Separator />
                       <div className="space-y-3">
@@ -539,14 +534,12 @@ export function RepositoryImportDialog({
                               checked={importMode === 'full'}
                               onChange={() => {
                                 setImportMode('full');
-                                setSelectedTranslations(
-                                  repositoryManifest.translations.map((translation) => translation.id)
-                                );
+                                setSelectedTranslations(manifest.translations.map((translation) => translation.id));
                               }}
                               className="h-4 w-4"
                             />
                             <label htmlFor="import-all" className="text-sm font-medium">
-                              Import all translations ({repositoryManifest.translations.length})
+                              Import all translations ({manifest.translations.length})
                             </label>
                           </div>
 
@@ -567,7 +560,7 @@ export function RepositoryImportDialog({
 
                         {importMode === 'selective' && (
                           <div className="space-y-2 pl-6">
-                            {repositoryManifest.translations.map((translation) => (
+                            {manifest.translations.map((translation) => (
                                 <div key={translation.id} className="flex items-center gap-2">
                                   <input
                                     type="checkbox"
@@ -810,15 +803,15 @@ export function RepositoryImportDialog({
                     ) : (
                       <>
                         <Download className="h-4 w-4 mr-2" />
-                        {isParentManifest(repositoryManifest)
+                        {isParentManifest(manifest)
                           ? `Import ${
                               importMode === 'selective'
                                 ? selectedTranslations.length
-                                : repositoryManifest.translations.length
+                                : manifest.translations.length
                             } Translation${
                               (importMode === 'selective'
                                 ? selectedTranslations.length
-                                : repositoryManifest.translations.length) !== 1
+                                : manifest.translations.length) !== 1
                                 ? 's'
                                 : ''
                             }`
