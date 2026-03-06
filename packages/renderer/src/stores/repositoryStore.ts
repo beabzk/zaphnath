@@ -176,7 +176,6 @@ export const useRepositoryStore = create<RepositoryState>()(
             setLoading(true);
             setError(null);
 
-            // @ts-ignore - APIs will be available at runtime
             const translations = await repository.getTranslations(parentId);
 
             // Update the parent repository with its translations
@@ -207,7 +206,6 @@ export const useRepositoryStore = create<RepositoryState>()(
             setLoading(true);
             setError(null);
 
-            // @ts-ignore - APIs will be available at runtime
             const repositories = await repository.list();
             const normalizedRepositories = repositories || [];
             setRepositories(normalizedRepositories);
@@ -245,7 +243,6 @@ export const useRepositoryStore = create<RepositoryState>()(
               } | null = null;
 
               for (const parent of parentCandidates) {
-                // @ts-ignore - APIs will be available at runtime
                 const translations = (await repository.getTranslations(parent.id)) || [];
                 const row = (translations as Record<string, unknown>[]).find(
                   (translation) =>
@@ -341,7 +338,6 @@ export const useRepositoryStore = create<RepositoryState>()(
             setLoading(true);
             setError(null);
 
-            // @ts-ignore - APIs will be available at runtime
             const books = await repository.getBooks(repositoryId);
             const mappedBooks = (books || []).map((b: any) => ({
               id: String(b.id),
@@ -371,7 +367,6 @@ export const useRepositoryStore = create<RepositoryState>()(
             setLoading(true);
             setError(null);
 
-            // @ts-ignore - APIs will be available at runtime
             const chapterData = await repository.getChapter(bookId, chapterNumber);
 
             if (chapterData) {
@@ -472,7 +467,6 @@ export const useRepositoryStore = create<RepositoryState>()(
             setLoading(true);
             setError(null);
 
-            // @ts-ignore - APIs will be available at runtime
             const result = await repository.validate(url);
             const mappedResult: ValidationResult = {
               valid: result.valid,
