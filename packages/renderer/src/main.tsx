@@ -5,7 +5,12 @@ import { bootstrapRendererSentry } from '@/services/sentry';
 import './index.css';
 
 const renderApp = () => {
-  createRoot(document.getElementById('root')!).render(
+  const rootElement = document.getElementById('root');
+  if (!rootElement) {
+    throw new Error('Renderer root element "#root" was not found');
+  }
+
+  createRoot(rootElement).render(
     <StrictMode>
       <App />
     </StrictMode>

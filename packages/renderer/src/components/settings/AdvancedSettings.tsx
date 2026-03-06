@@ -41,24 +41,16 @@ export function AdvancedSettings() {
   const analyticsActive =
     advanced.enableAnalytics && (!advanced.analyticsRespectDoNotTrack || !doNotTrackEnabled);
 
-  const diagnosticsStats = useMemo(
-    () => ({
+  const diagnosticsStats = useMemo(() => {
+    void diagnosticsRefreshTick;
+
+    return {
       logs: logger.getRecentLogs(5000).length,
       errors: logger.getRecentErrors(500).length,
       metrics: performanceMonitor.getMetrics().length,
       actions: logger.getUserActions(1000).length,
-    }),
-    [
-      advanced.enableLogging,
-      advanced.logLevel,
-      advanced.loggingMaxEntries,
-      advanced.enableAnalytics,
-      advanced.analyticsTrackPerformance,
-      advanced.analyticsTrackUserActions,
-      advanced.analyticsRespectDoNotTrack,
-      diagnosticsRefreshTick,
-    ]
-  );
+    };
+  }, [diagnosticsRefreshTick]);
 
   const exportSessionLogs = () => {
     const logsJson = logger.exportLogs();

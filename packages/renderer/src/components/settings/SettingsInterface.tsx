@@ -68,7 +68,7 @@ export function SettingsInterface() {
       } else {
         alert('Failed to import settings. Please check the file format.');
       }
-    } catch (_error) {
+    } catch {
       alert('Failed to read settings file.');
     }
 
