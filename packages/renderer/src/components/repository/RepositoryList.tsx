@@ -24,21 +24,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { createTranslationRepository, toTranslationInfoList } from '@/lib/repositoryTranslations';
+import { useRepositoryStore } from '@/stores';
+import { createTranslationRepository } from '@/lib/repositoryTranslations';
 import type { Repository as BaseRepository } from '@/types/store';
 
 interface Repository extends BaseRepository {
   translation_count?: number;
-}
-
-interface TranslationInfo {
-  id: string;
-  name: string;
-  directory: string;
-  language: string;
-  status: string;
-  book_count?: number;
-  verse_count?: number;
 }
 
 interface RepositoryListProps {
@@ -68,9 +59,6 @@ export function RepositoryList({
   onRepositoryDelete,
 }: RepositoryListProps) {
   const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set());
-  const [translationsByParent, setTranslationsByParent] = useState<
-    Record<string, TranslationInfo[]>
-  >({});
   const [translationsLoadingByParent, setTranslationsLoadingByParent] = useState<
     Record<string, boolean>
   >({});
@@ -78,6 +66,8 @@ export function RepositoryList({
     {}
   );
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+  const translationsByParent = useRepositoryStore((state) => state.translationsByParent);
+  const loadTranslations = useRepositoryStore((state) => state.loadTranslations);
 
   const filteredRepositories = useMemo(() => {
     const baseRepositories = repositories.filter((repo) => {
@@ -113,11 +103,7 @@ export function RepositoryList({
       });
 
       try {
-        const translations = await repository.getTranslations(parentId);
-        setTranslationsByParent((prev) => ({
-          ...prev,
-          [parentId]: toTranslationInfoList(translations as Record<string, unknown>[]),
-        }));
+        await loadTranslations(parentId);
       } catch (translationError) {
         console.error(`Failed to fetch translations for ${parentId}:`, translationError);
         setTranslationErrorByParent((prev) => ({
@@ -131,7 +117,7 @@ export function RepositoryList({
         setTranslationsLoadingByParent((prev) => ({ ...prev, [parentId]: false }));
       }
     },
-    [translationsByParent, translationsLoadingByParent]
+    [loadTranslations, translationsByParent, translationsLoadingByParent]
   );
 
   useEffect(() => {
@@ -143,10 +129,6 @@ export function RepositoryList({
       const filtered = new Set([...prev].filter((id) => activeParentIds.has(id)));
       return filtered.size === prev.size ? prev : filtered;
     });
-
-    setTranslationsByParent((prev) =>
-      Object.fromEntries(Object.entries(prev).filter(([id]) => activeParentIds.has(id)))
-    );
 
     setTranslationsLoadingByParent((prev) =>
       Object.fromEntries(Object.entries(prev).filter(([id]) => activeParentIds.has(id)))

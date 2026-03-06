@@ -163,6 +163,7 @@ export interface NotificationState {
 export interface RepositoryState {
   // Data
   repositories: Repository[];
+  translationsByParent: Record<string, TranslationInfo[]>;
   currentRepository: Repository | null;
   books: Book[];
   currentBook: Book | null;
@@ -177,6 +178,7 @@ export interface RepositoryState {
 
   // Actions
   setRepositories: (repositories: Repository[]) => void;
+  setTranslationsForParent: (parentId: string, translations: TranslationInfo[]) => void;
   setCurrentRepository: (repository: Repository | null) => void;
   addRepository: (repository: Repository) => void;
   removeRepository: (repositoryId: string) => void;
@@ -195,6 +197,7 @@ export interface RepositoryState {
 
   // Async Actions
   loadRepositories: () => Promise<void>;
+  loadTranslations: (parentId: string) => Promise<TranslationInfo[]>;
   loadBooks: (repositoryId: string) => Promise<void>;
   loadChapter: (bookId: string, chapterNumber: number) => Promise<void>;
   importRepository: (url: string, options?: any) => Promise<boolean>;

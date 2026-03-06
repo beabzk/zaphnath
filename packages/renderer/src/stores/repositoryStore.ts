@@ -2,14 +2,11 @@ import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { repository } from '@app/preload';
 import { toRendererBooks, toRendererChapterData } from '@/lib/repositoryContent';
-import {
-  createTranslationRepository,
-  findTranslationRecordById,
-  toTranslationInfoList,
-} from '@/lib/repositoryTranslations';
+import { createTranslationRepository, toTranslationInfoList } from '@/lib/repositoryTranslations';
 import {
   RepositoryState,
   Repository,
+  TranslationInfo,
   Book,
   Chapter,
   Verse,
@@ -18,8 +15,17 @@ import {
   ValidationResult,
 } from '@/types/store';
 
+const mergeRepositoriesWithTranslations = (
+  repositories: Repository[],
+  translationsByParent: Record<string, TranslationInfo[]>
+): Repository[] =>
+  repositories.map((repo) =>
+    repo.type === 'parent' ? { ...repo, translations: translationsByParent[repo.id] } : repo
+  );
+
 const initialState = {
   repositories: [],
+  translationsByParent: {},
   currentRepository: null,
   books: [],
   currentBook: null,
@@ -39,7 +45,37 @@ export const useRepositoryStore = create<RepositoryState>()(
 
         // Repository Actions
         setRepositories: (repositories: Repository[]) => {
-          set({ repositories }, false, 'setRepositories');
+          set(
+            (state) => ({
+              repositories: mergeRepositoriesWithTranslations(
+                repositories,
+                state.translationsByParent
+              ),
+            }),
+            false,
+            'setRepositories'
+          );
+        },
+
+        setTranslationsForParent: (parentId: string, translations: TranslationInfo[]) => {
+          set(
+            (state) => {
+              const nextTranslationsByParent = {
+                ...state.translationsByParent,
+                [parentId]: translations,
+              };
+
+              return {
+                translationsByParent: nextTranslationsByParent,
+                repositories: mergeRepositoriesWithTranslations(
+                  state.repositories,
+                  nextTranslationsByParent
+                ),
+              };
+            },
+            false,
+            'setTranslationsForParent'
+          );
         },
 
         setCurrentRepository: (repository: Repository | null) => {
@@ -80,6 +116,9 @@ export const useRepositoryStore = create<RepositoryState>()(
 
               return {
                 repositories: newRepositories,
+                translationsByParent: Object.fromEntries(
+                  Object.entries(state.translationsByParent).filter(([id]) => id !== repositoryId)
+                ),
                 currentRepository: newCurrentRepository,
                 books: newCurrentRepository ? state.books : [],
                 currentBook: newCurrentRepository ? state.currentBook : null,
@@ -162,7 +201,16 @@ export const useRepositoryStore = create<RepositoryState>()(
             const parentRepositories = await repository.getParentRepositories();
 
             // Update repositories with parent repositories
-            set({ repositories: parentRepositories || [] }, false, 'loadParentRepositories');
+            set(
+              (state) => ({
+                repositories: mergeRepositoriesWithTranslations(
+                  parentRepositories || [],
+                  state.translationsByParent
+                ),
+              }),
+              false,
+              'loadParentRepositories'
+            );
           } catch (error) {
             setError({
               hasError: true,
@@ -176,42 +224,34 @@ export const useRepositoryStore = create<RepositoryState>()(
         },
 
         loadTranslations: async (parentId: string) => {
-          const { setLoading, setError } = get();
+          const { translationsByParent, setTranslationsForParent } = get();
+
+          if (translationsByParent[parentId]) {
+            return translationsByParent[parentId];
+          }
 
           try {
-            setLoading(true);
-            setError(null);
-
             const translations = await repository.getTranslations(parentId);
-
-            // Update the parent repository with its translations
-            const { repositories } = get();
-            const updatedRepositories = repositories.map((repo) =>
-              repo.id === parentId
-                ? {
-                    ...repo,
-                    translations: toTranslationInfoList(translations as Record<string, unknown>[]),
-                  }
-                : repo
+            const normalizedTranslations = toTranslationInfoList(
+              translations as Record<string, unknown>[]
             );
+            setTranslationsForParent(parentId, normalizedTranslations);
 
-            set({ repositories: updatedRepositories }, false, 'loadTranslations');
-            return toTranslationInfoList(translations as Record<string, unknown>[]);
+            return normalizedTranslations;
           } catch (error) {
-            setError({
-              hasError: true,
-              message: error instanceof Error ? error.message : 'Failed to load translations',
-              timestamp: new Date().toISOString(),
-            });
-            return [];
-          } finally {
-            setLoading(false);
+            throw error instanceof Error ? error : new Error('Failed to load translations');
           }
         },
 
         // Async Actions
         loadRepositories: async () => {
-          const { setLoading, setError, setRepositories } = get();
+          const {
+            setLoading,
+            setError,
+            currentRepository,
+            setCurrentRepository,
+            loadTranslations,
+          } = get();
 
           try {
             setLoading(true);
@@ -219,12 +259,33 @@ export const useRepositoryStore = create<RepositoryState>()(
 
             const repositories = await repository.list();
             const normalizedRepositories = repositories || [];
-            setRepositories(normalizedRepositories);
+            const activeParentIds = new Set(
+              normalizedRepositories.filter((repo) => repo.type === 'parent').map((repo) => repo.id)
+            );
+
+            set(
+              (state) => {
+                const nextTranslationsByParent = Object.fromEntries(
+                  Object.entries(state.translationsByParent).filter(([id]) =>
+                    activeParentIds.has(id)
+                  )
+                );
+
+                return {
+                  translationsByParent: nextTranslationsByParent,
+                  repositories: mergeRepositoriesWithTranslations(
+                    normalizedRepositories,
+                    nextTranslationsByParent
+                  ),
+                };
+              },
+              false,
+              'loadRepositories'
+            );
 
             // Validate currentRepository still exists.
             // Parent manifests store translations in `repository_translations`,
             // so selected translation ids may not appear in repository:list.
-            const { currentRepository, setCurrentRepository } = get();
             if (currentRepository) {
               const directMatch = normalizedRepositories.find(
                 (r: Repository) => r.id === currentRepository.id
@@ -250,13 +311,14 @@ export const useRepositoryStore = create<RepositoryState>()(
 
               let matchedTranslation: {
                 parent: Repository;
-                row: Record<string, unknown>;
+                row: TranslationInfo;
               } | null = null;
 
               for (const parent of parentCandidates) {
-                const translations = ((await repository.getTranslations(parent.id)) ||
-                  []) as Record<string, unknown>[];
-                const row = findTranslationRecordById(translations, currentRepository.id);
+                const translations = await loadTranslations(parent.id);
+                const row =
+                  translations.find((translation) => translation.id === currentRepository.id) ??
+                  null;
 
                 if (row) {
                   matchedTranslation = { parent, row };
@@ -452,6 +514,7 @@ export const useRepositoryStore = create<RepositoryState>()(
             return {
               ...persistedState,
               repositories: [],
+              translationsByParent: {},
               currentRepository: null,
             };
           }

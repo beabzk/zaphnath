@@ -2,12 +2,8 @@ import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { useInView } from 'react-intersection-observer';
 import { useRepositoryStore, useReadingStore } from '@/stores';
 import { ChevronRight, Bookmark as BookmarkIcon, StickyNote } from 'lucide-react';
-import { repository } from '@app/preload';
 import { useSettings } from '@/components/settings/SettingsProvider';
-import {
-  createTranslationRepository,
-  findTranslationRecordById,
-} from '@/lib/repositoryTranslations';
+import { createTranslationRepository } from '@/lib/repositoryTranslations';
 import { VerseContextMenu } from './VerseContextMenu';
 import { ReadingControls, ReadingPreferences, PRESETS } from './ReadingControls';
 import { VerseComparison } from './VerseComparison';
@@ -25,6 +21,7 @@ export function Reader() {
     setCurrentRepository,
     loadBooks,
     loadRepositories,
+    loadTranslations,
     setCurrentBook,
     loadChapter,
   } = useRepositoryStore();
@@ -218,11 +215,8 @@ export function Reader() {
       const parentRepositories = latestRepositories.filter((repo) => repo.type === 'parent');
 
       for (const parent of parentRepositories) {
-        const translations = ((await repository.getTranslations(parent.id)) || []) as Record<
-          string,
-          unknown
-        >[];
-        const translation = findTranslationRecordById(translations, defaultRepositoryId);
+        const translations = await loadTranslations(parent.id);
+        const translation = translations.find((item) => item.id === defaultRepositoryId) ?? null;
 
         if (!translation) {
           continue;
@@ -250,6 +244,7 @@ export function Reader() {
     settings.reading.defaultRepository,
     repositories,
     loadRepositories,
+    loadTranslations,
     setCurrentRepository,
   ]);
 
