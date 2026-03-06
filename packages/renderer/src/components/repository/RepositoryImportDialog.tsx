@@ -23,23 +23,20 @@ interface ValidationResult {
 
 type ImportResult = Zaphnath.ImportResult;
 type ImportProgress = Zaphnath.ImportProgress;
+type RepositoryManifest = Zaphnath.ZBRSManifest;
 
-interface TranslationInfo {
-  id: string;
-  name: string;
-  directory: string;
-  language: { code: string; name: string };
-  status: string;
+function isParentManifest(
+  manifest: RepositoryManifest | null
+): manifest is Zaphnath.ZBRSParentManifest {
+  return Boolean(manifest && 'translations' in manifest && manifest.repository.type === 'parent');
 }
 
-interface RepositoryManifest {
-  repository: {
-    id: string;
-    name: string;
-    description: string;
-    type?: string;
-  };
-  translations?: TranslationInfo[];
+function getManifestLanguageName(manifest: RepositoryManifest | null): string {
+  return !manifest || isParentManifest(manifest) ? 'Multiple' : manifest.repository.language.name;
+}
+
+function getManifestBookCount(manifest: RepositoryManifest | null): number | string {
+  return !manifest || isParentManifest(manifest) ? 'Multiple' : manifest.content.books_count;
 }
 
 interface RepositoryImportDialogProps {
@@ -65,12 +62,10 @@ export function RepositoryImportDialog({
   const [repositoryManifest, setRepositoryManifest] = useState<RepositoryManifest | null>(null);
   const [selectedTranslations, setSelectedTranslations] = useState<string[]>([]);
   const [importMode, setImportMode] = useState<'full' | 'selective'>('full');
-  const [manifest, setManifest] = useState<any>(null);
-  const [multipleRepositories, setMultipleRepositories] = useState<Array<{
-    path: string;
-    manifest: any;
-    validation: ValidationResult;
-  }> | null>(null);
+  const [manifest, setManifest] = useState<RepositoryManifest | null>(null);
+  const [multipleRepositories, setMultipleRepositories] = useState<
+    Zaphnath.ScannedRepository[] | null
+  >(null);
   const [selectedRepository, setSelectedRepository] = useState<string | null>(null);
   const validationRequestIdRef = useRef(0);
   const importProgressUnsubscribeRef = useRef<(() => void) | null>(null);
@@ -80,16 +75,13 @@ export function RepositoryImportDialog({
     importProgressUnsubscribeRef.current = null;
   }, []);
 
-  const applyManifestState = useCallback((manifestData: any) => {
+  const applyManifestState = useCallback((manifestData: RepositoryManifest) => {
     setManifest(manifestData);
     setRepositoryManifest(manifestData);
 
-    if (
-      (manifestData as any)?.repository?.type === 'parent' &&
-      Array.isArray((manifestData as any)?.translations)
-    ) {
+    if (isParentManifest(manifestData)) {
       setImportMode('full');
-      setSelectedTranslations((manifestData as any).translations.map((t: TranslationInfo) => t.id));
+      setSelectedTranslations(manifestData.translations.map((translation) => translation.id));
       return;
     }
 
@@ -528,8 +520,7 @@ export function RepositoryImportDialog({
 
                 {/* Translation Selection for Parent Repositories */}
                 {validation?.valid &&
-                  repositoryManifest?.repository?.type === 'parent' &&
-                  (repositoryManifest as any).translations && (
+                  isParentManifest(repositoryManifest) && (
                     <div className="space-y-4">
                       <Separator />
                       <div className="space-y-3">
@@ -549,16 +540,13 @@ export function RepositoryImportDialog({
                               onChange={() => {
                                 setImportMode('full');
                                 setSelectedTranslations(
-                                  (repositoryManifest as any).translations.map(
-                                    (t: TranslationInfo) => t.id
-                                  )
+                                  repositoryManifest.translations.map((translation) => translation.id)
                                 );
                               }}
                               className="h-4 w-4"
                             />
                             <label htmlFor="import-all" className="text-sm font-medium">
-                              Import all translations (
-                              {(repositoryManifest as any).translations.length})
+                              Import all translations ({repositoryManifest.translations.length})
                             </label>
                           </div>
 
@@ -579,8 +567,7 @@ export function RepositoryImportDialog({
 
                         {importMode === 'selective' && (
                           <div className="space-y-2 pl-6">
-                            {(repositoryManifest as any).translations.map(
-                              (translation: TranslationInfo) => (
+                            {repositoryManifest.translations.map((translation) => (
                                 <div key={translation.id} className="flex items-center gap-2">
                                   <input
                                     type="checkbox"
@@ -608,12 +595,11 @@ export function RepositoryImportDialog({
                                       {translation.name || 'Unknown Translation'}
                                     </span>
                                     <span className="text-muted-foreground ml-2">
-                                      ({translation.language?.name || 'Unknown Language'})
+                                      ({translation.language.name || 'Unknown Language'})
                                     </span>
                                   </label>
                                 </div>
-                              )
-                            )}
+                              ))}
                           </div>
                         )}
 
@@ -666,13 +652,13 @@ export function RepositoryImportDialog({
                                 <div className="flex gap-4 text-xs text-muted-foreground mt-2">
                                   <span>
                                     Language:{' '}
-                                    {repo.manifest?.repository?.language?.name || 'Unknown'}
+                                    {getManifestLanguageName(repo.manifest)}
                                   </span>
                                   <span>
                                     Version: v{repo.manifest?.repository?.version || 'Unknown'}
                                   </span>
                                   <span>
-                                    Books: {repo.manifest?.content?.books_count || 'Unknown'}
+                                    Books: {getManifestBookCount(repo.manifest)}
                                   </span>
                                 </div>
                                 {!repo.validation.valid && repo.validation.errors.length > 0 && (
@@ -710,9 +696,7 @@ export function RepositoryImportDialog({
                         </div>
                         <div>
                           <span className="text-muted-foreground">Language:</span>
-                          <div className="font-medium">
-                            {manifest.repository?.language?.name || 'Unknown'}
-                          </div>
+                          <div className="font-medium">{getManifestLanguageName(manifest)}</div>
                         </div>
                         <div>
                           <span className="text-muted-foreground">Version:</span>
@@ -722,7 +706,7 @@ export function RepositoryImportDialog({
                         </div>
                         <div>
                           <span className="text-muted-foreground">Books:</span>
-                          <div className="font-medium">{manifest.content?.books_count || 0}</div>
+                          <div className="font-medium">{getManifestBookCount(manifest)}</div>
                         </div>
                       </div>
                       <p className="text-sm text-muted-foreground">
@@ -824,8 +808,18 @@ export function RepositoryImportDialog({
                     ) : (
                       <>
                         <Download className="h-4 w-4 mr-2" />
-                        {repositoryManifest?.repository?.type === 'parent'
-                          ? `Import ${importMode === 'selective' ? selectedTranslations.length : (repositoryManifest as any).translations?.length || 0} Translation${(importMode === 'selective' ? selectedTranslations.length : (repositoryManifest as any).translations?.length || 0) !== 1 ? 's' : ''}`
+                        {isParentManifest(repositoryManifest)
+                          ? `Import ${
+                              importMode === 'selective'
+                                ? selectedTranslations.length
+                                : repositoryManifest.translations.length
+                            } Translation${
+                              (importMode === 'selective'
+                                ? selectedTranslations.length
+                                : repositoryManifest.translations.length) !== 1
+                                ? 's'
+                                : ''
+                            }`
                           : 'Import Repository'}
                       </>
                     )}

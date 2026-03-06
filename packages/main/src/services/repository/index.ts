@@ -97,14 +97,9 @@ export class RepositoryService {
     return this.discoveryService.validateRepository(url);
   }
 
-  public async scanDirectoryForRepositories(directoryPath: string): Promise<{
-    repositories: Array<{
-      path: string;
-      manifest: any;
-      validation: ValidationResult;
-    }>;
-    errors: string[];
-  }> {
+  public async scanDirectoryForRepositories(
+    directoryPath: string
+  ): Promise<Zaphnath.RepositoryScanResult> {
     this.ensureInitialized();
     return this.discoveryService.scanDirectoryForRepositories(directoryPath);
   }

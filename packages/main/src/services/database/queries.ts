@@ -496,7 +496,7 @@ export class DatabaseQueries {
     );
   }
 
-  public getRepositoryTranslations(parentId: string): any[] {
+  public getRepositoryTranslations(parentId: string): Zaphnath.RepositoryTranslationRow[] {
     const stmt = this.db.prepare(`
       SELECT 
         rt.*,
@@ -516,7 +516,7 @@ export class DatabaseQueries {
       WHERE rt.parent_repository_id = ?
       ORDER BY rt.directory_name
     `);
-    return stmt.all(parentId);
+    return stmt.all(parentId) as Zaphnath.RepositoryTranslationRow[];
   }
 
   public deleteRepositoryTranslation(parentId: string, translationId: string): void {

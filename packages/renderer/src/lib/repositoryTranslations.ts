@@ -1,22 +1,12 @@
 import type { Repository, TranslationInfo } from '@/types/store';
 
-export interface TranslationRecord extends Record<string, unknown> {
+export type TranslationRecord = Partial<Zaphnath.RepositoryTranslationRow> & {
   id?: unknown;
   name?: unknown;
-  translation_id?: unknown;
-  translation_name?: unknown;
-  translation_description?: unknown;
   directory?: unknown;
-  directory_name?: unknown;
   language?: unknown;
-  language_code?: unknown;
-  status?: unknown;
-  translation_version?: unknown;
-  created_at?: unknown;
-  updated_at?: unknown;
-  book_count?: unknown;
-  verse_count?: unknown;
-}
+};
+
 type TranslationSource = TranslationRecord | TranslationInfo;
 
 function asString(value: unknown): string | undefined {

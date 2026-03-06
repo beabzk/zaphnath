@@ -301,19 +301,10 @@ export class RepositoryDiscoveryService {
    * Scans a directory for multiple repositories and returns their information
    * This handles the case where users select a parent directory containing multiple translation directories
    */
-  public async scanDirectoryForRepositories(directoryPath: string): Promise<{
-    repositories: Array<{
-      path: string;
-      manifest: ZBRSManifest;
-      validation: ValidationResult;
-    }>;
-    errors: string[];
-  }> {
-    const repositories: Array<{
-      path: string;
-      manifest: ZBRSManifest;
-      validation: ValidationResult;
-    }> = [];
+  public async scanDirectoryForRepositories(
+    directoryPath: string
+  ): Promise<Zaphnath.RepositoryScanResult> {
+    const repositories: Zaphnath.ScannedRepository[] = [];
     const errors: string[] = [];
 
     try {

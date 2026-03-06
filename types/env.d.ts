@@ -70,6 +70,42 @@ declare namespace Zaphnath {
     parent_id?: string;
     book_count?: number;
     verse_count?: number;
+    translation_count?: number;
+  }
+
+  interface RepositoryImportOptions {
+    validate_checksums?: boolean;
+    download_audio?: boolean;
+    overwrite_existing?: boolean;
+    import_type?: 'full' | 'selective' | 'translation';
+    selected_translations?: string[];
+  }
+
+  interface RepositoryTranslationRow {
+    id: string;
+    parent_repository_id: string;
+    translation_id: string;
+    translation_name: string;
+    translation_description?: string | null;
+    translation_version: string;
+    directory_name: string;
+    language_code: string;
+    status?: string;
+    created_at?: string;
+    updated_at?: string;
+    book_count?: number;
+    verse_count?: number;
+  }
+
+  interface ScannedRepository {
+    path: string;
+    manifest: ZBRSManifest;
+    validation: ValidationResult;
+  }
+
+  interface RepositoryScanResult {
+    repositories: ScannedRepository[];
+    errors: string[];
   }
 
   // IPC Communication interfaces
@@ -90,20 +126,13 @@ declare namespace Zaphnath {
   interface RepositoryAPI {
     list: () => Promise<BibleRepository[]>;
     discover: () => Promise<RepositoryIndexEntry[]>;
-    import: (url: string, options?: any) => Promise<ImportResult>;
+    import: (url: string, options?: RepositoryImportOptions) => Promise<ImportResult>;
     onImportProgress: (callback: (progress: ImportProgress) => void) => () => void;
     validate: (url: string) => Promise<ValidationResult>;
     getManifest: (url: string) => Promise<ZBRSManifest>;
     getSources: () => Promise<RepositorySource[]>;
     addSource: (source: RepositorySource) => Promise<boolean>;
-    scanDirectory: (directoryPath: string) => Promise<{
-      repositories: Array<{
-        path: string;
-        manifest: any;
-        validation: ValidationResult;
-      }>;
-      errors: string[];
-    }>;
+    scanDirectory: (directoryPath: string) => Promise<RepositoryScanResult>;
     getBooks: (repositoryId: string) => Promise<BibleBook[]>;
     getChapter: (
       bookId: string,
@@ -113,21 +142,25 @@ declare namespace Zaphnath {
       verses: BibleVerse[];
     }>;
     getParentRepositories: () => Promise<BibleRepository[]>;
-    getTranslations: (parentId: string) => Promise<any[]>;
+    getTranslations: (parentId: string) => Promise<RepositoryTranslationRow[]>;
     delete: (repositoryId: string) => Promise<{ success: boolean }>;
   }
 
+  interface FileSystemDialogOptions {
+    title?: string;
+    defaultPath?: string;
+    buttonLabel?: string;
+    filters?: Array<{ name: string; extensions: string[] }>;
+    properties?: Array<'openFile' | 'openDirectory' | 'multiSelections' | 'showHiddenFiles'>;
+  }
+
+  interface FileSystemDialogResult {
+    canceled: boolean;
+    filePaths: string[];
+  }
+
   interface FileSystemAPI {
-    showOpenDialog: (options?: {
-      title?: string;
-      defaultPath?: string;
-      buttonLabel?: string;
-      filters?: Array<{ name: string; extensions: string[] }>;
-      properties?: Array<'openFile' | 'openDirectory' | 'multiSelections' | 'showHiddenFiles'>;
-    }) => Promise<{
-      canceled: boolean;
-      filePaths: string[];
-    }>;
+    showOpenDialog: (options?: FileSystemDialogOptions) => Promise<FileSystemDialogResult>;
   }
 
   interface UpdaterAPI {
@@ -224,62 +257,106 @@ declare namespace Zaphnath {
     name?: string;
   }
 
-  interface ZBRSManifest {
+  interface ZBRSLanguageInfo {
+    code: string;
+    name: string;
+    direction: 'ltr' | 'rtl';
+    script?: string;
+  }
+
+  interface ZBRSTranslationInfo {
+    type: 'formal' | 'dynamic' | 'paraphrase' | 'interlinear';
+    year: number;
+    copyright: string;
+    license: string;
+    source: string;
+    translators?: string[];
+  }
+
+  interface ZBRSPublisherInfo {
+    name: string;
+    url?: string;
+    contact?: string;
+  }
+
+  interface ZBRSParentRepositoryInfo {
+    id: string;
+    name: string;
+    description: string;
+    version: string;
+    type: 'parent';
+    created_at: string;
+    updated_at: string;
+  }
+
+  interface ZBRSTranslationRepositoryInfo {
+    id: string;
+    name: string;
+    description: string;
+    version: string;
+    language: ZBRSLanguageInfo;
+    translation: ZBRSTranslationInfo;
+    publisher?: ZBRSPublisherInfo;
+    created_at: string;
+    updated_at: string;
+  }
+
+  interface ZBRSContentInfo {
+    books_count: number;
+    testament: {
+      old: number;
+      new: number;
+    };
+    features: {
+      audio: boolean;
+      cross_references: boolean;
+      footnotes: boolean;
+      study_notes: boolean;
+    };
+    books?: Array<{
+      path: string;
+      checksum: string;
+      size_bytes?: number;
+      media_type?: string;
+    }>;
+  }
+
+  interface ZBRSTranslationReference {
+    id: string;
+    name: string;
+    directory: string;
+    language: ZBRSLanguageInfo;
+    status: 'active' | 'inactive' | 'deprecated';
+    checksum: string;
+    size_bytes: number;
+  }
+
+  interface ZBRSParentManifest {
     zbrs_version: string;
-    repository: {
-      id: string;
-      name: string;
-      description: string;
-      version: string;
-      language: {
-        code: string;
-        name: string;
-        direction: 'ltr' | 'rtl';
-        script?: string;
-      };
-      translation: {
-        type: 'formal' | 'dynamic' | 'paraphrase' | 'interlinear';
-        year: number;
-        copyright: string;
-        license: string;
-        source: string;
-        translators?: string[];
-      };
-      publisher: {
-        name: string;
-        url?: string;
-        contact?: string;
-      };
-      created_at: string;
-      updated_at: string;
+    repository: ZBRSParentRepositoryInfo;
+    publisher: ZBRSPublisherInfo;
+    translations: ZBRSTranslationReference[];
+    technical: {
+      encoding: 'UTF-8';
+      compression: 'none' | 'gzip' | 'brotli';
     };
-    content: {
-      books_count: number;
-      testament: {
-        old: number;
-        new: number;
-      };
-      features: {
-        audio: boolean;
-        cross_references: boolean;
-        footnotes: boolean;
-        study_notes: boolean;
-      };
-      books?: Array<{
-        path: string;
-        checksum: string;
-        size_bytes?: number;
-        media_type?: string;
-      }>;
-    };
+    extensions?: Record<string, unknown>;
+  }
+
+  interface ZBRSTranslationManifest {
+    zbrs_version: string;
+    repository: ZBRSTranslationRepositoryInfo;
+    content: ZBRSContentInfo;
     technical: {
       encoding: 'UTF-8';
       compression: 'none' | 'gzip' | 'brotli';
       checksum: string;
       size_bytes: number;
     };
-    extensions?: Record<string, any>;
+    extensions?: Record<string, unknown>;
   }
+
+  type ZBRSManifest = ZBRSParentManifest | ZBRSTranslationManifest;
 }
 
 // Extend Window interface to include Zaphnath APIs

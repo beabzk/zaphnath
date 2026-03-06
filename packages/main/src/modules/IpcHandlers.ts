@@ -1,7 +1,14 @@
-import { ipcMain, dialog, BrowserWindow, type IpcMainInvokeEvent } from 'electron';
+import {
+  ipcMain,
+  dialog,
+  BrowserWindow,
+  type IpcMainInvokeEvent,
+  type OpenDialogOptions,
+} from 'electron';
 import { AppModule } from '../AppModule.js';
 import { DatabaseService } from '../services/database/index.js';
 import { RepositoryService } from '../services/repository/index.js';
+import type { ImportOptions } from '../services/repository/types.js';
 import { telemetryService } from '../services/telemetry/index.js';
 import type { ModuleContext } from '../ModuleContext.js';
 import type { AppInitConfig } from '../AppInitConfig.js';
@@ -225,10 +232,16 @@ export class IpcHandlers implements AppModule {
     });
 
     // Import repository
-    ipcMain.handle('repository:import', async (event, repositoryUrl: string, options?: any) => {
+    ipcMain.handle(
+      'repository:import',
+      async (
+        event,
+        repositoryUrl: string,
+        options?: Zaphnath.RepositoryImportOptions
+      ) => {
       this.assertTrustedIpcSender(event, 'repository:import');
       try {
-        const importOptions = {
+        const importOptions: ImportOptions = {
           repository_url: repositoryUrl,
           validate_checksums: true,
           download_audio: false,
@@ -243,7 +256,8 @@ export class IpcHandlers implements AppModule {
         console.error('Import repository error:', error);
         throw error;
       }
-    });
+      }
+    );
 
     // Validate repository URL
     ipcMain.handle('repository:validate', async (event, url: string) => {
@@ -279,7 +293,7 @@ export class IpcHandlers implements AppModule {
     });
 
     // Add repository source
-    ipcMain.handle('repository:addSource', async (event, source: any) => {
+    ipcMain.handle('repository:addSource', async (event, source: Zaphnath.RepositorySource) => {
       this.assertTrustedIpcSender(event, 'repository:addSource');
       try {
         this.repositoryService.addRepositorySource(source);
@@ -338,14 +352,16 @@ export class IpcHandlers implements AppModule {
 
   private registerFileSystemHandlers(): void {
     // Show open dialog for directory selection
-    ipcMain.handle('filesystem:showOpenDialog', async (event, options: any) => {
+    ipcMain.handle(
+      'filesystem:showOpenDialog',
+      async (event, options?: Zaphnath.FileSystemDialogOptions) => {
       this.assertTrustedIpcSender(event, 'filesystem:showOpenDialog');
       try {
         const focusedWindow = BrowserWindow.getFocusedWindow();
-        const dialogOptions = {
-          properties: ['openDirectory'] as const,
-          title: 'Select Repository Directory',
+        const dialogOptions: OpenDialogOptions = {
           ...options,
+          properties: options?.properties ? [...options.properties] : ['openDirectory'],
+          title: options?.title ?? 'Select Repository Directory',
         };
 
         const result = focusedWindow
@@ -356,7 +372,8 @@ export class IpcHandlers implements AppModule {
         console.error('Show open dialog error:', error);
         throw error;
       }
-    });
+      }
+    );
   }
 
   private registerUpdaterHandlers(): void {

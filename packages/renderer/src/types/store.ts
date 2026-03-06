@@ -208,7 +208,7 @@ export interface RepositoryState {
   loadTranslations: (parentId: string) => Promise<TranslationInfo[]>;
   loadBooks: (repositoryId: string) => Promise<void>;
   loadChapter: (bookId: string, chapterNumber: number) => Promise<void>;
-  importRepository: (url: string, options?: any) => Promise<boolean>;
+  importRepository: (url: string, options?: Zaphnath.RepositoryImportOptions) => Promise<boolean>;
   validateRepository: (url: string) => Promise<ValidationResult>;
 }
 

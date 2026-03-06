@@ -254,9 +254,7 @@ export const useRepositoryStore = create<RepositoryState>()(
 
           try {
             const translations = await repository.getTranslations(parentId);
-            const normalizedTranslations = toTranslationInfoList(
-              translations as Record<string, unknown>[]
-            );
+            const normalizedTranslations = toTranslationInfoList(translations);
             setTranslationsForParent(parentId, normalizedTranslations);
 
             return normalizedTranslations;
@@ -429,7 +427,7 @@ export const useRepositoryStore = create<RepositoryState>()(
           }
         },
 
-        importRepository: async (url: string, options?: any) => {
+        importRepository: async (url: string, options?: Zaphnath.RepositoryImportOptions) => {
           const { setLoading, setError, setImportProgress, loadRepositories } = get();
           let unsubscribeProgress: (() => void) | null = null;
 
@@ -448,10 +446,7 @@ export const useRepositoryStore = create<RepositoryState>()(
               });
             });
 
-            const cleanOptions = { ...options };
-            delete cleanOptions.progress_callback;
-
-            const result = await repository.import(url, cleanOptions);
+            const result = await repository.import(url, options);
 
             if (result?.success) {
               setImportProgress({
@@ -502,12 +497,12 @@ export const useRepositoryStore = create<RepositoryState>()(
             const result = await repository.validate(url);
             const mappedResult: ValidationResult = {
               valid: result.valid,
-              errors: (result.errors || []).map((e: any) => ({
+              errors: (result.errors || []).map((e) => ({
                 code: e.code,
                 message: e.message,
                 severity: e.severity ?? 'error',
               })),
-              warnings: (result.warnings || []).map((w: any) => ({
+              warnings: (result.warnings || []).map((w) => ({
                 code: w.code,
                 message: w.message,
                 severity: 'warning',

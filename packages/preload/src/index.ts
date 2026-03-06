@@ -23,7 +23,8 @@ const database: Zaphnath.DatabaseAPI = {
 const repository: Zaphnath.RepositoryAPI = {
   list: () => ipcRenderer.invoke('repository:list'),
   discover: () => ipcRenderer.invoke('repository:discover'),
-  import: (url: string, options?: any) => ipcRenderer.invoke('repository:import', url, options),
+  import: (url: string, options?: Zaphnath.RepositoryImportOptions) =>
+    ipcRenderer.invoke('repository:import', url, options),
   onImportProgress: (callback) => {
     const listener = (_event: unknown, progress: Zaphnath.ImportProgress) => {
       callback(progress);
@@ -37,7 +38,7 @@ const repository: Zaphnath.RepositoryAPI = {
   validate: (url: string) => ipcRenderer.invoke('repository:validate', url),
   getManifest: (url: string) => ipcRenderer.invoke('repository:getManifest', url),
   getSources: () => ipcRenderer.invoke('repository:getSources'),
-  addSource: (source: any) => ipcRenderer.invoke('repository:addSource', source),
+  addSource: (source: Zaphnath.RepositorySource) => ipcRenderer.invoke('repository:addSource', source),
   scanDirectory: (directoryPath: string) =>
     ipcRenderer.invoke('repository:scanDirectory', directoryPath),
   getBooks: (repositoryId: string) => ipcRenderer.invoke('database:getBooks', repositoryId),
@@ -50,7 +51,8 @@ const repository: Zaphnath.RepositoryAPI = {
 
 // File System API
 const filesystem: Zaphnath.FileSystemAPI = {
-  showOpenDialog: (options?: any) => ipcRenderer.invoke('filesystem:showOpenDialog', options),
+  showOpenDialog: (options?: Zaphnath.FileSystemDialogOptions) =>
+    ipcRenderer.invoke('filesystem:showOpenDialog', options),
 };
 
 // Auto Updater API
