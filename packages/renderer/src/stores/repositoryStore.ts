@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { repository } from '@app/preload';
+import { toRendererBooks, toRendererChapterData } from '@/lib/repositoryContent';
 import {
   createTranslationRepository,
   findTranslationRecordById,
@@ -299,16 +300,7 @@ export const useRepositoryStore = create<RepositoryState>()(
             setError(null);
 
             const books = await repository.getBooks(repositoryId);
-            const mappedBooks = (books || []).map((b: any) => ({
-              id: String(b.id),
-              repository_id: b.repository_id,
-              name: b.name,
-              abbreviation: b.abbreviation,
-              testament: b.testament === 'OT' ? ('old' as const) : ('new' as const),
-              order: b.order,
-              chapter_count: b.chapter_count,
-            }));
-            setBooks(mappedBooks);
+            setBooks(toRendererBooks(books));
           } catch (error) {
             setError({
               hasError: true,
@@ -328,23 +320,11 @@ export const useRepositoryStore = create<RepositoryState>()(
             setError(null);
 
             const chapterData = await repository.getChapter(bookId, chapterNumber);
+            const mappedChapterData = toRendererChapterData(bookId, chapterNumber, chapterData);
 
-            if (chapterData) {
-              const verses = chapterData.verses || [];
-              const mappedChapter = {
-                id: `${bookId}-${chapterNumber}`,
-                book_id: String(bookId),
-                number: chapterNumber,
-                verse_count: verses.length,
-              };
-              const mappedVerses = verses.map((v: any) => ({
-                id: String(v.id),
-                chapter_id: `${v.book_id}-${v.chapter}`,
-                number: v.verse,
-                text: v.text,
-              }));
-              setCurrentChapter(mappedChapter);
-              setVerses(mappedVerses);
+            if (mappedChapterData) {
+              setCurrentChapter(mappedChapterData.chapter);
+              setVerses(mappedChapterData.verses);
             }
           } catch (error) {
             setError({
