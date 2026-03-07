@@ -80,25 +80,58 @@ export async function resolveCurrentRepositorySelection({
     return { kind: 'clear', repository: null };
   }
 
+  const resolvedTranslation = await resolveRepositoryById({
+    repositoryId: activeSelection.id,
+    repositories,
+    loadTranslations,
+    parentId: activeSelection.parent_id,
+    baseRepository: currentRepository || activeSelection,
+  });
+
+  if (resolvedTranslation) {
+    return {
+      kind: 'translation',
+      repository: resolvedTranslation,
+    };
+  }
+
+  return { kind: 'clear', repository: null };
+}
+
+type ResolveRepositoryByIdParams = {
+  repositoryId: string;
+  repositories: Repository[];
+  loadTranslations: (parentId: string) => Promise<TranslationInfo[]>;
+  parentId?: string;
+  baseRepository?: Partial<Repository>;
+};
+
+export async function resolveRepositoryById({
+  repositoryId,
+  repositories,
+  loadTranslations,
+  parentId,
+  baseRepository,
+}: ResolveRepositoryByIdParams): Promise<Repository | null> {
+  const directMatch = repositories.find((repository) => repository.id === repositoryId);
+  if (directMatch) {
+    return directMatch;
+  }
+
   const parentCandidates = repositories.filter(
-    (repository) =>
-      repository.type === 'parent' &&
-      (!activeSelection.parent_id || repository.id === activeSelection.parent_id)
+    (repository) => repository.type === 'parent' && (!parentId || repository.id === parentId)
   );
 
   for (const parent of parentCandidates) {
     const translations = await loadTranslations(parent.id);
-    const translation = translations.find((entry) => entry.id === activeSelection.id);
+    const translation = translations.find((entry) => entry.id === repositoryId);
 
     if (translation) {
-      return {
-        kind: 'translation',
-        repository: createTranslationRepository(parent, translation, {
-          ...(currentRepository || activeSelection),
-        }),
-      };
+      return createTranslationRepository(parent, translation, {
+        ...baseRepository,
+      });
     }
   }
 
-  return { kind: 'clear', repository: null };
+  return null;
 }

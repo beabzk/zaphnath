@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { useRepositoryStore, useReadingStore } from '@/stores';
 import { useSettings } from '@/components/settings/SettingsProvider';
-import { createTranslationRepository } from '@/lib/repositoryTranslations';
+import { resolveRepositoryById } from '@/lib/repositorySelectionState';
 import { VerseContextMenu } from './VerseContextMenu';
 import { ReadingControls, ReadingPreferences, PRESETS } from './ReadingControls';
 import { VerseComparison } from './VerseComparison';
@@ -211,31 +211,14 @@ export function Reader() {
       }
 
       const latestRepositories = useRepositoryStore.getState().repositories;
-      const directRepository = latestRepositories.find((repo) => repo.id === defaultRepositoryId);
+      const resolvedRepository = await resolveRepositoryById({
+        repositoryId: defaultRepositoryId,
+        repositories: latestRepositories,
+        loadTranslations,
+      });
 
-      if (directRepository) {
-        if (!cancelled) {
-          setCurrentRepository(directRepository);
-        }
-        return;
-      }
-
-      const parentRepositories = latestRepositories.filter((repo) => repo.type === 'parent');
-
-      for (const parent of parentRepositories) {
-        const translations = await loadTranslations(parent.id);
-        const translation = translations.find((item) => item.id === defaultRepositoryId) ?? null;
-
-        if (!translation) {
-          continue;
-        }
-
-        if (cancelled) {
-          return;
-        }
-
-        setCurrentRepository(createTranslationRepository(parent, translation));
-        return;
+      if (!cancelled && resolvedRepository) {
+        setCurrentRepository(resolvedRepository);
       }
     };
 
