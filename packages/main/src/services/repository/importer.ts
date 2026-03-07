@@ -1,5 +1,6 @@
 import { DatabaseService } from '../database/index.js';
 import { RepositoryDiscoveryService } from './discovery.js';
+import { RepositoryBookImporter } from './repositoryBookImporter.js';
 import { RepositoryImportContentService } from './importContentService.js';
 import { ZBRSValidator } from './validator.js';
 import { normalizeRepositoryUrl } from './pathUtils.js';
@@ -8,7 +9,6 @@ import type {
   ZBRSParentManifest,
   ZBRSTranslationManifest,
   TranslationReference,
-  ZBRSBook,
   ImportOptions,
   ImportResult,
   ImportProgress,
@@ -40,12 +40,14 @@ export class RepositoryImporter {
   private discoveryService: RepositoryDiscoveryService;
   private validator: ZBRSValidator;
   private contentService: RepositoryImportContentService;
+  private bookImporter: RepositoryBookImporter;
 
   constructor(securityPolicy?: Partial<SecurityPolicy>) {
     this.databaseService = DatabaseService.getInstance();
     this.discoveryService = new RepositoryDiscoveryService(securityPolicy);
     this.validator = new ZBRSValidator(securityPolicy);
     this.contentService = new RepositoryImportContentService();
+    this.bookImporter = new RepositoryBookImporter(this.databaseService, this.contentService);
   }
 
   public async importRepository(options: ImportOptions): Promise<ImportResult> {
@@ -344,7 +346,52 @@ export class RepositoryImporter {
         status: translationStatus,
       });
 
-      const importedCount = await this.importBooks(manifest, options);
+      const importedCount = await this.bookImporter.importBooks(
+        manifest,
+        options.repository_url,
+        (progress) => {
+          const bookImportProgressStart = 60;
+          const bookImportProgressRange = 35;
+
+          if (progress.stage === 'preparing') {
+            this.reportProgress(options, {
+              stage: 'processing',
+              progress: bookImportProgressStart,
+              message: `Preparing to import ${progress.totalBooks} books...`,
+              total_books: progress.totalBooks,
+              processed_books: progress.processedBooks,
+            });
+            return;
+          }
+
+          const normalizedProgress =
+            progress.totalBooks === 0 ? 0 : progress.processedBooks / progress.totalBooks;
+          const mappedProgress = Math.round(
+            bookImportProgressStart + normalizedProgress * bookImportProgressRange
+          );
+
+          if (progress.stage === 'processing') {
+            this.reportProgress(options, {
+              stage: 'processing',
+              progress: mappedProgress,
+              message: `Importing book ${progress.currentBook}...`,
+              current_book: progress.currentBook,
+              total_books: progress.totalBooks,
+              processed_books: progress.processedBooks,
+            });
+            return;
+          }
+
+          this.reportProgress(options, {
+            stage: 'processing',
+            progress: mappedProgress,
+            message: `Imported ${progress.importedCount}/${progress.totalBooks} books`,
+            current_book: progress.currentBook,
+            total_books: progress.totalBooks,
+            processed_books: progress.processedBooks,
+          });
+        }
+      );
       result.books_imported = importedCount;
 
       this.reportProgress(options, {
@@ -492,69 +539,6 @@ export class RepositoryImporter {
       }
     }
     return validation;
-  }
-
-  private async importBooks(
-    manifest: ZBRSTranslationManifest,
-    options: ImportOptions
-  ): Promise<number> {
-    const bookImportProgressStart = 60;
-    const bookImportProgressRange = 35;
-    const baseUrl = this.contentService.normalizeRepositoryBaseUrl(options.repository_url);
-    const bookFiles = await this.contentService.resolveBookFiles(manifest, options.repository_url);
-    let importedCount = 0;
-
-    if (!Array.isArray(bookFiles) || bookFiles.length === 0) {
-      console.error('No book files could be resolved for translation:', manifest.repository.id);
-      throw new Error(
-        'No book files could be resolved. Ensure the translation exposes a books directory (e.g., translation/books/*.json) or provides content.books references.'
-      );
-    }
-
-    this.reportProgress(options, {
-      stage: 'processing',
-      progress: bookImportProgressStart,
-      message: `Preparing to import ${bookFiles.length} books...`,
-      total_books: bookFiles.length,
-      processed_books: 0,
-    });
-
-    for (const [index, bookFile] of bookFiles.entries()) {
-      const bookFileName = bookFile.path;
-      const normalizedProgress = (index + 1) / bookFiles.length;
-      this.reportProgress(options, {
-        stage: 'processing',
-        progress: Math.round(
-          bookImportProgressStart + normalizedProgress * bookImportProgressRange
-        ),
-        message: `Importing book ${bookFileName}...`,
-        current_book: bookFileName,
-        total_books: bookFiles.length,
-        processed_books: index,
-      });
-
-      try {
-        const bookUrl = this.contentService.buildBookUrl(baseUrl, bookFile);
-        const book = (await this.contentService.fetchJsonFromLocation(bookUrl)) as ZBRSBook;
-
-        await this.databaseService.getQueries().importBook(book, manifest.repository.id);
-        importedCount++;
-        this.reportProgress(options, {
-          stage: 'processing',
-          progress: Math.round(
-            bookImportProgressStart + normalizedProgress * bookImportProgressRange
-          ),
-          message: `Imported ${importedCount}/${bookFiles.length} books`,
-          current_book: bookFileName,
-          total_books: bookFiles.length,
-          processed_books: index + 1,
-        });
-      } catch (error) {
-        console.error(`Failed to import book ${bookFileName}:`, error);
-        // Optionally add a warning to the result
-      }
-    }
-    return importedCount;
   }
 
   private reportProgress(options: ImportOptions, progress: ImportProgress): void {
