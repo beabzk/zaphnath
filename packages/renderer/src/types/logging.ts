@@ -2,13 +2,15 @@
 
 export type LogLevel = 'error' | 'warn' | 'info' | 'debug';
 
+export type LogContext = Record<string, unknown>;
+
 export interface LogEntry {
   id: string;
   timestamp: string;
   level: LogLevel;
   message: string;
   category: string;
-  context?: Record<string, any>;
+  context?: LogContext;
   stack?: string;
   userId?: string;
   sessionId: string;
@@ -24,7 +26,7 @@ export interface ErrorInfo {
   componentStack?: string;
   category: ErrorCategory;
   severity: ErrorSeverity;
-  context?: Record<string, any>;
+  context?: LogContext;
   userAgent?: string;
   url?: string;
   userId?: string;
@@ -49,6 +51,8 @@ export type ErrorCategory =
 
 export type ErrorSeverity = 'low' | 'medium' | 'high' | 'critical';
 
+export type LogCategory = ErrorCategory | 'app' | 'debug' | 'general' | 'system' | 'user-action';
+
 export interface PerformanceMetric {
   id: string;
   timestamp: string;
@@ -57,7 +61,7 @@ export interface PerformanceMetric {
   duration: number;
   startTime: number;
   endTime: number;
-  context?: Record<string, any>;
+  context?: LogContext;
   sessionId: string;
   version: string;
 }
@@ -113,8 +117,8 @@ export interface ApplicationState {
   currentRepository?: string;
   currentBook?: string;
   currentChapter?: number;
-  settings: Record<string, any>;
-  storeState: Record<string, any>;
+  settings: LogContext;
+  storeState: LogContext;
 }
 
 export interface UserAction {
@@ -122,7 +126,7 @@ export interface UserAction {
   timestamp: string;
   type: UserActionType;
   target: string;
-  details?: Record<string, any>;
+  details?: LogContext;
 }
 
 export type UserActionType =
@@ -146,9 +150,7 @@ export interface LoggerConfig {
   respectDoNotTrack: boolean;
   maxLogEntries: number;
   remoteEndpoint?: string;
-  categories: {
-    [category: string]: LogLevel;
-  };
+  categories: Partial<Record<LogCategory, LogLevel>>;
 }
 
 export interface ErrorBoundaryState {
@@ -175,10 +177,10 @@ export interface ErrorReportingConfig {
 
 // Logger interface
 export interface Logger {
-  error(message: string, context?: Record<string, any>, category?: string): void;
-  warn(message: string, context?: Record<string, any>, category?: string): void;
-  info(message: string, context?: Record<string, any>, category?: string): void;
-  debug(message: string, context?: Record<string, any>, category?: string): void;
+  error(message: string, context?: LogContext, category?: LogCategory): void;
+  warn(message: string, context?: LogContext, category?: LogCategory): void;
+  info(message: string, context?: LogContext, category?: LogCategory): void;
+  debug(message: string, context?: LogContext, category?: LogCategory): void;
 
   logPerformance(
     metric: Omit<PerformanceMetric, 'id' | 'timestamp' | 'sessionId' | 'version'>
@@ -202,7 +204,7 @@ export interface ErrorReporter {
   reportCrash(crashReport: CrashReport): Promise<void>;
 
   setConfig(config: Partial<ErrorReportingConfig>): void;
-  setUserContext(userId?: string, metadata?: Record<string, any>): void;
+  setUserContext(userId?: string, metadata?: LogContext): void;
 
   generateCrashReport(error: ErrorInfo): Promise<CrashReport>;
 }
@@ -210,21 +212,16 @@ export interface ErrorReporter {
 // Performance monitor interface
 export interface PerformanceMonitor {
   startTiming(name: string, category: PerformanceCategory): string;
-  endTiming(timingId: string, context?: Record<string, any>): PerformanceMetric | null;
+  endTiming(timingId: string, context?: LogContext): PerformanceMetric | null;
 
   measureAsync<T>(
     name: string,
     category: PerformanceCategory,
     fn: () => Promise<T>,
-    context?: Record<string, any>
+    context?: LogContext
   ): Promise<T>;
 
-  measureSync<T>(
-    name: string,
-    category: PerformanceCategory,
-    fn: () => T,
-    context?: Record<string, any>
-  ): T;
+  measureSync<T>(name: string, category: PerformanceCategory, fn: () => T, context?: LogContext): T;
 
   getMetrics(category?: PerformanceCategory): PerformanceMetric[];
   clearMetrics(): void;

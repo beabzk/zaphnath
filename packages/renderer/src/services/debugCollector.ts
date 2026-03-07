@@ -4,6 +4,7 @@ import {
   ApplicationState,
   UserAction,
   LogEntry,
+  LogContext,
   PerformanceMetric,
 } from '@/types/logging';
 import { logger } from './logger';
@@ -11,6 +12,25 @@ import { performanceMonitor } from './performanceMonitor';
 import { useRepositoryStore, useUIStore, useReadingStore } from '@/stores';
 
 const APP_SETTINGS_DB_KEY = 'app_settings';
+
+interface BrowserMemoryInfo {
+  totalJSHeapSize: number;
+  usedJSHeapSize: number;
+}
+
+interface NetworkConnectionInfo {
+  effectiveType?: string;
+  downlink?: number;
+  rtt?: number;
+  saveData?: boolean;
+}
+
+type NavigatorWithConnection = Navigator & {
+  connection?: NetworkConnectionInfo;
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
 
 class DebugCollectorService implements DebugCollector {
   async collectSystemInfo(): Promise<SystemInfo> {
@@ -33,8 +53,10 @@ class DebugCollectorService implements DebugCollector {
   }
 
   private getMemoryInfo(): SystemInfo['memory'] {
-    if ('memory' in performance) {
-      const memory = (performance as any).memory;
+    const browserPerformance = performance as Performance & { memory?: BrowserMemoryInfo };
+
+    if (browserPerformance.memory) {
+      const memory = browserPerformance.memory;
       return {
         total: memory.totalJSHeapSize || 0,
         used: memory.usedJSHeapSize || 0,
@@ -72,11 +94,12 @@ class DebugCollectorService implements DebugCollector {
     const readingState = useReadingStore.getState();
 
     // Get settings from database
-    let settings = {};
+    let settings: LogContext = {};
     try {
       const settingsData = await window.database.getSetting(APP_SETTINGS_DB_KEY);
       if (settingsData) {
-        settings = JSON.parse(settingsData);
+        const parsedSettings = JSON.parse(settingsData) as unknown;
+        settings = isRecord(parsedSettings) ? parsedSettings : { value: parsedSettings };
       }
     } catch (_error) {
       logger.warn(
@@ -192,24 +215,33 @@ class DebugCollectorService implements DebugCollector {
   // Additional utility methods
   async collectNetworkInfo(): Promise<{
     online: boolean;
-    connection?: any;
+    connection?: NetworkConnectionInfo;
     effectiveType?: string;
     downlink?: number;
     rtt?: number;
   }> {
-    const networkInfo: any = {
+    const networkInfo: {
+      online: boolean;
+      connection?: NetworkConnectionInfo;
+      effectiveType?: string;
+      downlink?: number;
+      rtt?: number;
+    } = {
       online: navigator.onLine,
     };
 
     // Get network connection info if available
-    if ('connection' in navigator) {
-      const connection = (navigator as any).connection;
+    const navigatorWithConnection = navigator as NavigatorWithConnection;
+    if (navigatorWithConnection.connection) {
       networkInfo.connection = {
-        effectiveType: connection.effectiveType,
-        downlink: connection.downlink,
-        rtt: connection.rtt,
-        saveData: connection.saveData,
+        effectiveType: navigatorWithConnection.connection.effectiveType,
+        downlink: navigatorWithConnection.connection.downlink,
+        rtt: navigatorWithConnection.connection.rtt,
+        saveData: navigatorWithConnection.connection.saveData,
       };
+      networkInfo.effectiveType = networkInfo.connection.effectiveType;
+      networkInfo.downlink = networkInfo.connection.downlink;
+      networkInfo.rtt = networkInfo.connection.rtt;
     }
 
     return networkInfo;

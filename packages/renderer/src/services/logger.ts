@@ -6,8 +6,27 @@ import {
   PerformanceMetric,
   UserAction,
   ErrorInfo,
+  ErrorCategory,
+  LogCategory,
+  LogContext,
 } from '@/types/logging';
 import { getAppVersion } from '@/lib/version';
+
+const errorCategories: ErrorCategory[] = [
+  'ui',
+  'api',
+  'database',
+  'repository',
+  'import',
+  'validation',
+  'performance',
+  'network',
+  'storage',
+  'unknown',
+];
+
+const toErrorCategory = (category: LogCategory): ErrorCategory =>
+  errorCategories.includes(category as ErrorCategory) ? (category as ErrorCategory) : 'unknown';
 
 class LoggerService implements Logger {
   private config: LoggerConfig = {
@@ -111,7 +130,7 @@ class LoggerService implements Logger {
     return !this.isDoNotTrackEnabled();
   }
 
-  private shouldLog(level: LogLevel, category?: string): boolean {
+  private shouldLog(level: LogLevel, category?: LogCategory): boolean {
     if (!this.config.enabled) {
       return false;
     }
@@ -135,8 +154,8 @@ class LoggerService implements Logger {
   private createLogEntry(
     level: LogLevel,
     message: string,
-    context?: Record<string, any>,
-    category: string = 'general'
+    context?: LogContext,
+    category: LogCategory = 'general'
   ): LogEntry {
     const entry: LogEntry = {
       id: this.generateId(),
@@ -196,7 +215,7 @@ class LoggerService implements Logger {
   }
 
   // Public logging methods
-  error(message: string, context?: Record<string, any>, category: string = 'general'): void {
+  error(message: string, context?: LogContext, category: LogCategory = 'general'): void {
     if (!this.shouldLog('error', category)) return;
 
     const entry = this.createLogEntry('error', message, context, category);
@@ -208,7 +227,7 @@ class LoggerService implements Logger {
       timestamp: entry.timestamp,
       message,
       stack: entry.stack,
-      category: category as any,
+      category: toErrorCategory(category),
       severity: 'medium',
       context,
       sessionId: this.sessionId,
@@ -223,17 +242,17 @@ class LoggerService implements Logger {
     }
   }
 
-  warn(message: string, context?: Record<string, any>, category: string = 'general'): void {
+  warn(message: string, context?: LogContext, category: LogCategory = 'general'): void {
     if (!this.shouldLog('warn', category)) return;
     this.addLogEntry(this.createLogEntry('warn', message, context, category));
   }
 
-  info(message: string, context?: Record<string, any>, category: string = 'general'): void {
+  info(message: string, context?: LogContext, category: LogCategory = 'general'): void {
     if (!this.shouldLog('info', category)) return;
     this.addLogEntry(this.createLogEntry('info', message, context, category));
   }
 
-  debug(message: string, context?: Record<string, any>, category: string = 'general'): void {
+  debug(message: string, context?: LogContext, category: LogCategory = 'general'): void {
     if (!this.shouldLog('debug', category)) return;
     this.addLogEntry(this.createLogEntry('debug', message, context, category));
   }

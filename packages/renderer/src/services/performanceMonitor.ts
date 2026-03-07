@@ -1,5 +1,31 @@
-import { PerformanceMonitor, PerformanceMetric, PerformanceCategory } from '@/types/logging';
+import {
+  LogContext,
+  PerformanceMonitor,
+  PerformanceMetric,
+  PerformanceCategory,
+} from '@/types/logging';
 import { logger } from './logger';
+
+interface PerformanceResourceSizeEntry extends PerformanceEntry {
+  transferSize?: number;
+  decodedBodySize?: number;
+}
+
+interface BrowserMemoryInfo {
+  totalJSHeapSize: number;
+  usedJSHeapSize: number;
+}
+
+const performanceCategories: Record<PerformanceCategory, number> = {
+  'page-load': 0,
+  'component-render': 0,
+  'api-call': 0,
+  'database-query': 0,
+  'import-operation': 0,
+  search: 0,
+  navigation: 0,
+  'user-interaction': 0,
+};
 
 interface ActiveTiming {
   id: string;
@@ -72,6 +98,7 @@ class PerformanceMonitorService implements PerformanceMonitor {
         break;
     }
 
+    const resourceEntry = entry as PerformanceResourceSizeEntry;
     const metric: PerformanceMetric = {
       id: this.generateId(),
       timestamp: new Date().toISOString(),
@@ -82,8 +109,8 @@ class PerformanceMonitorService implements PerformanceMonitor {
       endTime: entry.startTime + entry.duration,
       context: {
         entryType: entry.entryType,
-        transferSize: (entry as any).transferSize,
-        decodedBodySize: (entry as any).decodedBodySize,
+        transferSize: resourceEntry.transferSize,
+        decodedBodySize: resourceEntry.decodedBodySize,
       },
       sessionId: logger.getSessionId(),
       version: logger.getVersion(),
@@ -154,7 +181,7 @@ class PerformanceMonitorService implements PerformanceMonitor {
     return id;
   }
 
-  endTiming(timingId: string, context?: Record<string, any>): PerformanceMetric | null {
+  endTiming(timingId: string, context?: LogContext): PerformanceMetric | null {
     if (!this.enabled || !timingId) {
       return null;
     }
@@ -215,7 +242,7 @@ class PerformanceMonitorService implements PerformanceMonitor {
     name: string,
     category: PerformanceCategory,
     fn: () => Promise<T>,
-    context?: Record<string, any>
+    context?: LogContext
   ): Promise<T> {
     const timingId = this.startTiming(name, category);
 
@@ -237,7 +264,7 @@ class PerformanceMonitorService implements PerformanceMonitor {
     name: string,
     category: PerformanceCategory,
     fn: () => T,
-    context?: Record<string, any>
+    context?: LogContext
   ): T {
     const timingId = this.startTiming(name, category);
 
@@ -328,7 +355,7 @@ class PerformanceMonitorService implements PerformanceMonitor {
     averageDuration: number;
     slowOperations: number;
   } {
-    const categories: Record<PerformanceCategory, number> = {} as any;
+    const categories = { ...performanceCategories };
     let totalDuration = 0;
 
     for (const metric of this.metrics) {
@@ -350,8 +377,10 @@ class PerformanceMonitorService implements PerformanceMonitor {
     total: number;
     percentage: number;
   } | null {
-    if ('memory' in performance) {
-      const memory = (performance as any).memory;
+    const browserPerformance = performance as Performance & { memory?: BrowserMemoryInfo };
+
+    if (browserPerformance.memory) {
+      const memory = browserPerformance.memory;
       return {
         used: memory.usedJSHeapSize,
         total: memory.totalJSHeapSize,

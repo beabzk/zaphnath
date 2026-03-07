@@ -1,5 +1,5 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { ErrorBoundaryState, ErrorInfo as LogErrorInfo } from '@/types/logging';
+import { ErrorBoundaryState, ErrorInfo as LogErrorInfo, LogContext } from '@/types/logging';
 import { logger } from '@/services/logger';
 import { captureRendererException } from '@/services/sentry';
 import { ErrorFallback } from './ErrorFallback';
@@ -43,6 +43,19 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    const boundaryContext: LogContext = {
+      boundaryName: this.name,
+      retryCount: this.state.retryCount,
+      props: this.props.isolate
+        ? {}
+        : {
+            isolate: this.props.isolate,
+            name: this.props.name,
+            hasFallback: Boolean(this.props.fallback),
+            hasOnError: Boolean(this.props.onError),
+          },
+    };
+
     const logErrorInfo: LogErrorInfo = {
       id: `error-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       timestamp: new Date().toISOString(),
@@ -51,11 +64,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       componentStack: errorInfo.componentStack || undefined,
       category: 'ui',
       severity: 'high',
-      context: {
-        boundaryName: this.name,
-        retryCount: this.state.retryCount,
-        props: this.props.isolate ? {} : this.props,
-      },
+      context: boundaryContext,
       sessionId: logger.getSessionId(),
       version: logger.getVersion(),
       userAgent: navigator.userAgent,
@@ -184,7 +193,7 @@ export function withErrorBoundary<P extends object>(
 // Hook for error boundary context
 export function useErrorHandler() {
   return {
-    reportError: (error: Error, context?: Record<string, any>) => {
+    reportError: (error: Error, context?: LogContext) => {
       logger.error(
         'Manual error report',
         {
@@ -196,11 +205,11 @@ export function useErrorHandler() {
       );
     },
 
-    reportWarning: (message: string, context?: Record<string, any>) => {
+    reportWarning: (message: string, context?: LogContext) => {
       logger.warn(message, context, 'ui');
     },
 
-    reportInfo: (message: string, context?: Record<string, any>) => {
+    reportInfo: (message: string, context?: LogContext) => {
       logger.info(message, context, 'ui');
     },
   };

@@ -98,7 +98,7 @@ export function StoreDebugger({ isVisible = false }: StoreDebuggerProps) {
     sectionKey,
   }: {
     title: string;
-    data: any;
+    data: unknown;
     sectionKey: string;
   }) => {
     const isExpanded = expandedSections[sectionKey];

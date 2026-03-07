@@ -120,11 +120,11 @@ export const isCrashReportingEnabled = (): boolean => crashReportingEnabled;
 
 export const captureRendererException = (
   error: unknown,
-  captureContext?: Record<string, unknown>
+  captureContext?: Parameters<typeof Sentry.captureException>[1]
 ): void => {
   if (!isCrashReportingEnabled()) {
     return;
   }
 
-  Sentry.captureException(error, captureContext as any);
+  Sentry.captureException(error, captureContext);
 };
