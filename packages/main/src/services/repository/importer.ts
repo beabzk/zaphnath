@@ -3,6 +3,7 @@ import { RepositoryDiscoveryService } from './discovery.js';
 import { RepositoryBookImporter } from './repositoryBookImporter.js';
 import { RepositoryChecksumValidator } from './repositoryChecksumValidator.js';
 import { RepositoryImportContentService } from './importContentService.js';
+import { RepositoryImportPersistence } from './repositoryImportPersistence.js';
 import { ZBRSValidator } from './validator.js';
 import { normalizeRepositoryUrl } from './pathUtils.js';
 import type {
@@ -43,6 +44,7 @@ export class RepositoryImporter {
   private contentService: RepositoryImportContentService;
   private bookImporter: RepositoryBookImporter;
   private checksumValidator: RepositoryChecksumValidator;
+  private persistence: RepositoryImportPersistence;
 
   constructor(securityPolicy?: Partial<SecurityPolicy>) {
     this.databaseService = DatabaseService.getInstance();
@@ -56,6 +58,7 @@ export class RepositoryImporter {
       createValidationError,
       toErrorMessage
     );
+    this.persistence = new RepositoryImportPersistence(this.databaseService);
   }
 
   public async importRepository(options: ImportOptions): Promise<ImportResult> {
@@ -141,23 +144,7 @@ export class RepositoryImporter {
       }
       result.warnings.push(...validation.warnings);
 
-      await this.createOrUpdateRepositoryRecord({
-        id: manifest.repository.id,
-        name: manifest.repository.name,
-        description: manifest.repository.description,
-        version: manifest.repository.version,
-        type: 'parent',
-        parent_id: null,
-        language: null, // Parent repos don't have a single language
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        imported_at: new Date().toISOString(),
-        metadata: JSON.stringify({
-          publisher: manifest.publisher,
-          technical: manifest.technical,
-          extensions: manifest.extensions || {},
-        }),
-      });
+      this.persistence.upsertParentRepository(manifest);
 
       // Clean base URL for translations
       const baseUrl = this.contentService.normalizeRepositoryBaseUrl(options.repository_url);
@@ -293,23 +280,7 @@ export class RepositoryImporter {
     // Standalone translation imports are represented as a single parent repository.
     const record: RepositoryDbRecord | null = parentId
       ? null
-      : {
-          id: manifest.repository.id,
-          name: manifest.repository.name,
-          description: manifest.repository.description,
-          version: manifest.repository.version,
-          language: manifest.repository.language.code,
-          type: 'parent',
-          parent_id: null,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          imported_at: new Date().toISOString(),
-          metadata: JSON.stringify({
-            technical: manifest.technical,
-            content: manifest.content,
-            extensions: manifest.extensions || {},
-          }),
-        };
+      : this.persistence.createStandaloneTranslationRepository(manifest);
 
     return [validation, record];
   }
@@ -345,22 +316,17 @@ export class RepositoryImporter {
       }
 
       if (record) {
-        await this.createOrUpdateRepositoryRecord(record);
+        this.persistence.upsertRepository(record);
       }
 
       const translationParentId = parentId ?? manifest.repository.id;
       const translationDirectory = directoryName ?? '.';
 
-      this.databaseService.getQueries().createRepositoryTranslation({
-        id: `${translationParentId}:${manifest.repository.id}`,
-        parent_repository_id: translationParentId,
-        translation_id: manifest.repository.id,
-        translation_name: manifest.repository.name,
-        translation_description: manifest.repository.description,
-        translation_version: manifest.repository.version,
-        directory_name: translationDirectory,
-        language_code: manifest.repository.language.code,
-        status: translationStatus,
+      this.persistence.registerTranslation({
+        parentId: translationParentId,
+        manifest,
+        directoryName: translationDirectory,
+        translationStatus,
       });
 
       const importedCount = await this.bookImporter.importBooks(
@@ -481,10 +447,6 @@ export class RepositoryImporter {
         duration_ms: 0,
       };
     }
-  }
-
-  private createOrUpdateRepositoryRecord(record: RepositoryDbRecord) {
-    this.databaseService.getQueries().upsertRepository(record);
   }
 
   private reportProgress(options: ImportOptions, progress: ImportProgress): void {
