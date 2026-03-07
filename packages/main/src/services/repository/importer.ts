@@ -5,17 +5,14 @@ import { RepositoryChecksumValidator } from './repositoryChecksumValidator.js';
 import { RepositoryImportContentService } from './importContentService.js';
 import { RepositoryImportPersistence } from './repositoryImportPersistence.js';
 import { RepositoryParentImportPlanner } from './repositoryParentImportPlanner.js';
+import { RepositoryTranslationImporter } from './repositoryTranslationImporter.js';
 import { ZBRSValidator } from './validator.js';
 import { normalizeRepositoryUrl } from './pathUtils.js';
 import type {
-  RepositoryDbRecord,
   ZBRSParentManifest,
-  ZBRSTranslationManifest,
-  TranslationReference,
   ImportOptions,
   ImportResult,
   ImportProgress,
-  ValidationResult,
   SecurityPolicy,
   ValidationError,
 } from './types.js';
@@ -39,29 +36,36 @@ const toErrorMessage = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
 
 export class RepositoryImporter {
-  private databaseService: DatabaseService;
   private discoveryService: RepositoryDiscoveryService;
   private validator: ZBRSValidator;
   private contentService: RepositoryImportContentService;
-  private bookImporter: RepositoryBookImporter;
-  private checksumValidator: RepositoryChecksumValidator;
   private persistence: RepositoryImportPersistence;
   private parentImportPlanner: RepositoryParentImportPlanner;
+  private translationImporter: RepositoryTranslationImporter;
 
   constructor(securityPolicy?: Partial<SecurityPolicy>) {
-    this.databaseService = DatabaseService.getInstance();
+    const databaseService = DatabaseService.getInstance();
     this.discoveryService = new RepositoryDiscoveryService(securityPolicy);
     this.validator = new ZBRSValidator(securityPolicy);
     this.contentService = new RepositoryImportContentService();
-    this.bookImporter = new RepositoryBookImporter(this.databaseService, this.contentService);
-    this.checksumValidator = new RepositoryChecksumValidator(
+    const bookImporter = new RepositoryBookImporter(databaseService, this.contentService);
+    const checksumValidator = new RepositoryChecksumValidator(
       this.validator,
       this.contentService,
       createValidationError,
       toErrorMessage
     );
-    this.persistence = new RepositoryImportPersistence(this.databaseService);
+    this.persistence = new RepositoryImportPersistence(databaseService);
     this.parentImportPlanner = new RepositoryParentImportPlanner(this.validator);
+    this.translationImporter = new RepositoryTranslationImporter({
+      bookImporter,
+      checksumValidator,
+      createValidationError,
+      discoveryService: this.discoveryService,
+      persistence: this.persistence,
+      reportProgress: (options, progress) => this.reportProgress(options, progress),
+      toErrorMessage,
+    });
   }
 
   public async importRepository(options: ImportOptions): Promise<ImportResult> {
@@ -94,7 +98,7 @@ export class RepositoryImporter {
       if (isParentManifest(manifest)) {
         return await this.importParentRepository(manifest, normalizedOptions);
       } else if (isTranslationManifest(manifest)) {
-        return await this.importTranslation(manifest, normalizedOptions);
+        return await this.translationImporter.importTranslation(manifest, normalizedOptions);
       } else {
         result.errors.push(
           createValidationError('unknown-manifest-type', 'Unknown manifest type - cannot import')
@@ -225,194 +229,18 @@ export class RepositoryImporter {
     return result;
   }
 
-  private async validateAndPrepareTranslation(
-    manifest: ZBRSTranslationManifest,
-    options: ImportOptions,
-    parentId: string | null
-  ): Promise<[ValidationResult, RepositoryDbRecord | null]> {
-    const validation = await this.checksumValidator.validateTranslationImport(
-      manifest,
-      {
-        repositoryUrl: options.repository_url,
-        validateChecksums: options.validate_checksums,
-      },
-      (progress) => {
-        this.reportProgress(options, progress);
-      }
-    );
-    if (!validation.valid) return [validation, null];
-
-    // Parent imports store translation metadata in repository_translations only.
-    // Standalone translation imports are represented as a single parent repository.
-    const record: RepositoryDbRecord | null = parentId
-      ? null
-      : this.persistence.createStandaloneTranslationRepository(manifest);
-
-    return [validation, record];
-  }
-
-  public async importTranslation(
-    manifest: ZBRSTranslationManifest,
-    options: ImportOptions,
-    parentId: string | null = null,
-    directoryName: string | null = null,
-    translationStatus: 'active' | 'inactive' | 'deprecated' = 'active'
-  ): Promise<ImportResult> {
-    const startTime = Date.now();
-    const result: ImportResult = {
-      success: false,
-      repository_id: manifest.repository.id,
-      books_imported: 0,
-      errors: [],
-      warnings: [],
-      duration_ms: 0,
-    };
-
-    try {
-      const [validation, record] = await this.validateAndPrepareTranslation(
-        manifest,
-        options,
-        parentId
-      );
-
-      result.warnings.push(...validation.warnings);
-      if (!validation.valid) {
-        result.errors.push(...validation.errors);
-        return result;
-      }
-
-      if (record) {
-        this.persistence.upsertRepository(record);
-      }
-
-      const translationParentId = parentId ?? manifest.repository.id;
-      const translationDirectory = directoryName ?? '.';
-
-      this.persistence.registerTranslation({
-        parentId: translationParentId,
-        manifest,
-        directoryName: translationDirectory,
-        translationStatus,
-      });
-
-      const importedCount = await this.bookImporter.importBooks(
-        manifest,
-        options.repository_url,
-        (progress) => {
-          const bookImportProgressStart = 60;
-          const bookImportProgressRange = 35;
-
-          if (progress.stage === 'preparing') {
-            this.reportProgress(options, {
-              stage: 'processing',
-              progress: bookImportProgressStart,
-              message: `Preparing to import ${progress.totalBooks} books...`,
-              total_books: progress.totalBooks,
-              processed_books: progress.processedBooks,
-            });
-            return;
-          }
-
-          const normalizedProgress =
-            progress.totalBooks === 0 ? 0 : progress.processedBooks / progress.totalBooks;
-          const mappedProgress = Math.round(
-            bookImportProgressStart + normalizedProgress * bookImportProgressRange
-          );
-
-          if (progress.stage === 'processing') {
-            this.reportProgress(options, {
-              stage: 'processing',
-              progress: mappedProgress,
-              message: `Importing book ${progress.currentBook}...`,
-              current_book: progress.currentBook,
-              total_books: progress.totalBooks,
-              processed_books: progress.processedBooks,
-            });
-            return;
-          }
-
-          this.reportProgress(options, {
-            stage: 'processing',
-            progress: mappedProgress,
-            message: `Imported ${progress.importedCount}/${progress.totalBooks} books`,
-            current_book: progress.currentBook,
-            total_books: progress.totalBooks,
-            processed_books: progress.processedBooks,
-          });
-        }
-      );
-      result.books_imported = importedCount;
-
-      this.reportProgress(options, {
-        stage: 'complete',
-        progress: 100,
-        message: `Import complete! ${importedCount} books imported.`,
-      });
-
-      result.success = true;
-    } catch (error) {
-      this.reportProgress(options, {
-        stage: 'error',
-        progress: 100,
-        message: `Import failed: ${toErrorMessage(error)}`,
-      });
-      result.errors.push(
-        createValidationError(
-          'translation-import-failed',
-          `Import failed: ${toErrorMessage(error)}`
-        )
-      );
-    } finally {
-      result.duration_ms = Date.now() - startTime;
-    }
-    return result;
-  }
-
   private async importTranslationFromParent(
     baseUrl: string,
-    translation: TranslationReference,
+    translation: ZBRSParentManifest['translations'][number],
     parentId: string,
     options: ImportOptions
   ): Promise<ImportResult> {
-    const translationUrl =
-      (baseUrl.endsWith('/') ? baseUrl : baseUrl + '/') + translation.directory;
-
-    try {
-      const manifest = await this.discoveryService.fetchRepositoryManifest(translationUrl);
-
-      if (!isTranslationManifest(manifest)) {
-        throw new Error(
-          `Expected a translation manifest for ${translation.name}, but found a different type.`
-        );
-      }
-
-      return this.importTranslation(
-        manifest,
-        { ...options, repository_url: translationUrl },
-        parentId,
-        translation.directory,
-        translation.status
-      );
-    } catch (error) {
-      this.reportProgress(options, {
-        stage: 'error',
-        progress: 100,
-        message: `Failed to import translation ${translation.name}: ${toErrorMessage(error)}`,
-      });
-      return {
-        success: false,
-        repository_id: translation.id,
-        books_imported: 0,
-        errors: [
-          createValidationError(
-            'fetch-translation-failed',
-            `Failed to import translation ${translation.name}: ${toErrorMessage(error)}`
-          ),
-        ],
-        warnings: [],
-        duration_ms: 0,
-      };
-    }
+    return this.translationImporter.importTranslationFromParent(
+      baseUrl,
+      translation,
+      parentId,
+      options
+    );
   }
 
   private reportProgress(options: ImportOptions, progress: ImportProgress): void {
