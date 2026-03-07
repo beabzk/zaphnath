@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useRepositoryStore } from '@/stores';
 import { createTranslationRepository } from '@/lib/repositoryTranslations';
+import { useRepositoryListTranslations } from './useRepositoryListTranslations';
 import type { Repository as BaseRepository } from '@/types/store';
 
 interface Repository extends BaseRepository {
@@ -58,16 +59,19 @@ export function RepositoryList({
   onRepositorySelect,
   onRepositoryDelete,
 }: RepositoryListProps) {
-  const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set());
-  const [translationsLoadingByParent, setTranslationsLoadingByParent] = useState<
-    Record<string, boolean>
-  >({});
-  const [translationErrorByParent, setTranslationErrorByParent] = useState<Record<string, string>>(
-    {}
-  );
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const translationsByParent = useRepositoryStore((state) => state.translationsByParent);
   const loadTranslations = useRepositoryStore((state) => state.loadTranslations);
+  const {
+    expandedParents,
+    translationsLoadingByParent,
+    translationErrorByParent,
+    toggleParentExpansion,
+  } = useRepositoryListTranslations({
+    repositories,
+    translationsByParent,
+    loadTranslations,
+  });
 
   const filteredRepositories = useMemo(() => {
     const baseRepositories = repositories.filter((repo) => {
@@ -88,80 +92,6 @@ export function RepositoryList({
       };
     });
   }, [repositories, translationsByParent]);
-
-  const loadTranslationsForParent = useCallback(
-    async (parentId: string) => {
-      if (translationsByParent[parentId] || translationsLoadingByParent[parentId]) {
-        return;
-      }
-
-      setTranslationsLoadingByParent((prev) => ({ ...prev, [parentId]: true }));
-      setTranslationErrorByParent((prev) => {
-        const next = { ...prev };
-        delete next[parentId];
-        return next;
-      });
-
-      try {
-        await loadTranslations(parentId);
-      } catch (translationError) {
-        console.error(`Failed to fetch translations for ${parentId}:`, translationError);
-        setTranslationErrorByParent((prev) => ({
-          ...prev,
-          [parentId]:
-            translationError instanceof Error
-              ? translationError.message
-              : 'Failed to load translations',
-        }));
-      } finally {
-        setTranslationsLoadingByParent((prev) => ({ ...prev, [parentId]: false }));
-      }
-    },
-    [loadTranslations, translationsByParent, translationsLoadingByParent]
-  );
-
-  useEffect(() => {
-    const activeParentIds = new Set(
-      repositories.filter((repo) => repo.type === 'parent').map((repo) => repo.id)
-    );
-
-    setExpandedParents((prev) => {
-      const filtered = new Set([...prev].filter((id) => activeParentIds.has(id)));
-      return filtered.size === prev.size ? prev : filtered;
-    });
-
-    setTranslationsLoadingByParent((prev) =>
-      Object.fromEntries(Object.entries(prev).filter(([id]) => activeParentIds.has(id)))
-    );
-
-    setTranslationErrorByParent((prev) =>
-      Object.fromEntries(Object.entries(prev).filter(([id]) => activeParentIds.has(id)))
-    );
-  }, [repositories]);
-
-  useEffect(() => {
-    expandedParents.forEach((parentId) => {
-      void loadTranslationsForParent(parentId);
-    });
-  }, [expandedParents, loadTranslationsForParent]);
-
-  const toggleParentExpansion = (parentId: string) => {
-    const shouldExpand = !expandedParents.has(parentId);
-
-    setExpandedParents((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(parentId)) {
-        newSet.delete(parentId);
-      } else {
-        newSet.add(parentId);
-      }
-      return newSet;
-    });
-
-    if (shouldExpand) {
-      void loadTranslationsForParent(parentId);
-    }
-  };
 
   useEffect(() => {
     if (!deleteTarget) {
