@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useStoreDebug } from '@/stores';
+import { useDebugToolsEnabled } from './useDebugToolsEnabled';
 import { Bug, Eye, EyeOff, Download, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
 
 interface StoreDebuggerProps {
@@ -273,10 +274,8 @@ export function StoreDebugger({ isVisible = false }: StoreDebuggerProps) {
 
 // Development-only wrapper
 export function StoreDebuggerWrapper() {
-  // Only show in development mode
-  const isDevelopment = process.env.NODE_ENV === 'development';
-
-  if (!isDevelopment) {
+  const debugToolsEnabled = useDebugToolsEnabled();
+  if (!debugToolsEnabled) {
     return null;
   }
 

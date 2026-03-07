@@ -2,6 +2,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
+import { useDebugToolsEnabled } from '@/components/debug/useDebugToolsEnabled';
 import { cn } from '@/lib/utils';
 import { useNavigation, type AppView } from './Navigation';
 import { useSidebar } from '@/stores';
@@ -41,11 +42,12 @@ const studyItems: NavItem[] = [
 
 export function Sidebar() {
   const { currentView, setCurrentView } = useNavigation();
+  const debugToolsEnabled = useDebugToolsEnabled();
   const { isOpen, close, width } = useSidebar();
   const systemItems: NavItem[] = [
     { icon: Download, label: 'Downloads', view: 'downloads' },
     { icon: Settings, label: 'Settings', view: 'settings' },
-    ...(import.meta.env.DEV ? [{ icon: Bug, label: 'Debug', view: 'debug' as AppView }] : []),
+    ...(debugToolsEnabled ? [{ icon: Bug, label: 'Debug', view: 'debug' as AppView }] : []),
   ];
 
   const NavSection = ({ title, items }: { title: string; items: NavItem[] }) => (

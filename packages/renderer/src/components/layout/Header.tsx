@@ -2,6 +2,7 @@ import type { ComponentType } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ThemeToggleDropdown } from '@/components/theme/ThemeToggleDropdown';
+import { useDebugToolsEnabled } from '@/components/debug/useDebugToolsEnabled';
 import { useNavigation, getViewTitle, type AppView } from './Navigation';
 import {
   BookOpen,
@@ -38,12 +39,13 @@ const baseWorkspaceTabs: WorkspaceTab[] = [
 
 export function Header() {
   const { currentView, setCurrentView } = useNavigation();
+  const debugToolsEnabled = useDebugToolsEnabled();
   const platform = getDesktopPlatform();
   const isMac = platform === 'macos';
   const isWindows = platform === 'windows';
   const workspaceTabs = [
     ...baseWorkspaceTabs,
-    ...(import.meta.env.DEV ? ([{ view: 'debug', label: 'Debug', icon: Bug }] as const) : []),
+    ...(debugToolsEnabled ? ([{ view: 'debug', label: 'Debug', icon: Bug }] as const) : []),
   ];
 
   return (

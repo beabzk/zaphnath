@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { RepositoryManagement } from '@/components/repository/RepositoryManagement';
 import { SettingsInterface } from '@/components/settings/SettingsInterface';
 import { ErrorReportingPanel } from '@/components/debug/ErrorReportingPanel';
+import { useDebugToolsEnabled } from '@/components/debug/useDebugToolsEnabled';
 import { SearchInterface } from '@/components/search/SearchInterface';
 import { BookmarksView as BookmarksViewComponent } from '@/components/bookmarks/BookmarksView';
 import { NotesView as NotesViewComponent } from '@/components/notes/NotesView';
@@ -80,11 +81,13 @@ function DebugView() {
 
 export function ViewRouter() {
   const { currentView, goBack, canGoBack } = useNavigation();
-  const isReaderView = currentView === 'reader';
+  const debugToolsEnabled = useDebugToolsEnabled();
+  const effectiveView = currentView === 'debug' && !debugToolsEnabled ? 'settings' : currentView;
+  const isReaderView = effectiveView === 'reader';
   const platformLabel = getPlatformDisplayName();
 
   const renderView = () => {
-    switch (currentView) {
+    switch (effectiveView) {
       case 'reader':
         return <ReaderView />;
       case 'repositories':
@@ -120,7 +123,9 @@ export function ViewRouter() {
                 <ArrowLeft className="h-4 w-4" />
               </Button>
             )}
-            <h2 className="text-base font-semibold tracking-tight">{getViewTitle(currentView)}</h2>
+            <h2 className="text-base font-semibold tracking-tight">
+              {getViewTitle(effectiveView)}
+            </h2>
           </div>
           <div className="hidden items-center gap-1 text-xs text-muted-foreground sm:flex">
             <PanelTopClose className="h-3.5 w-3.5" />
