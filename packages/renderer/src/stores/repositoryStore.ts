@@ -1,14 +1,9 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import {
-  mergeRepositoriesWithTranslations,
-  toRepositorySelection,
-} from '@/lib/repositorySelectionState';
-import {
   RepositoryState,
   Repository,
   RepositorySelection,
-  TranslationInfo,
   Book,
   Chapter,
   Verse,
@@ -17,68 +12,36 @@ import {
   ValidationResult,
 } from '@/types/store';
 import { createRepositoryStoreAsyncActions } from './repositoryStoreAsyncActions';
-
-type RepositoryStorePersistedState = {
-  currentRepositorySelection?: RepositorySelection | null;
-  currentRepository?: Repository | null;
-  repositories?: Repository[];
-  translationsByParent?: Record<string, TranslationInfo[]>;
-};
-
-const isRepositoryStorePersistedState = (value: unknown): value is RepositoryStorePersistedState =>
-  typeof value === 'object' && value !== null;
-
-const initialState = {
-  repositories: [],
-  translationsByParent: {},
-  currentRepositorySelection: null,
-  currentRepository: null,
-  books: [],
-  currentBook: null,
-  currentChapter: null,
-  verses: [],
-  isLoading: false,
-  error: null,
-  importProgress: null,
-  validationResult: null,
-};
+import {
+  addRepositoryState,
+  initialRepositoryState,
+  mergeRepositoryListState,
+  migrateRepositoryStoreState,
+  partializeRepositoryStoreState,
+  removeRepositoryState,
+  setCurrentRepositoryState,
+  setTranslationsForParentState,
+  updateRepositoryState,
+} from './repositoryStoreState';
 
 export const useRepositoryStore = create<RepositoryState>()(
   devtools(
     persist(
       (set, get) => ({
-        ...initialState,
+        ...initialRepositoryState,
 
         // Repository Actions
         setRepositories: (repositories: Repository[]) => {
           set(
-            (state) => ({
-              repositories: mergeRepositoriesWithTranslations(
-                repositories,
-                state.translationsByParent
-              ),
-            }),
+            (state) => mergeRepositoryListState(repositories, state.translationsByParent),
             false,
             'setRepositories'
           );
         },
 
-        setTranslationsForParent: (parentId: string, translations: TranslationInfo[]) => {
+        setTranslationsForParent: (parentId, translations) => {
           set(
-            (state) => {
-              const nextTranslationsByParent = {
-                ...state.translationsByParent,
-                [parentId]: translations,
-              };
-
-              return {
-                translationsByParent: nextTranslationsByParent,
-                repositories: mergeRepositoriesWithTranslations(
-                  state.repositories,
-                  nextTranslationsByParent
-                ),
-              };
-            },
+            (state) => setTranslationsForParentState(state, parentId, translations),
             false,
             'setTranslationsForParent'
           );
@@ -89,18 +52,7 @@ export const useRepositoryStore = create<RepositoryState>()(
         },
 
         setCurrentRepository: (repository: Repository | null) => {
-          set(
-            {
-              currentRepositorySelection: toRepositorySelection(repository),
-              currentRepository: repository,
-              books: [], // Clear books when switching repositories
-              currentBook: null,
-              currentChapter: null,
-              verses: [],
-            },
-            false,
-            'setCurrentRepository'
-          );
+          set(setCurrentRepositoryState(repository), false, 'setCurrentRepository');
 
           // Load books for the new repository
           if (repository) {
@@ -109,56 +61,16 @@ export const useRepositoryStore = create<RepositoryState>()(
         },
 
         addRepository: (repository: Repository) => {
-          set(
-            (state) => ({
-              repositories: [...state.repositories, repository],
-            }),
-            false,
-            'addRepository'
-          );
+          set((state) => addRepositoryState(state, repository), false, 'addRepository');
         },
 
         removeRepository: (repositoryId: string) => {
-          set(
-            (state) => {
-              const newRepositories = state.repositories.filter((r) => r.id !== repositoryId);
-              const newCurrentRepository =
-                state.currentRepository?.id === repositoryId ? null : state.currentRepository;
-              const currentRepositorySelection =
-                state.currentRepositorySelection?.id === repositoryId ||
-                state.currentRepositorySelection?.parent_id === repositoryId
-                  ? null
-                  : state.currentRepositorySelection;
-
-              return {
-                repositories: newRepositories,
-                translationsByParent: Object.fromEntries(
-                  Object.entries(state.translationsByParent).filter(([id]) => id !== repositoryId)
-                ),
-                currentRepositorySelection,
-                currentRepository: newCurrentRepository,
-                books: newCurrentRepository ? state.books : [],
-                currentBook: newCurrentRepository ? state.currentBook : null,
-                currentChapter: newCurrentRepository ? state.currentChapter : null,
-                verses: newCurrentRepository ? state.verses : [],
-              };
-            },
-            false,
-            'removeRepository'
-          );
+          set((state) => removeRepositoryState(state, repositoryId), false, 'removeRepository');
         },
 
         updateRepository: (repositoryId: string, updates: Partial<Repository>) => {
           set(
-            (state) => ({
-              repositories: state.repositories.map((r) =>
-                r.id === repositoryId ? { ...r, ...updates } : r
-              ),
-              currentRepository:
-                state.currentRepository?.id === repositoryId
-                  ? { ...state.currentRepository, ...updates }
-                  : state.currentRepository,
-            }),
+            (state) => updateRepositoryState(state, repositoryId, updates),
             false,
             'updateRepository'
           );
@@ -211,33 +123,8 @@ export const useRepositoryStore = create<RepositoryState>()(
       {
         name: 'zaphnath-repository-store',
         version: 3,
-        migrate: (persistedState: unknown, version: number) => {
-          const state = isRepositoryStorePersistedState(persistedState) ? persistedState : {};
-
-          if (version < 2) {
-            return {
-              ...state,
-              repositories: [],
-              translationsByParent: {},
-              currentRepositorySelection: null,
-              currentRepository: null,
-            };
-          }
-
-          if (version < 3) {
-            return {
-              ...state,
-              currentRepositorySelection: toRepositorySelection(state.currentRepository ?? null),
-              currentRepository: null,
-            };
-          }
-
-          return state;
-        },
-        partialize: (state) => ({
-          currentRepositorySelection: state.currentRepositorySelection,
-          // Don't persist loading states, errors, or temporary data
-        }),
+        migrate: migrateRepositoryStoreState,
+        partialize: partializeRepositoryStoreState,
       }
     ),
     {
