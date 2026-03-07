@@ -1,5 +1,12 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { AppSettings, defaultSettings, settingsValidation } from '@/types/settings';
+import {
+  AppSettings,
+  defaultSettings,
+  EditableAppSettings,
+  settingsValidation,
+  SettingsSectionKey,
+  SettingsSectionValue,
+} from '@/types/settings';
 import { logger } from '@/services/logger';
 import { performanceMonitor } from '@/services/performanceMonitor';
 import { applySentryPrivacySettings } from '@/services/sentry';
@@ -12,17 +19,17 @@ type SettingsProviderProps = {
 
 type SettingsProviderState = {
   settings: AppSettings;
-  updateSetting: <T extends keyof AppSettings>(
+  updateSetting: <T extends SettingsSectionKey, K extends keyof SettingsSectionValue<T>>(
     category: T,
-    key: keyof AppSettings[T],
-    value: AppSettings[T][keyof AppSettings[T]]
+    key: K,
+    value: SettingsSectionValue<T>[K]
   ) => void;
-  updateSettings: (newSettings: Partial<AppSettings>) => void;
+  updateSettings: (newSettings: Partial<EditableAppSettings>) => void;
   resetSettings: () => void;
-  resetCategory: (category: keyof AppSettings) => void;
+  resetCategory: (category: SettingsSectionKey) => void;
   exportSettings: () => string;
   importSettings: (settingsJson: string) => Promise<boolean>;
-  validateSetting: (path: string, value: any) => boolean;
+  validateSetting: (path: string, value: unknown) => boolean;
   isLoading: boolean;
   hasUnsavedChanges: boolean;
   saveSettings: () => Promise<void>;
@@ -43,6 +50,71 @@ const initialState: SettingsProviderState = {
 };
 
 const SettingsProviderContext = createContext<SettingsProviderState>(initialState);
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+const mergeAppearanceSettings = (stored: unknown): AppSettings['appearance'] => ({
+  ...defaultSettings.appearance,
+  ...(isRecord(stored) ? stored : {}),
+});
+
+const mergeReadingSettings = (stored: unknown): AppSettings['reading'] => {
+  if (!isRecord(stored)) {
+    return defaultSettings.reading;
+  }
+
+  const bookmarks = isRecord(stored.bookmarks) ? stored.bookmarks : {};
+
+  return {
+    ...defaultSettings.reading,
+    ...stored,
+    bookmarks: {
+      ...defaultSettings.reading.bookmarks,
+      ...bookmarks,
+    },
+  };
+};
+
+const mergeAudioSettings = (stored: unknown): AppSettings['audio'] => ({
+  ...defaultSettings.audio,
+  ...(isRecord(stored) ? stored : {}),
+});
+
+const mergeAdvancedSettings = (stored: unknown): AppSettings['advanced'] => {
+  if (!isRecord(stored)) {
+    return defaultSettings.advanced;
+  }
+
+  const database = isRecord(stored.database) ? stored.database : {};
+  const performance = isRecord(stored.performance) ? stored.performance : {};
+
+  return {
+    ...defaultSettings.advanced,
+    ...stored,
+    database: {
+      ...defaultSettings.advanced.database,
+      ...database,
+    },
+    performance: {
+      ...defaultSettings.advanced.performance,
+      ...performance,
+    },
+  };
+};
+
+const mergeWithDefaults = (stored: unknown): AppSettings => {
+  const source = isRecord(stored) ? stored : {};
+
+  return {
+    appearance: mergeAppearanceSettings(source.appearance),
+    reading: mergeReadingSettings(source.reading),
+    audio: mergeAudioSettings(source.audio),
+    advanced: mergeAdvancedSettings(source.advanced),
+    version: defaultSettings.version,
+    lastModified: new Date().toISOString(),
+  };
+};
 
 const isDoNotTrackEnabled = (): boolean => {
   const navigatorWithLegacyDoNotTrack = navigator as Navigator & { msDoNotTrack?: string };
@@ -67,19 +139,19 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
         const dbSettings = await window.database.getSetting(APP_SETTINGS_DB_KEY);
 
         if (dbSettings) {
-          const parsedSettings = JSON.parse(dbSettings) as AppSettings;
-          const mergedSettings = mergeWithDefaults(parsedSettings, defaultSettings);
+          const parsedSettings = JSON.parse(dbSettings) as unknown;
+          const mergedSettings = mergeWithDefaults(parsedSettings);
           setSettings(mergedSettings);
           return;
         }
 
-        const seededDefaults = mergeWithDefaults({}, defaultSettings);
+        const seededDefaults = mergeWithDefaults({});
         setSettings(seededDefaults);
         await window.database.setSetting(APP_SETTINGS_DB_KEY, JSON.stringify(seededDefaults));
       } catch (error) {
         console.error('Failed to load settings:', error);
         // Fall back to defaults
-        setSettings(mergeWithDefaults({}, defaultSettings));
+        setSettings(mergeWithDefaults({}));
       } finally {
         setIsLoading(false);
       }
@@ -87,45 +159,13 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
 
     loadSettings().catch((error) => {
       console.error('Failed to initialize settings:', error);
-      setSettings(mergeWithDefaults({}, defaultSettings));
+      setSettings(mergeWithDefaults({}));
       setIsLoading(false);
     });
   }, []);
 
-  // Deep merge settings with defaults
-  const mergeWithDefaults = (stored: unknown, defaults: AppSettings): AppSettings => {
-    if (!stored || typeof stored !== 'object') {
-      return {
-        ...defaults,
-        version: defaults.version,
-        lastModified: new Date().toISOString(),
-      };
-    }
-
-    const storedRecord = stored as Record<string, any>;
-    const merged = { ...defaults };
-
-    for (const [category, categorySettings] of Object.entries(storedRecord)) {
-      if (category in merged && typeof categorySettings === 'object' && categorySettings !== null) {
-        const currentCategory = merged[category as keyof AppSettings];
-        if (typeof currentCategory === 'object' && currentCategory !== null) {
-          merged[category as keyof AppSettings] = {
-            ...currentCategory,
-            ...categorySettings,
-          } as any;
-        }
-      }
-    }
-
-    // Update version and lastModified
-    merged.version = defaults.version;
-    merged.lastModified = new Date().toISOString();
-
-    return merged;
-  };
-
   // Validate a setting value
-  const validateSetting = useCallback((path: string, value: any): boolean => {
+  const validateSetting = useCallback((path: string, value: unknown): boolean => {
     const rule = settingsValidation[path];
     if (!rule) return true;
 
@@ -152,10 +192,10 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
 
   // Update a single setting
   const updateSetting = useCallback(
-    <T extends keyof AppSettings>(
+    <T extends SettingsSectionKey, K extends keyof SettingsSectionValue<T>>(
       category: T,
-      key: keyof AppSettings[T],
-      value: AppSettings[T][keyof AppSettings[T]]
+      key: K,
+      value: SettingsSectionValue<T>[K]
     ) => {
       const path = `${String(category)}.${String(key)}`;
 
@@ -169,7 +209,7 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
         return {
           ...prev,
           [category]: {
-            ...(currentCategory as any),
+            ...currentCategory,
             [key]: value,
           },
           lastModified: new Date().toISOString(),
@@ -182,7 +222,7 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
   );
 
   // Update multiple settings
-  const updateSettings = useCallback((newSettings: Partial<AppSettings>) => {
+  const updateSettings = useCallback((newSettings: Partial<EditableAppSettings>) => {
     setSettings((prev) => ({
       ...prev,
       ...newSettings,
@@ -202,7 +242,7 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
   }, []);
 
   // Reset a specific category
-  const resetCategory = useCallback((category: keyof AppSettings) => {
+  const resetCategory = useCallback((category: SettingsSectionKey) => {
     setSettings((prev) => ({
       ...prev,
       [category]: defaultSettings[category],
@@ -219,8 +259,8 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
   // Import settings from JSON
   const importSettings = useCallback(async (settingsJson: string): Promise<boolean> => {
     try {
-      const importedSettings = JSON.parse(settingsJson) as AppSettings;
-      const mergedSettings = mergeWithDefaults(importedSettings, defaultSettings);
+      const importedSettings = JSON.parse(settingsJson) as unknown;
+      const mergedSettings = mergeWithDefaults(importedSettings);
       setSettings(mergedSettings);
       setHasUnsavedChanges(true);
       return true;

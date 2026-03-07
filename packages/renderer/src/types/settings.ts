@@ -83,6 +83,15 @@ export interface AdvancedSettings {
   };
 }
 
+export type EditableAppSettings = Pick<
+  AppSettings,
+  'appearance' | 'reading' | 'audio' | 'advanced'
+>;
+
+export type SettingsSectionKey = keyof EditableAppSettings;
+
+export type SettingsSectionValue<T extends SettingsSectionKey> = EditableAppSettings[T];
+
 // Default settings
 export const defaultSettings: AppSettings = {
   appearance: {
