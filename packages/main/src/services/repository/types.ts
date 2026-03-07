@@ -106,7 +106,7 @@ export interface TranslationTechnicalInfo extends ParentTechnicalInfo {
 
 export interface ExtensionInfo {
   version: string;
-  data?: any;
+  data?: unknown;
 }
 
 export interface ContentBookReference {
@@ -300,7 +300,7 @@ export class ZBRSError extends Error {
   constructor(
     message: string,
     public code: string,
-    public details?: any
+    public details?: unknown
   ) {
     super(message);
     this.name = 'ZBRSError';
@@ -311,7 +311,7 @@ export class NetworkError extends ZBRSError {
   constructor(
     message: string,
     public url: string,
-    details?: any
+    details?: unknown
   ) {
     super(message, 'NETWORK_ERROR', details);
     this.name = 'NetworkError';
@@ -322,7 +322,7 @@ export class IntegrityError extends ZBRSError {
   constructor(
     message: string,
     public file_path: string,
-    details?: any
+    details?: unknown
   ) {
     super(message, 'INTEGRITY_ERROR', details);
     this.name = 'IntegrityError';
@@ -331,17 +331,29 @@ export class IntegrityError extends ZBRSError {
 
 // Type Guard Functions
 
-export function isParentManifest(manifest: ZBRSManifest): manifest is ZBRSParentManifest {
-  return (
-    'translations' in manifest &&
-    'publisher' in manifest &&
-    'repository' in manifest &&
-    (manifest.repository as any).type === 'parent'
-  );
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+export function isParentManifest(manifest: unknown): manifest is ZBRSParentManifest {
+  if (!isRecord(manifest)) {
+    return false;
+  }
+
+  const repository = manifest.repository;
+  if (!isRecord(repository)) {
+    return false;
+  }
+
+  return 'translations' in manifest && 'publisher' in manifest && repository.type === 'parent';
 }
 
-export function isTranslationManifest(manifest: ZBRSManifest): manifest is ZBRSTranslationManifest {
-  return 'content' in manifest && !('translations' in manifest) && !('publisher' in manifest);
+export function isTranslationManifest(manifest: unknown): manifest is ZBRSTranslationManifest {
+  return (
+    isRecord(manifest) &&
+    'content' in manifest &&
+    !('translations' in manifest) &&
+    !('publisher' in manifest)
+  );
 }
 
 export function isParentRepositoryInfo(

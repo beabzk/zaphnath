@@ -152,12 +152,12 @@ export class RepositoryService {
 
   // Validation Methods
 
-  public async validateManifest(manifest: any): Promise<ValidationResult> {
+  public async validateManifest(manifest: unknown): Promise<ValidationResult> {
     this.ensureInitialized();
     return this.validator.validateManifest(manifest);
   }
 
-  public async validateBook(book: any, expectedOrder?: number): Promise<ValidationResult> {
+  public async validateBook(book: unknown, expectedOrder?: number): Promise<ValidationResult> {
     this.ensureInitialized();
     return this.validator.validateBook(book, expectedOrder);
   }
