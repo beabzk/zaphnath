@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
-import { useInView } from 'react-intersection-observer';
 import { useRepositoryStore, useReadingStore } from '@/stores';
-import { ChevronRight, Bookmark as BookmarkIcon, StickyNote } from 'lucide-react';
 import { useSettings } from '@/components/settings/SettingsProvider';
 import { createTranslationRepository } from '@/lib/repositoryTranslations';
 import { VerseContextMenu } from './VerseContextMenu';
@@ -9,6 +7,9 @@ import { ReadingControls, ReadingPreferences, PRESETS } from './ReadingControls'
 import { VerseComparison } from './VerseComparison';
 import { BookmarkDialog } from './BookmarkDialog';
 import { NoteDialog } from './NoteDialog';
+import { ReaderSidebar } from './parts/ReaderSidebar';
+import { ReaderHeader } from './parts/ReaderHeader';
+import { ReaderVerseList } from './parts/ReaderVerseList';
 
 export function Reader() {
   const {
@@ -472,132 +473,28 @@ export function Reader() {
 
   return (
     <div className="h-full min-h-0 flex bg-background/25">
-      <div className="w-56 border-r border-border/70 bg-muted/25 flex flex-col h-full">
-        <div className="px-3 py-3 border-b border-border/70">
-          <h3 className="text-sm font-semibold mb-2 tracking-tight">{currentRepository.name}</h3>
-          <div className="flex gap-1">
-            <button
-              className={`flex-1 rounded-md px-2 py-1 text-xs transition-colors ${
-                testament === 'old' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent/50'
-              }`}
-              onClick={() => setTestament('old')}
-            >
-              Old Testament
-            </button>
-            <button
-              className={`flex-1 px-2 py-1 text-xs rounded transition-colors ${
-                testament === 'new' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent/50'
-              }`}
-              onClick={() => setTestament('new')}
-            >
-              New Testament
-            </button>
-          </div>
-        </div>
-        <div className="scrollbar-subtle flex-1 overflow-y-auto p-1.5">
-          {filteredBooks.map((b) => (
-            <button
-              key={b.id}
-              className={`w-full rounded-md text-left px-2.5 py-1.5 hover:bg-accent/60 transition-colors flex items-center gap-2 text-sm ${
-                currentBook?.id === b.id ? 'bg-accent text-accent-foreground shadow-sm' : ''
-              }`}
-              onClick={() => handleSelectBook(b.id)}
-            >
-              <span className="text-xs text-muted-foreground w-5 text-right flex-shrink-0">
-                {b.order}
-              </span>
-              <span className="flex-1">{b.name}</span>
-            </button>
-          ))}
-          {books.length === 0 && (
-            <div className="px-3 py-2 text-sm text-muted-foreground">No books found</div>
-          )}
-        </div>
-      </div>
+      <ReaderSidebar
+        currentRepository={currentRepository}
+        testament={testament}
+        filteredBooks={filteredBooks}
+        currentBookId={currentBook?.id}
+        hasBooks={books.length > 0}
+        onTestamentChange={setTestament}
+        onSelectBook={handleSelectBook}
+      />
 
       <div className="flex-1 flex flex-col h-full">
-        <div className="px-4 py-3 border-b border-border/70 bg-card/70 min-h-[64px]">
-          {currentBook && currentChapter && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-              <span className="hover:text-foreground cursor-pointer transition-colors">
-                {currentRepository?.name}
-              </span>
-              <ChevronRight className="w-3 h-3" />
-              <span className="hover:text-foreground cursor-pointer transition-colors">
-                {currentBook.name}
-              </span>
-              <ChevronRight className="w-3 h-3" />
-              <span className="text-foreground font-medium">Chapter {currentChapter.number}</span>
-              {currentVerseNumber > 0 && (
-                <>
-                  <ChevronRight className="w-3 h-3" />
-                  <span className="text-foreground font-medium">Verse {currentVerseNumber}</span>
-                </>
-              )}
-            </div>
-          )}
-
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              {currentBook && currentChapter ? (
-                <>
-                  <h1 className="text-base font-semibold tracking-tight">
-                    {currentBook.name} {currentChapter.number}
-                  </h1>
-                  <span className="text-xs text-muted-foreground">({verses.length} verses)</span>
-                </>
-              ) : (
-                <span className="text-muted-foreground">Select a book to begin reading</span>
-              )}
-            </div>
-
-            {currentBook && (
-              <div className="flex items-center gap-1">
-                <button
-                  className="rounded-md px-3 py-1 text-sm hover:bg-accent/60 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  onClick={() => handleChangeChapter(Math.max(1, (chapterSelect || 1) - 1))}
-                  disabled={!chapterSelect || chapterSelect <= 1}
-                >
-                  ←
-                </button>
-                <select
-                  className="bg-background/90 text-foreground border border-border/70 rounded-md px-2 py-1 text-sm cursor-pointer"
-                  value={chapterSelect ?? ''}
-                  onChange={(e) => handleChangeChapter(Number(e.target.value))}
-                >
-                  {chaptersForCurrentBook.map((n) => (
-                    <option key={n} value={n} className="bg-background text-foreground">
-                      {n}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  className="rounded-md px-3 py-1 text-sm hover:bg-accent/60 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  onClick={() =>
-                    handleChangeChapter(
-                      Math.min(currentBook?.chapter_count || 1, (chapterSelect || 1) + 1)
-                    )
-                  }
-                  disabled={
-                    !chapterSelect ||
-                    (currentBook ? chapterSelect >= currentBook.chapter_count : true)
-                  }
-                >
-                  →
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {currentBook && currentChapter && (
-          <div className="h-0.5 bg-muted/80 relative">
-            <div
-              className="h-full bg-primary/60 transition-all duration-300"
-              style={{ width: `${percent}%` }}
-            />
-          </div>
-        )}
+        <ReaderHeader
+          currentRepository={currentRepository}
+          currentBook={currentBook}
+          currentChapter={currentChapter}
+          currentVerseNumber={currentVerseNumber}
+          versesCount={verses.length}
+          progressPercent={percent}
+          chapterSelect={chapterSelect}
+          chaptersForCurrentBook={chaptersForCurrentBook}
+          onChangeChapter={handleChangeChapter}
+        />
 
         {currentBook && currentChapter && (
           <ReadingControls preferences={readingPrefs} onChange={setReadingPrefs} />
@@ -608,47 +505,17 @@ export function Reader() {
             <p className="text-muted-foreground">Choose a book from the sidebar to start reading</p>
           </div>
         ) : (
-          <div ref={scrollRef} className="scrollbar-subtle flex-1 overflow-y-auto px-8 py-6">
-            <div
-              className="mx-auto"
-              style={{
-                maxWidth: `${readingPrefs.maxWidth}px`,
-                fontFamily: readingPrefs.fontFamily,
-                fontSize: `${readingPrefs.fontSize}px`,
-                lineHeight: readingPrefs.lineHeight,
-                textAlign: readingPrefs.textAlign,
-              }}
-            >
-              {verses.map((v) => {
-                const highlight = chapterVerseState.highlightsByVerseNumber.get(v.number);
-                const isBookmarked = chapterVerseState.bookmarkedVerseNumbers.has(v.number);
-                const hasNote = chapterVerseState.notedVerseNumbers.has(v.number);
-
-                return (
-                  <VerseItem
-                    key={v.id}
-                    domId={`verse-${currentBook.id}-${currentChapter?.number ?? 0}-${v.number}`}
-                    verse={v}
-                    highlight={highlight}
-                    isSelected={selectedVerses.has(v.id)}
-                    isBookmarked={isBookmarked}
-                    hasNote={hasNote}
-                    showNumber={readingPrefs.verseNumbers}
-                    spacing={readingPrefs.verseSpacing}
-                    onInView={(inView) => {
-                      if (inView) {
-                        setCurrentVerseNumber(v.number);
-                      }
-                    }}
-                    onContextMenu={(e) => handleVerseContextMenu(e, v.id, v.number)}
-                  />
-                );
-              })}
-              {verses.length === 0 && (
-                <div className="text-sm text-muted-foreground">Loading verses...</div>
-              )}
-            </div>
-          </div>
+          <ReaderVerseList
+            scrollRef={scrollRef}
+            currentBookId={currentBook.id}
+            currentChapterNumber={currentChapter?.number ?? 0}
+            verses={verses}
+            selectedVerses={selectedVerses}
+            chapterVerseState={chapterVerseState}
+            readingPrefs={readingPrefs}
+            onVerseInView={setCurrentVerseNumber}
+            onVerseContextMenu={handleVerseContextMenu}
+          />
         )}
 
         {/* Context Menu */}
@@ -687,66 +554,6 @@ export function Reader() {
           />
         )}
       </div>
-    </div>
-  );
-}
-
-// Individual verse component with intersection observer
-interface VerseItemProps {
-  domId: string;
-  verse: { id: string; number: number; text: string };
-  highlight?: { color: string };
-  isSelected: boolean;
-  isBookmarked: boolean;
-  hasNote: boolean;
-  showNumber: boolean;
-  spacing: number;
-  onInView: (inView: boolean) => void;
-  onContextMenu: (e: React.MouseEvent) => void;
-}
-
-function VerseItem({
-  domId,
-  verse,
-  highlight,
-  isSelected,
-  isBookmarked,
-  hasNote,
-  showNumber,
-  spacing,
-  onInView,
-  onContextMenu,
-}: VerseItemProps) {
-  const { ref, inView } = useInView({
-    threshold: 0.5,
-    trackVisibility: true,
-    delay: 100,
-  });
-
-  useEffect(() => {
-    onInView(inView);
-  }, [inView, onInView]);
-
-  return (
-    <div
-      id={domId}
-      ref={ref}
-      className={`flex items-start gap-3 px-2.5 py-1.5 -mx-2 rounded-lg transition-colors ${
-        highlight ? highlight.color : ''
-      } ${isSelected ? 'ring-1 ring-primary/60' : ''} cursor-pointer hover:bg-accent/40`}
-      style={{ marginBottom: `${spacing * 4}px` }}
-      onContextMenu={onContextMenu}
-    >
-      {showNumber && (
-        <span className="text-xs text-muted-foreground/60 w-6 text-right select-none mt-1 flex-shrink-0">
-          {verse.number}
-        </span>
-      )}
-      <p className={showNumber ? 'flex-1' : 'flex-1'}>{verse.text}</p>
-      {hasNote && <StickyNote className="w-3.5 h-3.5 text-amber-500 flex-shrink-0 mt-1" />}
-      {isBookmarked && (
-        <BookmarkIcon className="w-3.5 h-3.5 text-primary flex-shrink-0 mt-1 fill-primary" />
-      )}
     </div>
   );
 }
