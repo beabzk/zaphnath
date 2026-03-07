@@ -256,7 +256,6 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
   // Keep main-process updater policy in sync with renderer settings
   useEffect(() => {
     if (isLoading) return;
-    if (!window.updater || typeof window.updater.setPolicy !== 'function') return;
 
     let cancelled = false;
     const syncUpdatePolicy = async () => {
@@ -269,7 +268,7 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
       }
     };
 
-    syncUpdatePolicy();
+    void syncUpdatePolicy();
 
     return () => {
       cancelled = true;
@@ -325,10 +324,6 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
         if (!cancelled) {
           console.error('Failed to apply renderer Sentry privacy settings:', error);
         }
-      }
-
-      if (!window.telemetry || typeof window.telemetry.setPreferences !== 'function') {
-        return;
       }
 
       try {

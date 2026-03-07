@@ -145,16 +145,6 @@ export function SearchInterface() {
     const initializeSearch = async () => {
       try {
         setLoading(true);
-
-        if (!window.database?.searchVerses) {
-          console.error('[SearchInterface] window.database.searchVerses is not available');
-          if (!isCancelled) {
-            setAllVerses([]);
-            setFuse(null);
-          }
-          return;
-        }
-
         const loadedVerses = (await window.database.searchVerses('')) || [];
         if (isCancelled) {
           return;
