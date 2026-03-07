@@ -3,6 +3,14 @@ import { devtools, persist } from 'zustand/middleware';
 import { repository } from '@app/preload';
 import { toRendererBooks, toRendererChapterData } from '@/lib/repositoryContent';
 import {
+  toCompletedImportProgress,
+  toImportFailureMessage,
+  toImportProgressState,
+  toRendererValidationResult,
+  toRepositoryError,
+  toValidationErrorResult,
+} from '@/lib/repositoryStoreAdapters';
+import {
   mergeRepositoriesWithTranslations,
   pruneTranslationsByParent,
   resolveCurrentRepositorySelection,
@@ -233,12 +241,7 @@ export const useRepositoryStore = create<RepositoryState>()(
               'loadParentRepositories'
             );
           } catch (error) {
-            setError({
-              hasError: true,
-              message:
-                error instanceof Error ? error.message : 'Failed to load parent repositories',
-              timestamp: new Date().toISOString(),
-            });
+            setError(toRepositoryError(error, 'Failed to load parent repositories'));
           } finally {
             setLoading(false);
           }
@@ -331,11 +334,7 @@ export const useRepositoryStore = create<RepositoryState>()(
               setCurrentRepository(null);
             }
           } catch (error) {
-            setError({
-              hasError: true,
-              message: error instanceof Error ? error.message : 'Failed to load repositories',
-              timestamp: new Date().toISOString(),
-            });
+            setError(toRepositoryError(error, 'Failed to load repositories'));
           } finally {
             setLoading(false);
           }
@@ -351,11 +350,7 @@ export const useRepositoryStore = create<RepositoryState>()(
             const books = await repository.getBooks(repositoryId);
             setBooks(toRendererBooks(books));
           } catch (error) {
-            setError({
-              hasError: true,
-              message: error instanceof Error ? error.message : 'Failed to load books',
-              timestamp: new Date().toISOString(),
-            });
+            setError(toRepositoryError(error, 'Failed to load books'));
           } finally {
             setLoading(false);
           }
@@ -376,11 +371,7 @@ export const useRepositoryStore = create<RepositoryState>()(
               setVerses(mappedChapterData.verses);
             }
           } catch (error) {
-            setError({
-              hasError: true,
-              message: error instanceof Error ? error.message : 'Failed to load chapter',
-              timestamp: new Date().toISOString(),
-            });
+            setError(toRepositoryError(error, 'Failed to load chapter'));
           } finally {
             setLoading(false);
           }
@@ -396,23 +387,13 @@ export const useRepositoryStore = create<RepositoryState>()(
             setImportProgress({ stage: 'Starting import...', progress: 0 });
 
             unsubscribeProgress = repository.onImportProgress((progress) => {
-              setImportProgress({
-                stage: progress.stage,
-                progress: progress.progress,
-                message: progress.message,
-                total_books: progress.total_books,
-                imported_books: progress.processed_books,
-              });
+              setImportProgress(toImportProgressState(progress));
             });
 
             const result = await repository.import(url, options);
 
             if (result?.success) {
-              setImportProgress({
-                stage: 'Import completed successfully',
-                progress: 100,
-                message: `Imported ${result.books_imported} books`,
-              });
+              setImportProgress(toCompletedImportProgress(result));
 
               // Reload repositories
               await loadRepositories();
@@ -424,20 +405,12 @@ export const useRepositoryStore = create<RepositoryState>()(
 
               return true;
             } else {
-              setError({
-                hasError: true,
-                message: result?.errors?.join(', ') || 'Import failed',
-                timestamp: new Date().toISOString(),
-              });
+              setError(toRepositoryError(null, toImportFailureMessage(result)));
               setImportProgress(null);
               return false;
             }
           } catch (error) {
-            setError({
-              hasError: true,
-              message: error instanceof Error ? error.message : 'Import failed',
-              timestamp: new Date().toISOString(),
-            });
+            setError(toRepositoryError(error, 'Import failed'));
             setImportProgress(null);
             return false;
           } finally {
@@ -454,35 +427,12 @@ export const useRepositoryStore = create<RepositoryState>()(
             setError(null);
 
             const result = await repository.validate(url);
-            const mappedResult: ValidationResult = {
-              valid: result.valid,
-              errors: (result.errors || []).map((e) => ({
-                code: e.code,
-                message: e.message,
-                severity: e.severity ?? 'error',
-              })),
-              warnings: (result.warnings || []).map((w) => ({
-                code: w.code,
-                message: w.message,
-                severity: 'warning',
-              })),
-            };
+            const mappedResult = toRendererValidationResult(result);
             setValidationResult(mappedResult);
 
             return mappedResult;
           } catch (error) {
-            const errorResult: ValidationResult = {
-              valid: false,
-              errors: [
-                {
-                  code: 'VALIDATION_ERROR',
-                  message: error instanceof Error ? error.message : 'Validation failed',
-                  severity: 'error',
-                },
-              ],
-              warnings: [],
-            };
-
+            const errorResult = toValidationErrorResult(error);
             setValidationResult(errorResult);
             return errorResult;
           } finally {
