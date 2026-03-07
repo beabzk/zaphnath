@@ -4,6 +4,7 @@ import { RepositoryBookImporter } from './repositoryBookImporter.js';
 import { RepositoryChecksumValidator } from './repositoryChecksumValidator.js';
 import { RepositoryImportContentService } from './importContentService.js';
 import { RepositoryImportPersistence } from './repositoryImportPersistence.js';
+import { RepositoryParentImportPlanner } from './repositoryParentImportPlanner.js';
 import { ZBRSValidator } from './validator.js';
 import { normalizeRepositoryUrl } from './pathUtils.js';
 import type {
@@ -45,6 +46,7 @@ export class RepositoryImporter {
   private bookImporter: RepositoryBookImporter;
   private checksumValidator: RepositoryChecksumValidator;
   private persistence: RepositoryImportPersistence;
+  private parentImportPlanner: RepositoryParentImportPlanner;
 
   constructor(securityPolicy?: Partial<SecurityPolicy>) {
     this.databaseService = DatabaseService.getInstance();
@@ -59,6 +61,7 @@ export class RepositoryImporter {
       toErrorMessage
     );
     this.persistence = new RepositoryImportPersistence(this.databaseService);
+    this.parentImportPlanner = new RepositoryParentImportPlanner(this.validator);
   }
 
   public async importRepository(options: ImportOptions): Promise<ImportResult> {
@@ -137,46 +140,24 @@ export class RepositoryImporter {
         message: 'Validating parent repository...',
       });
 
-      const validation = this.validator.validateParentManifest(manifest);
-      if (!validation.valid) {
-        result.errors.push(...validation.errors);
+      const parentImportPlan = this.parentImportPlanner.planParentImport(
+        manifest,
+        options.selected_translations
+      );
+
+      result.warnings.push(...parentImportPlan.validation.warnings);
+      if (!parentImportPlan.validation.valid) {
+        result.errors.push(...parentImportPlan.validation.errors);
         return result;
       }
-      result.warnings.push(...validation.warnings);
 
       this.persistence.upsertParentRepository(manifest);
 
       // Clean base URL for translations
       const baseUrl = this.contentService.normalizeRepositoryBaseUrl(options.repository_url);
+      translationsSkipped.push(...parentImportPlan.skippedTranslationIds);
 
-      const selectedTranslationIds = new Set(options.selected_translations || []);
-      const useSelectiveImport = selectedTranslationIds.size > 0;
-      const availableTranslationIds = new Set(manifest.translations.map((t) => t.id));
-
-      if (useSelectiveImport) {
-        for (const translation of manifest.translations) {
-          if (!selectedTranslationIds.has(translation.id)) {
-            translationsSkipped.push(translation.id);
-          }
-        }
-
-        const unknownSelections = [...selectedTranslationIds].filter(
-          (translationId) => !availableTranslationIds.has(translationId)
-        );
-        if (unknownSelections.length > 0) {
-          result.warnings.push({
-            code: 'UNKNOWN_TRANSLATION_SELECTION',
-            message: `Selected translations not found in parent manifest: ${unknownSelections.join(', ')}`,
-            name: 'ValidationWarning',
-          });
-        }
-      }
-
-      const translationsToImport = useSelectiveImport
-        ? manifest.translations.filter((translation) => selectedTranslationIds.has(translation.id))
-        : manifest.translations;
-
-      if (translationsToImport.length === 0) {
+      if (parentImportPlan.translationTasks.length === 0) {
         result.errors.push(
           createValidationError(
             'no-translations-selected',
@@ -186,50 +167,35 @@ export class RepositoryImporter {
         return result;
       }
 
-      const parentImportStart = 20;
-      const parentImportRange = 75;
-      const totalTranslations = translationsToImport.length;
-
-      for (const [translationIndex, translation] of translationsToImport.entries()) {
-        const slotStart =
-          parentImportStart + (translationIndex / totalTranslations) * parentImportRange;
-        const slotEnd =
-          parentImportStart + ((translationIndex + 1) / totalTranslations) * parentImportRange;
-
+      for (const task of parentImportPlan.translationTasks) {
         this.reportProgress(options, {
           stage: 'processing',
-          progress: Math.round(slotStart),
-          message: `Importing translation ${translationIndex + 1}/${totalTranslations}: ${
-            translation.name
+          progress: Math.round(task.slotStart),
+          message: `Importing translation ${task.sequenceNumber}/${task.totalTranslations}: ${
+            task.translation.name
           }`,
         });
 
         const translationResult = await this.importTranslationFromParent(
           baseUrl,
-          translation,
+          task.translation,
           manifest.repository.id,
           {
             ...options,
             progress_callback: (translationProgress) => {
-              const boundedChildProgress = Math.max(0, Math.min(100, translationProgress.progress));
-              const mappedProgress =
-                slotStart + ((slotEnd - slotStart) * boundedChildProgress) / 100;
-              this.reportProgress(options, {
-                ...translationProgress,
-                progress: Math.round(mappedProgress),
-                message: `[${translationIndex + 1}/${totalTranslations}] ${
-                  translationProgress.message
-                }`,
-              });
+              this.reportProgress(
+                options,
+                this.parentImportPlanner.mapChildProgress(task, translationProgress)
+              );
             },
           }
         );
         result.books_imported += translationResult.books_imported;
 
         if (translationResult.success) {
-          translationsImported.push(translation.id);
+          translationsImported.push(task.translation.id);
         } else {
-          translationsSkipped.push(translation.id);
+          translationsSkipped.push(task.translation.id);
           result.errors.push(...translationResult.errors);
           result.warnings.push(...translationResult.warnings);
         }
