@@ -1,6 +1,7 @@
 import { DatabaseService } from '../database/index.js';
 import { RepositoryDiscoveryService } from './discovery.js';
 import { RepositoryBookImporter } from './repositoryBookImporter.js';
+import { RepositoryChecksumValidator } from './repositoryChecksumValidator.js';
 import { RepositoryImportContentService } from './importContentService.js';
 import { ZBRSValidator } from './validator.js';
 import { normalizeRepositoryUrl } from './pathUtils.js';
@@ -41,6 +42,7 @@ export class RepositoryImporter {
   private validator: ZBRSValidator;
   private contentService: RepositoryImportContentService;
   private bookImporter: RepositoryBookImporter;
+  private checksumValidator: RepositoryChecksumValidator;
 
   constructor(securityPolicy?: Partial<SecurityPolicy>) {
     this.databaseService = DatabaseService.getInstance();
@@ -48,6 +50,12 @@ export class RepositoryImporter {
     this.validator = new ZBRSValidator(securityPolicy);
     this.contentService = new RepositoryImportContentService();
     this.bookImporter = new RepositoryBookImporter(this.databaseService, this.contentService);
+    this.checksumValidator = new RepositoryChecksumValidator(
+      this.validator,
+      this.contentService,
+      createValidationError,
+      toErrorMessage
+    );
   }
 
   public async importRepository(options: ImportOptions): Promise<ImportResult> {
@@ -269,7 +277,16 @@ export class RepositoryImporter {
     options: ImportOptions,
     parentId: string | null
   ): Promise<[ValidationResult, RepositoryDbRecord | null]> {
-    const validation = await this.validateRepositoryChecksums(manifest, options);
+    const validation = await this.checksumValidator.validateTranslationImport(
+      manifest,
+      {
+        repositoryUrl: options.repository_url,
+        validateChecksums: options.validate_checksums,
+      },
+      (progress) => {
+        this.reportProgress(options, progress);
+      }
+    );
     if (!validation.valid) return [validation, null];
 
     // Parent imports store translation metadata in repository_translations only.
@@ -468,77 +485,6 @@ export class RepositoryImporter {
 
   private createOrUpdateRepositoryRecord(record: RepositoryDbRecord) {
     this.databaseService.getQueries().upsertRepository(record);
-  }
-
-  private async validateRepositoryChecksums(
-    manifest: ZBRSTranslationManifest,
-    options: ImportOptions
-  ): Promise<ValidationResult> {
-    const validation = this.validator.validateTranslationManifest(manifest);
-    if (!validation.valid) return validation;
-
-    if (options.validate_checksums) {
-      this.reportProgress(options, {
-        stage: 'validating',
-        progress: 50,
-        message: 'Validating file checksums...',
-      });
-
-      const baseUrl = this.contentService.normalizeRepositoryBaseUrl(options.repository_url);
-      const bookFiles = await this.contentService.resolveBookFiles(
-        manifest,
-        options.repository_url
-      );
-      let checksumWarningEmitted = false;
-
-      for (const bookFile of bookFiles) {
-        const expectedChecksum = bookFile.checksum;
-        if (!expectedChecksum || !expectedChecksum.startsWith('sha256:')) {
-          if (!checksumWarningEmitted) {
-            validation.warnings.push({
-              code: 'CHECKSUM_SKIPPED',
-              message:
-                'Skipping checksum validation for one or more books because checksum metadata is missing or not sha256',
-              name: 'ValidationWarning',
-            });
-            checksumWarningEmitted = true;
-          }
-          continue;
-        }
-
-        const bookUrl = this.contentService.buildBookUrl(baseUrl, bookFile);
-
-        try {
-          const actualChecksum = await this.contentService.calculateSha256(bookUrl);
-          if (actualChecksum === expectedChecksum) {
-            continue;
-          }
-
-          validation.valid = false;
-          validation.errors.push(
-            createValidationError(
-              'checksum-mismatch',
-              `Checksum mismatch for ${bookFile.path}`,
-              bookFile.path,
-              {
-                expected: expectedChecksum,
-                actual: actualChecksum,
-              }
-            )
-          );
-        } catch (error) {
-          validation.valid = false;
-          validation.errors.push(
-            createValidationError(
-              'checksum-validation-failed',
-              `Failed to validate checksum for ${bookFile.path}: ${toErrorMessage(error)}`,
-              bookFile.path
-            )
-          );
-        }
-      }
-    }
-    return validation;
   }
 
   private reportProgress(options: ImportOptions, progress: ImportProgress): void {
