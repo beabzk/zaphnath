@@ -1,5 +1,4 @@
 import type {
-  RepositoryIndex,
   RepositoryIndexEntry,
   RepositorySource,
   ZBRSManifest,
@@ -12,86 +11,41 @@ import type {
 import { isParentManifest, isTranslationManifest } from './types.js';
 import { NetworkError } from './types.js';
 import { ZBRSValidator } from './validator.js';
-import { normalizeRepositoryUrl } from './pathUtils.js';
 import { RepositoryResourceClient } from './repositoryResourceClient.js';
 import { LocalRepositoryScanner } from './localRepositoryScanner.js';
 import { RepositoryManifestClient } from './repositoryManifestClient.js';
-
-type RepositoryRegistryResponse = {
-  registry?: unknown;
-  repositories?: Array<Record<string, unknown>>;
-};
-
-const asString = (value: unknown, fallback = ''): string =>
-  typeof value === 'string' ? value : fallback;
-
-const asBoolean = (value: unknown, fallback = false): boolean =>
-  typeof value === 'boolean' ? value : fallback;
-
-const asStringArray = (value: unknown): string[] =>
-  Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
-
-const toRepositoryIndexEntry = (repo: Record<string, unknown>): RepositoryIndexEntry => ({
-  id: asString(repo.id),
-  name: asString(repo.name),
-  url: asString(repo.url),
-  language: asString(repo.language, 'unknown'),
-  license: asString(repo.license, 'unknown'),
-  verified: asBoolean(repo.verified),
-  last_updated: asString(repo.last_updated),
-  description: typeof repo.description === 'string' ? repo.description : undefined,
-  tags: asStringArray(repo.tags),
-});
+import { RepositoryIndexClient } from './repositoryIndexClient.js';
+import { RepositorySourceRegistry } from './repositorySourceRegistry.js';
 
 export class RepositoryDiscoveryService {
   private validator: ZBRSValidator;
-  private repositorySources: RepositorySource[] = [];
   private resourceClient: RepositoryResourceClient;
   private localScanner: LocalRepositoryScanner;
   private manifestClient: RepositoryManifestClient;
-  private cache: Map<string, { data: RepositoryIndexEntry[]; timestamp: number }> = new Map();
-  private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+  private indexClient: RepositoryIndexClient;
+  private sourceRegistry: RepositorySourceRegistry;
 
   constructor(securityPolicy?: Partial<SecurityPolicy>) {
     this.validator = new ZBRSValidator(securityPolicy);
     this.resourceClient = new RepositoryResourceClient();
     this.localScanner = new LocalRepositoryScanner(this.validator);
     this.manifestClient = new RepositoryManifestClient(this.resourceClient);
-    this.initializeDefaultSources();
-  }
-
-  private initializeDefaultSources(): void {
-    // Official Zaphnath repository registry
-    this.repositorySources.push({
-      type: 'official',
-      url: 'https://raw.githubusercontent.com/beabzk/zbrs-registry/main/manifest.json',
-      name: 'Official Zaphnath Repositories',
-      enabled: true,
-    });
-
-    // Example third-party sources (would be configurable)
-    this.repositorySources.push({
-      type: 'third-party',
-      url: 'https://bible-repositories.example.com/index.json',
-      name: 'Community Bible Repositories',
-      enabled: false,
-    });
+    this.indexClient = new RepositoryIndexClient(securityPolicy);
+    this.sourceRegistry = new RepositorySourceRegistry();
   }
 
   public async discoverRepositories(): Promise<RepositoryIndexEntry[]> {
     const allRepositories: RepositoryIndexEntry[] = [];
-    const errors: string[] = [];
 
-    for (const source of this.repositorySources) {
+    for (const source of this.sourceRegistry.getSources()) {
       if (!source.enabled) continue;
 
       try {
         console.log(`Discovering repositories from: ${source.name}`);
-        const repositories = await this.fetchRepositoryIndex(source.url);
+        const repositories = await this.indexClient.fetchRepositoryIndex(source.url);
         allRepositories.push(...repositories);
       } catch (error) {
         console.error(`Failed to fetch from ${source.name}:`, error);
-        errors.push(`${source.name}: ${error}`);
       }
     }
 
@@ -105,57 +59,7 @@ export class RepositoryDiscoveryService {
   }
 
   public async fetchRepositoryIndex(indexUrl: string): Promise<RepositoryIndexEntry[]> {
-    const normalizedIndexUrl = normalizeRepositoryUrl(indexUrl);
-
-    // Check cache first
-    const cached = this.cache.get(normalizedIndexUrl);
-    if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
-      return cached.data;
-    }
-
-    // Validate URL
-    const urlValidation = this.validator.validateRepositoryUrl(normalizedIndexUrl);
-    if (!urlValidation.valid) {
-      throw new NetworkError(
-        `Invalid repository index URL: ${urlValidation.errors.map((e) => e.message).join(', ')}`,
-        normalizedIndexUrl
-      );
-    }
-
-    try {
-      const response = (await this.resourceClient.fetchJson(normalizedIndexUrl)) as
-        | RepositoryRegistryResponse
-        | RepositoryIndex;
-
-      // Handle GitHub registry format
-      if ('registry' in response && Array.isArray(response.repositories)) {
-        const repositories = response.repositories.map(toRepositoryIndexEntry);
-
-        // Cache the result
-        this.cache.set(normalizedIndexUrl, {
-          data: repositories,
-          timestamp: Date.now(),
-        });
-
-        return repositories;
-      }
-
-      // Handle legacy format
-      const index = response as RepositoryIndex;
-      if (!index.version || !Array.isArray(index.repositories)) {
-        throw new Error('Invalid repository index format');
-      }
-
-      // Cache the result
-      this.cache.set(normalizedIndexUrl, {
-        data: index.repositories,
-        timestamp: Date.now(),
-      });
-
-      return index.repositories;
-    } catch (error) {
-      throw new NetworkError(`Failed to fetch repository index: ${error}`, normalizedIndexUrl);
-    }
+    return this.indexClient.fetchRepositoryIndex(indexUrl);
   }
 
   public async fetchRepositoryManifest(repositoryUrl: string): Promise<ZBRSManifest> {
@@ -311,39 +215,23 @@ export class RepositoryDiscoveryService {
   }
 
   public addRepositorySource(source: RepositorySource): void {
-    // Check if source already exists
-    const existingIndex = this.repositorySources.findIndex((s) => s.url === source.url);
-    if (existingIndex >= 0) {
-      this.repositorySources[existingIndex] = source;
-    } else {
-      this.repositorySources.push(source);
-    }
+    this.sourceRegistry.add(source);
   }
 
   public removeRepositorySource(url: string): boolean {
-    const index = this.repositorySources.findIndex((s) => s.url === url);
-    if (index >= 0) {
-      this.repositorySources.splice(index, 1);
-      return true;
-    }
-    return false;
+    return this.sourceRegistry.remove(url);
   }
 
   public getRepositorySources(): RepositorySource[] {
-    return [...this.repositorySources];
+    return this.sourceRegistry.getSources();
   }
 
   public enableRepositorySource(url: string, enabled: boolean): boolean {
-    const source = this.repositorySources.find((s) => s.url === url);
-    if (source) {
-      source.enabled = enabled;
-      return true;
-    }
-    return false;
+    return this.sourceRegistry.setEnabled(url, enabled);
   }
 
   public clearCache(): void {
-    this.cache.clear();
+    this.indexClient.clearCache();
   }
 
   public async downloadFile(url: string, maxSize: number = 100 * 1024 * 1024): Promise<Buffer> {
