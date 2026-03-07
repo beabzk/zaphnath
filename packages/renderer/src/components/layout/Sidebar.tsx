@@ -12,10 +12,8 @@ import {
   Bookmark,
   StickyNote,
   Highlighter,
-  Calendar,
   Search,
   Settings,
-  Download,
   X,
   Bug,
 } from 'lucide-react';
@@ -37,7 +35,6 @@ const studyItems: NavItem[] = [
   { icon: Bookmark, label: 'Bookmarks', view: 'bookmarks' },
   { icon: StickyNote, label: 'Notes', view: 'notes' },
   { icon: Highlighter, label: 'Highlights', view: 'highlights' },
-  { icon: Calendar, label: 'Reading Plans', view: 'reading-plans' },
 ];
 
 export function Sidebar() {
@@ -45,7 +42,6 @@ export function Sidebar() {
   const debugToolsEnabled = useDebugToolsEnabled();
   const { isOpen, close, width } = useSidebar();
   const systemItems: NavItem[] = [
-    { icon: Download, label: 'Downloads', view: 'downloads' },
     { icon: Settings, label: 'Settings', view: 'settings' },
     ...(debugToolsEnabled ? [{ icon: Bug, label: 'Debug', view: 'debug' as AppView }] : []),
   ];

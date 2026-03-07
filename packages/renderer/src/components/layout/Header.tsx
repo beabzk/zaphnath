@@ -11,8 +11,6 @@ import {
   Bookmark,
   StickyNote,
   Highlighter,
-  Calendar,
-  Download,
   Settings,
   Bug,
 } from 'lucide-react';
@@ -32,8 +30,6 @@ const baseWorkspaceTabs: WorkspaceTab[] = [
   { view: 'bookmarks', label: 'Bookmarks', icon: Bookmark },
   { view: 'notes', label: 'Notes', icon: StickyNote },
   { view: 'highlights', label: 'Highlights', icon: Highlighter },
-  { view: 'reading-plans', label: 'Reading Plans', icon: Calendar },
-  { view: 'downloads', label: 'Downloads', icon: Download },
   { view: 'settings', label: 'Settings', icon: Settings },
 ];
 
