@@ -1,5 +1,3 @@
-import { net } from 'electron';
-import { createHash } from 'crypto';
 import { readFile, access, readdir, stat } from 'fs/promises';
 import { join } from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
@@ -18,15 +16,44 @@ import { isParentManifest, isTranslationManifest } from './types.js';
 import { NetworkError } from './types.js';
 import { ZBRSValidator } from './validator.js';
 import { normalizeRepositoryUrl } from './pathUtils.js';
+import { RepositoryResourceClient } from './repositoryResourceClient.js';
+
+type RepositoryRegistryResponse = {
+  registry?: unknown;
+  repositories?: Array<Record<string, unknown>>;
+};
+
+const asString = (value: unknown, fallback = ''): string =>
+  typeof value === 'string' ? value : fallback;
+
+const asBoolean = (value: unknown, fallback = false): boolean =>
+  typeof value === 'boolean' ? value : fallback;
+
+const asStringArray = (value: unknown): string[] =>
+  Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
+
+const toRepositoryIndexEntry = (repo: Record<string, unknown>): RepositoryIndexEntry => ({
+  id: asString(repo.id),
+  name: asString(repo.name),
+  url: asString(repo.url),
+  language: asString(repo.language, 'unknown'),
+  license: asString(repo.license, 'unknown'),
+  verified: asBoolean(repo.verified),
+  last_updated: asString(repo.last_updated),
+  description: typeof repo.description === 'string' ? repo.description : undefined,
+  tags: asStringArray(repo.tags),
+});
 
 export class RepositoryDiscoveryService {
   private validator: ZBRSValidator;
   private repositorySources: RepositorySource[] = [];
-  private cache: Map<string, { data: any; timestamp: number }> = new Map();
+  private resourceClient: RepositoryResourceClient;
+  private cache: Map<string, { data: RepositoryIndexEntry[]; timestamp: number }> = new Map();
   private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
   constructor(securityPolicy?: Partial<SecurityPolicy>) {
     this.validator = new ZBRSValidator(securityPolicy);
+    this.resourceClient = new RepositoryResourceClient();
     this.initializeDefaultSources();
   }
 
@@ -93,21 +120,13 @@ export class RepositoryDiscoveryService {
     }
 
     try {
-      const response = await this.fetchJson(normalizedIndexUrl);
+      const response = (await this.resourceClient.fetchJson(
+        normalizedIndexUrl
+      )) as RepositoryRegistryResponse | RepositoryIndex;
 
       // Handle GitHub registry format
-      if (response.registry && Array.isArray(response.repositories)) {
-        const repositories = response.repositories.map((repo: any) => ({
-          id: repo.id,
-          name: repo.name,
-          url: repo.url,
-          language: repo.language || 'unknown',
-          license: repo.license || 'unknown',
-          verified: repo.verified || false,
-          last_updated: repo.last_updated,
-          description: repo.description,
-          tags: repo.tags || [],
-        }));
+      if ('registry' in response && Array.isArray(response.repositories)) {
+        const repositories = response.repositories.map(toRepositoryIndexEntry);
 
         // Cache the result
         this.cache.set(normalizedIndexUrl, {
@@ -162,7 +181,7 @@ export class RepositoryDiscoveryService {
     }
 
     try {
-      const manifest = (await this.fetchJson(manifestUrl)) as ZBRSManifest;
+      const manifest = (await this.resourceClient.fetchJson(manifestUrl)) as ZBRSManifest;
 
       // Validate manifest
       const validation = this.validator.validateManifest(manifest);
@@ -577,174 +596,11 @@ export class RepositoryDiscoveryService {
     this.cache.clear();
   }
 
-  private async fetchJson(url: string): Promise<any> {
-    // Handle local file:// URLs
-    if (url.startsWith('file://')) {
-      return this.fetchLocalJson(url);
-    }
-
-    // Handle HTTP/HTTPS URLs
-    return new Promise((resolve, reject) => {
-      const request = net.request({
-        method: 'GET',
-        url: url,
-        headers: {
-          'User-Agent': 'Zaphnath Bible Reader/1.0',
-          Accept: 'application/json',
-          'Cache-Control': 'no-cache',
-        },
-      });
-
-      let responseData = '';
-
-      request.on('response', (response) => {
-        if (response.statusCode !== 200) {
-          reject(new Error(`HTTP ${response.statusCode}: ${response.statusMessage}`));
-          return;
-        }
-
-        const contentType = response.headers['content-type'];
-        if (contentType && !contentType.includes('application/json')) {
-          console.warn(`Unexpected content type: ${contentType}`);
-        }
-
-        response.on('data', (chunk) => {
-          responseData += chunk.toString();
-        });
-
-        response.on('end', () => {
-          clearTimeout(timeout);
-          try {
-            // Remove BOM (Byte Order Mark) if present - common with GitHub raw content
-            const cleanData = responseData.replace(/^\uFEFF/, '');
-            const jsonData = JSON.parse(cleanData);
-            resolve(jsonData);
-          } catch (error) {
-            reject(new Error(`Invalid JSON response: ${error}`));
-          }
-        });
-      });
-
-      request.on('error', (error) => {
-        clearTimeout(timeout);
-        reject(new Error(`Network error: ${error.message}`));
-      });
-
-      // Set timeout
-      const timeout = setTimeout(() => {
-        request.abort();
-        reject(new Error('Request timeout'));
-      }, 30000);
-
-      request.end();
-    });
-  }
-
-  private async fetchLocalJson(fileUrl: string): Promise<any> {
-    try {
-      // Convert file:// URL to local path (cross-platform)
-      const filePath = fileURLToPath(fileUrl);
-
-      // Check if file exists
-      await access(filePath);
-
-      // Read and parse JSON file
-      const fileContent = await readFile(filePath, 'utf-8');
-      // Remove BOM (Byte Order Mark) if present
-      const cleanContent = fileContent.replace(/^\uFEFF/, '');
-      return JSON.parse(cleanContent);
-    } catch (error) {
-      throw new Error(`Failed to read local file: ${error}`);
-    }
-  }
-
   public async downloadFile(url: string, maxSize: number = 100 * 1024 * 1024): Promise<Buffer> {
-    // Handle local file:// URLs
-    if (url.startsWith('file://')) {
-      return this.downloadLocalFile(url, maxSize);
-    }
-
-    // Handle HTTP/HTTPS URLs
-    return new Promise((resolve, reject) => {
-      const request = net.request({
-        method: 'GET',
-        url: url,
-        headers: {
-          'User-Agent': 'Zaphnath Bible Reader/1.0',
-        },
-      });
-
-      const chunks: Buffer[] = [];
-      let totalSize = 0;
-
-      request.on('response', (response) => {
-        if (response.statusCode !== 200) {
-          reject(new Error(`HTTP ${response.statusCode}: ${response.statusMessage}`));
-          return;
-        }
-
-        const contentLength = parseInt((response.headers['content-length'] as string) || '0');
-        if (contentLength > maxSize) {
-          reject(new Error(`File too large: ${contentLength} bytes (max: ${maxSize})`));
-          return;
-        }
-
-        response.on('data', (chunk) => {
-          totalSize += chunk.length;
-          if (totalSize > maxSize) {
-            request.abort();
-            reject(new Error(`File too large: exceeded ${maxSize} bytes`));
-            return;
-          }
-          chunks.push(chunk);
-        });
-
-        response.on('end', () => {
-          clearTimeout(timeout);
-          const buffer = Buffer.concat(chunks);
-          resolve(buffer);
-        });
-      });
-
-      request.on('error', (error) => {
-        clearTimeout(timeout);
-        reject(new Error(`Download error: ${error.message}`));
-      });
-
-      const timeout = setTimeout(() => {
-        request.abort();
-        reject(new Error('Download timeout'));
-      }, 60000);
-
-      request.end();
-    });
-  }
-
-  private async downloadLocalFile(fileUrl: string, maxSize: number): Promise<Buffer> {
-    try {
-      // Convert file:// URL to local path
-      const filePath = fileURLToPath(fileUrl);
-
-      // Check if file exists
-      await access(filePath);
-
-      // Read file as buffer
-      const fileBuffer = await readFile(filePath);
-
-      // Check file size
-      if (fileBuffer.length > maxSize) {
-        throw new Error(`File too large: ${fileBuffer.length} bytes (max: ${maxSize})`);
-      }
-
-      return fileBuffer;
-    } catch (error) {
-      throw new Error(`Failed to read local file: ${error}`);
-    }
+    return this.resourceClient.downloadFile(url, maxSize);
   }
 
   public calculateChecksum(data: Buffer): string {
-    const hash = createHash('sha256');
-    hash.update(data);
-    return `sha256:${hash.digest('hex')}`;
+    return this.resourceClient.calculateChecksum(data);
   }
 }
