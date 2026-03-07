@@ -1,6 +1,3 @@
-import { readFile, access, readdir, stat } from 'fs/promises';
-import { join } from 'path';
-import { fileURLToPath, pathToFileURL } from 'url';
 import type {
   RepositoryIndex,
   RepositoryIndexEntry,
@@ -17,6 +14,7 @@ import { NetworkError } from './types.js';
 import { ZBRSValidator } from './validator.js';
 import { normalizeRepositoryUrl } from './pathUtils.js';
 import { RepositoryResourceClient } from './repositoryResourceClient.js';
+import { LocalRepositoryScanner } from './localRepositoryScanner.js';
 
 type RepositoryRegistryResponse = {
   registry?: unknown;
@@ -48,12 +46,14 @@ export class RepositoryDiscoveryService {
   private validator: ZBRSValidator;
   private repositorySources: RepositorySource[] = [];
   private resourceClient: RepositoryResourceClient;
+  private localScanner: LocalRepositoryScanner;
   private cache: Map<string, { data: RepositoryIndexEntry[]; timestamp: number }> = new Map();
   private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
   constructor(securityPolicy?: Partial<SecurityPolicy>) {
     this.validator = new ZBRSValidator(securityPolicy);
     this.resourceClient = new RepositoryResourceClient();
+    this.localScanner = new LocalRepositoryScanner(this.validator);
     this.initializeDefaultSources();
   }
 
@@ -323,102 +323,7 @@ export class RepositoryDiscoveryService {
   public async scanDirectoryForRepositories(
     directoryPath: string
   ): Promise<Zaphnath.RepositoryScanResult> {
-    const repositories: Zaphnath.ScannedRepository[] = [];
-    const errors: string[] = [];
-
-    try {
-      const directoryUrl = normalizeRepositoryUrl(directoryPath);
-      if (!directoryUrl.startsWith('file://')) {
-        errors.push(`Directory scan only supports local file paths: ${directoryPath}`);
-        return { repositories, errors };
-      }
-
-      const localPath = fileURLToPath(directoryUrl);
-
-      // Check if directory exists
-      const dirStat = await stat(localPath);
-      if (!dirStat.isDirectory()) {
-        errors.push(`Path is not a directory: ${localPath}`);
-        return { repositories, errors };
-      }
-
-      const rootManifestPath = join(localPath, 'manifest.json');
-      let hasRootManifest = false;
-
-      try {
-        await access(rootManifestPath);
-        hasRootManifest = true;
-      } catch {
-        hasRootManifest = false;
-      }
-
-      // If the selected directory itself is a repository, prioritize it.
-      if (hasRootManifest) {
-        try {
-          const manifestContent = await readFile(rootManifestPath, 'utf-8');
-          const cleanContent = manifestContent.replace(/^\uFEFF/, '');
-          const manifest = JSON.parse(cleanContent) as ZBRSManifest;
-          const validation = this.validator.validateManifest(manifest);
-
-          repositories.push({
-            path: directoryUrl,
-            manifest,
-            validation,
-          });
-          return { repositories, errors };
-        } catch (error) {
-          errors.push(`Failed to read repository manifest in selected directory: ${error}`);
-          return { repositories, errors };
-        }
-      }
-
-      // Read directory contents
-      const entries = await readdir(localPath, { withFileTypes: true });
-
-      // Check each subdirectory for a manifest.json file
-      for (const entry of entries) {
-        if (!entry.isDirectory()) {
-          continue;
-        }
-
-        const subDirPath = join(localPath, entry.name);
-        const manifestPath = join(subDirPath, 'manifest.json');
-
-        try {
-          // Check if manifest.json exists
-          await access(manifestPath);
-
-          // Try to read and validate the manifest
-          const manifestContent = await readFile(manifestPath, 'utf-8');
-          // Remove BOM if present
-          const cleanContent = manifestContent.replace(/^\uFEFF/, '');
-          const manifest = JSON.parse(cleanContent) as ZBRSManifest;
-
-          // Validate the manifest
-          const validation = this.validator.validateManifest(manifest);
-
-          const repositoryUrl = pathToFileURL(subDirPath).toString();
-
-          repositories.push({
-            path: repositoryUrl,
-            manifest,
-            validation,
-          });
-        } catch (error) {
-          // Skip directories without valid manifests, but don't treat as errors
-          // This allows parent directories to contain non-repository folders
-          console.log(`Skipping directory ${entry.name}: ${error}`);
-        }
-      }
-
-      if (repositories.length === 0) {
-        errors.push('No repositories found in selected directory');
-      }
-    } catch (error) {
-      errors.push(`Failed to scan directory: ${error}`);
-    }
-
-    return { repositories, errors };
+    return this.localScanner.scanDirectoryForRepositories(directoryPath);
   }
 
   /**
@@ -439,125 +344,7 @@ export class RepositoryDiscoveryService {
     }>;
     errors: string[];
   }> {
-    const translations: Array<{
-      path: string;
-      directory: string;
-      manifest: ZBRSTranslationManifest;
-      validation: ValidationResult;
-    }> = [];
-    const errors: string[] = [];
-    let parentRepository:
-      | {
-          path: string;
-          manifest: ZBRSParentManifest;
-          validation: ValidationResult;
-        }
-      | undefined;
-
-    try {
-      const directoryUrl = directoryPath.startsWith('file://')
-        ? directoryPath
-        : `file://${directoryPath.replace(/\\/g, '/')}`;
-
-      const localPath = fileURLToPath(directoryUrl);
-
-      // Check if directory exists
-      const dirStat = await stat(localPath);
-      if (!dirStat.isDirectory()) {
-        errors.push(`Path is not a directory: ${localPath}`);
-        return { parentRepository, translations, errors };
-      }
-
-      // First, check if this directory has a parent manifest
-      const parentManifestPath = join(localPath, 'manifest.json');
-      try {
-        await access(parentManifestPath);
-        const manifestContent = await readFile(parentManifestPath, 'utf-8');
-        // Remove BOM if present
-        const cleanContent = manifestContent.replace(/^\uFEFF/, '');
-        const manifest = JSON.parse(cleanContent) as ZBRSManifest;
-
-        if (isParentManifest(manifest)) {
-          const validation = this.validator.validateManifest(manifest);
-          parentRepository = {
-            path: directoryUrl,
-            manifest,
-            validation,
-          };
-
-          // Now scan for translations based on the parent manifest
-          for (const translationRef of manifest.translations) {
-            const translationPath = join(localPath, translationRef.directory);
-            const translationManifestPath = join(translationPath, 'manifest.json');
-
-            try {
-              await access(translationManifestPath);
-              const translationContent = await readFile(translationManifestPath, 'utf-8');
-              // Remove BOM if present
-              const cleanTranslationContent = translationContent.replace(/^\uFEFF/, '');
-              const translationManifest = JSON.parse(cleanTranslationContent) as ZBRSManifest;
-
-              if (isTranslationManifest(translationManifest)) {
-                const translationValidation = this.validator.validateManifest(translationManifest);
-                const translationUrl = `file://${translationPath.replace(/\\/g, '/')}`;
-
-                translations.push({
-                  path: translationUrl,
-                  directory: translationRef.directory,
-                  manifest: translationManifest,
-                  validation: translationValidation,
-                });
-              } else {
-                errors.push(`Invalid translation manifest in ${translationRef.directory}`);
-              }
-            } catch (error) {
-              errors.push(`Failed to load translation ${translationRef.directory}: ${error}`);
-            }
-          }
-        }
-      } catch (error) {
-        // No parent manifest, treat as individual translation or scan for translations
-        console.log(`No parent manifest found: ${error}`);
-      }
-
-      // If no parent repository found, scan for individual translation directories
-      if (!parentRepository) {
-        const entries = await readdir(localPath, { withFileTypes: true });
-
-        for (const entry of entries) {
-          if (entry.isDirectory()) {
-            const subDirPath = join(localPath, entry.name);
-            const manifestPath = join(subDirPath, 'manifest.json');
-
-            try {
-              await access(manifestPath);
-              const manifestContent = await readFile(manifestPath, 'utf-8');
-              // Remove BOM if present
-              const cleanContent = manifestContent.replace(/^\uFEFF/, '');
-              const manifest = JSON.parse(cleanContent) as ZBRSManifest;
-
-              if (isTranslationManifest(manifest)) {
-                const validation = this.validator.validateManifest(manifest);
-                const translationUrl = `file://${subDirPath.replace(/\\/g, '/')}`;
-
-                translations.push({
-                  path: translationUrl,
-                  directory: entry.name,
-                  manifest,
-                  validation,
-                });
-              }
-            } catch (error) {
-              console.log(`Skipping directory ${entry.name}: ${error}`);
-            }
-          }
-        }
-      }
-    } catch (error) {
-      errors.push(`Failed to scan hierarchical repository: ${error}`);
-    }
-
-    return { parentRepository, translations, errors };
+    return this.localScanner.scanHierarchicalRepository(directoryPath);
   }
 
   public addRepositorySource(source: RepositorySource): void {
