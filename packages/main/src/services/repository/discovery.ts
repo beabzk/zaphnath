@@ -15,6 +15,7 @@ import { ZBRSValidator } from './validator.js';
 import { normalizeRepositoryUrl } from './pathUtils.js';
 import { RepositoryResourceClient } from './repositoryResourceClient.js';
 import { LocalRepositoryScanner } from './localRepositoryScanner.js';
+import { RepositoryManifestClient } from './repositoryManifestClient.js';
 
 type RepositoryRegistryResponse = {
   registry?: unknown;
@@ -47,6 +48,7 @@ export class RepositoryDiscoveryService {
   private repositorySources: RepositorySource[] = [];
   private resourceClient: RepositoryResourceClient;
   private localScanner: LocalRepositoryScanner;
+  private manifestClient: RepositoryManifestClient;
   private cache: Map<string, { data: RepositoryIndexEntry[]; timestamp: number }> = new Map();
   private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
@@ -54,6 +56,7 @@ export class RepositoryDiscoveryService {
     this.validator = new ZBRSValidator(securityPolicy);
     this.resourceClient = new RepositoryResourceClient();
     this.localScanner = new LocalRepositoryScanner(this.validator);
+    this.manifestClient = new RepositoryManifestClient(this.resourceClient);
     this.initializeDefaultSources();
   }
 
@@ -156,18 +159,7 @@ export class RepositoryDiscoveryService {
   }
 
   public async fetchRepositoryManifest(repositoryUrl: string): Promise<ZBRSManifest> {
-    const normalizedRepositoryUrl = normalizeRepositoryUrl(repositoryUrl);
-
-    // Handle URLs that already point to manifest.json
-    let manifestUrl: string;
-    if (normalizedRepositoryUrl.endsWith('manifest.json')) {
-      manifestUrl = normalizedRepositoryUrl;
-    } else {
-      // Ensure URL ends with manifest.json
-      manifestUrl = normalizedRepositoryUrl.endsWith('/')
-        ? `${normalizedRepositoryUrl}manifest.json`
-        : `${normalizedRepositoryUrl}/manifest.json`;
-    }
+    const manifestUrl = this.manifestClient.resolveRepositoryManifestUrl(repositoryUrl);
 
     console.log(`Fetching manifest from: ${manifestUrl}`);
 
@@ -181,7 +173,7 @@ export class RepositoryDiscoveryService {
     }
 
     try {
-      const manifest = (await this.resourceClient.fetchJson(manifestUrl)) as ZBRSManifest;
+      const manifest = await this.manifestClient.fetchRepositoryManifest(repositoryUrl);
 
       // Validate manifest
       const validation = this.validator.validateManifest(manifest);
@@ -221,47 +213,18 @@ export class RepositoryDiscoveryService {
     repositoryUrl: string,
     translationDirectory: string
   ): Promise<ZBRSTranslationManifest> {
+    const manifestUrl = this.manifestClient.resolveTranslationManifestUrl(
+      repositoryUrl,
+      translationDirectory
+    );
+
     try {
-      // Construct the translation manifest URL
-      const baseUrl = repositoryUrl.endsWith('/') ? repositoryUrl : `${repositoryUrl}/`;
-      const manifestUrl = `${baseUrl}${translationDirectory}/manifest.json`;
-
-      // For local file paths, use direct file reading
-      if (repositoryUrl.startsWith('file://')) {
-        const { fileURLToPath } = await import('url');
-        const { readFile } = await import('fs/promises');
-        const { join } = await import('path');
-
-        const localPath = fileURLToPath(repositoryUrl);
-        const manifestPath = join(localPath, translationDirectory, 'manifest.json');
-
-        const manifestContent = await readFile(manifestPath, 'utf-8');
-        // Remove BOM if present
-        const cleanContent = manifestContent.replace(/^\uFEFF/, '');
-        const manifest = JSON.parse(cleanContent) as ZBRSManifest;
-
-        if (!isTranslationManifest(manifest)) {
-          throw new Error('Invalid translation manifest structure');
-        }
-
-        return manifest;
-      } else {
-        // For HTTP URLs, use the existing fetch logic
-        const manifest = await this.fetchRepositoryManifest(
-          manifestUrl.replace('/manifest.json', '')
-        );
-
-        if (!isTranslationManifest(manifest)) {
-          throw new Error('Invalid translation manifest structure');
-        }
-
-        return manifest;
-      }
-    } catch (error) {
-      throw new NetworkError(
-        `Failed to fetch translation manifest: ${error}`,
-        `${repositoryUrl}/${translationDirectory}/manifest.json`
+      return await this.manifestClient.fetchTranslationManifest(
+        repositoryUrl,
+        translationDirectory
       );
+    } catch (error) {
+      throw new NetworkError(`Failed to fetch translation manifest: ${error}`, manifestUrl);
     }
   }
 
