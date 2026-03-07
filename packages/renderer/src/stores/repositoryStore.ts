@@ -33,6 +33,16 @@ const toRepositorySelection = (repository: Repository | null): RepositorySelecti
       }
     : null;
 
+type RepositoryStorePersistedState = {
+  currentRepositorySelection?: RepositorySelection | null;
+  currentRepository?: Repository | null;
+  repositories?: Repository[];
+  translationsByParent?: Record<string, TranslationInfo[]>;
+};
+
+const isRepositoryStorePersistedState = (value: unknown): value is RepositoryStorePersistedState =>
+  typeof value === 'object' && value !== null;
+
 const initialState = {
   repositories: [],
   translationsByParent: {},
@@ -534,10 +544,12 @@ export const useRepositoryStore = create<RepositoryState>()(
       {
         name: 'zaphnath-repository-store',
         version: 3,
-        migrate: (persistedState: any, version: number) => {
+        migrate: (persistedState: unknown, version: number) => {
+          const state = isRepositoryStorePersistedState(persistedState) ? persistedState : {};
+
           if (version < 2) {
             return {
-              ...persistedState,
+              ...state,
               repositories: [],
               translationsByParent: {},
               currentRepositorySelection: null,
@@ -546,19 +558,14 @@ export const useRepositoryStore = create<RepositoryState>()(
           }
 
           if (version < 3) {
-            const persistedCurrentRepository =
-              persistedState && typeof persistedState === 'object'
-                ? (persistedState as { currentRepository?: Repository | null }).currentRepository
-                : null;
-
             return {
-              ...persistedState,
-              currentRepositorySelection: toRepositorySelection(persistedCurrentRepository ?? null),
+              ...state,
+              currentRepositorySelection: toRepositorySelection(state.currentRepository ?? null),
               currentRepository: null,
             };
           }
 
-          return persistedState;
+          return state;
         },
         partialize: (state) => ({
           currentRepositorySelection: state.currentRepositorySelection,

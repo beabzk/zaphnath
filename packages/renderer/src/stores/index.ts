@@ -26,6 +26,7 @@ export type {
   UIState,
   ReadingState,
 } from '@/types/store';
+import type { ErrorState, LoadingState } from '@/types/store';
 
 // Store utilities and hooks
 import { useRepositoryStore } from './repositoryStore';
@@ -153,7 +154,7 @@ export const useLoadingState = (component?: string) => {
     componentLoading,
     setGlobalLoading,
     setComponentLoading: component
-      ? (loading: any) => setComponentLoading(component, loading)
+      ? (loading: LoadingState) => setComponentLoading(component, loading)
       : setComponentLoading,
     clearComponentLoading: component
       ? () => clearComponentLoading(component)
@@ -176,7 +177,7 @@ export const useErrorState = (component?: string) => {
     componentError,
     setGlobalError,
     setComponentError: component
-      ? (error: any) => setComponentError(component, error)
+      ? (error: ErrorState) => setComponentError(component, error)
       : setComponentError,
     clearComponentError: component ? () => clearComponentError(component) : clearComponentError,
     clearAllErrors,

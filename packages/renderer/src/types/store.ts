@@ -330,16 +330,16 @@ export interface ReadingState {
 }
 
 // Persistence Configuration
-export interface PersistConfig {
+export interface PersistConfig<TState, TPersisted = Partial<TState>> {
   name: string;
   version: number;
-  migrate?: (persistedState: any, version: number) => any;
-  partialize?: (state: any) => any;
+  migrate?: (persistedState: unknown, version: number) => TPersisted;
+  partialize?: (state: TState) => TPersisted;
 }
 
 // Store Configuration
-export interface StoreConfig {
-  persist?: PersistConfig;
+export interface StoreConfig<TState, TPersisted = Partial<TState>> {
+  persist?: PersistConfig<TState, TPersisted>;
   devtools?: boolean;
   name?: string;
 }
