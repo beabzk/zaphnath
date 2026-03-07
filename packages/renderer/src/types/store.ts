@@ -204,6 +204,7 @@ export interface RepositoryState {
   setValidationResult: (result: ValidationResult | null) => void;
 
   // Async Actions
+  loadParentRepositories: () => Promise<void>;
   loadRepositories: () => Promise<void>;
   loadTranslations: (parentId: string) => Promise<TranslationInfo[]>;
   loadBooks: (repositoryId: string) => Promise<void>;
