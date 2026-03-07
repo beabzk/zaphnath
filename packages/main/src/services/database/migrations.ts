@@ -7,6 +7,15 @@ export interface Migration {
   down?: string;
 }
 
+interface TableSchemaRow {
+  cid: number;
+  name: string;
+  type: string;
+  notnull: 0 | 1;
+  dflt_value: string | number | null;
+  pk: 0 | 1;
+}
+
 // Baseline schema migration.
 // Historical migration steps were intentionally removed because backward
 // compatibility is not required before first public release.
@@ -216,8 +225,8 @@ export class MigrationRunner {
     console.log('Rollback completed successfully');
   }
 
-  public getTableSchema(tableName: string): any[] {
-    return this.db.prepare(`PRAGMA table_info(${tableName})`).all();
+  public getTableSchema(tableName: string): TableSchemaRow[] {
+    return this.db.prepare(`PRAGMA table_info(${tableName})`).all() as TableSchemaRow[];
   }
 
   public getAllTables(): string[] {

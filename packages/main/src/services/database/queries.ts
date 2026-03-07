@@ -151,7 +151,7 @@ export class DatabaseQueries {
       SELECT id, repository_id, name, abbreviation, testament, book_order as "order", chapter_count
       FROM books
     `;
-    let params: any[] = [];
+    let params: unknown[] = [];
 
     if (repositoryId) {
       query += ' WHERE repository_id = ?';
@@ -274,7 +274,7 @@ export class DatabaseQueries {
         FROM verses v
         JOIN books b ON v.book_id = b.id
       `;
-      let params: any[] = [];
+      let params: unknown[] = [];
 
       if (repositoryId) {
         sql += ' WHERE v.repository_id = ?';
@@ -296,7 +296,7 @@ export class DatabaseQueries {
       JOIN books b ON v.book_id = b.id
       WHERE v.text LIKE ?
     `;
-    let params: any[] = [`%${query}%`];
+    let params: unknown[] = [`%${query}%`];
 
     if (repositoryId) {
       sql += ' AND v.repository_id = ?';
@@ -399,7 +399,7 @@ export class DatabaseQueries {
       FROM repository_translations rt
       WHERE 1 = 1
     `;
-    let params: any[] = [];
+    let params: unknown[] = [];
 
     if (parentId) {
       query += ' AND rt.parent_repository_id = ?';

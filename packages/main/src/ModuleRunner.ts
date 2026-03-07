@@ -11,7 +11,7 @@ class ModuleRunner implements PromiseLike<void> {
 
   then<TResult1 = void, TResult2 = never>(
     onfulfilled?: ((value: void) => TResult1 | PromiseLike<TResult1>) | null | undefined,
-    onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null | undefined
+    onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null | undefined
   ): PromiseLike<TResult1 | TResult2> {
     return this.#promise.then(onfulfilled, onrejected);
   }
