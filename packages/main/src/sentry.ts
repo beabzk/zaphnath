@@ -38,7 +38,4 @@ if (!dsn) {
   console.log('[Sentry] Main process initialized with consent-aware filtering');
 }
 
-console.log(
-  '[Sentry] Main process initialized with DSN:',
-  dsn ? 'configured' : 'MISSING'
-);
+console.log('[Sentry] Main process initialized with DSN:', dsn ? 'configured' : 'MISSING');

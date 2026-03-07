@@ -79,19 +79,9 @@ export function createTranslationRepository(
       fallback?.language ??
       parent.language ??
       'en',
-    version:
-      asString(record.translation_version) ??
-      fallback?.version ??
-      parent.version ??
-      '1.0.0',
-    created_at:
-      asString(record.created_at) ??
-      fallback?.created_at ??
-      parent.created_at,
-    updated_at:
-      asString(record.updated_at) ??
-      fallback?.updated_at ??
-      parent.updated_at,
+    version: asString(record.translation_version) ?? fallback?.version ?? parent.version ?? '1.0.0',
+    created_at: asString(record.created_at) ?? fallback?.created_at ?? parent.created_at,
+    updated_at: asString(record.updated_at) ?? fallback?.updated_at ?? parent.updated_at,
     type: 'translation',
     parent_id: parent.id,
     book_count: asNumber(translation.book_count) ?? fallback?.book_count,

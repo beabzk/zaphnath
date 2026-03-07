@@ -102,4 +102,3 @@ export function TranslationSelection({
     </div>
   );
 }
-

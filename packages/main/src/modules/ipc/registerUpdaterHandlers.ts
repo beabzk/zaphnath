@@ -30,17 +30,17 @@ export function registerUpdaterHandlers({ assertTrustedIpcSender }: IpcHandlerDe
       channel: 'updater:setPolicy',
       errorLabel: 'Set updater policy error',
       handler: async (_event, policy: UpdatePolicy | string) => {
-      if (!isUpdatePolicy(policy)) {
-        throw new Error(`Invalid updater policy: ${policy}`);
-      }
+        if (!isUpdatePolicy(policy)) {
+          throw new Error(`Invalid updater policy: ${policy}`);
+        }
 
-      const updater = getAutoUpdaterModuleInstance();
-      if (!updater) {
-        throw new Error('Auto updater module is not available');
-      }
+        const updater = getAutoUpdaterModuleInstance();
+        if (!updater) {
+          throw new Error('Auto updater module is not available');
+        }
 
-      await updater.setPolicy(policy);
-      return { success: true, policy };
+        await updater.setPolicy(policy);
+        return { success: true, policy };
       },
     })
   );

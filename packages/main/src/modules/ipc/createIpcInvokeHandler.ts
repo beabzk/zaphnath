@@ -23,4 +23,3 @@ export function createIpcInvokeHandler<Args extends unknown[], Result>({
     }
   };
 }
-

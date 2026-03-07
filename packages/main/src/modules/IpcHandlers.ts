@@ -87,10 +87,7 @@ export class IpcHandlers implements AppModule {
     console.log('IPC handlers removed');
   }
 
-  private readonly assertTrustedIpcSender = (
-    event: IpcMainInvokeEvent,
-    channel: string
-  ): void => {
+  private readonly assertTrustedIpcSender = (event: IpcMainInvokeEvent, channel: string): void => {
     const senderWindow = BrowserWindow.fromWebContents(event.sender);
     const senderUrl = event.senderFrame?.url || event.sender.getURL();
 
@@ -140,4 +137,3 @@ export class IpcHandlers implements AppModule {
     return parsedValue;
   };
 }
-

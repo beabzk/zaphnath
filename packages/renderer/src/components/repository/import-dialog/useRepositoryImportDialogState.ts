@@ -54,10 +54,7 @@ const initialDialogAsyncState: DialogAsyncState = {
   importResult: null,
 };
 
-function dialogAsyncReducer(
-  state: DialogAsyncState,
-  action: DialogAsyncAction
-): DialogAsyncState {
+function dialogAsyncReducer(state: DialogAsyncState, action: DialogAsyncAction): DialogAsyncState {
   switch (action.type) {
     case 'startValidation':
       return {
@@ -489,4 +486,3 @@ export function useRepositoryImportDialogState({
     handleRepositorySelection,
   };
 }
-

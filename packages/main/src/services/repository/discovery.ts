@@ -120,9 +120,9 @@ export class RepositoryDiscoveryService {
     }
 
     try {
-      const response = (await this.resourceClient.fetchJson(
-        normalizedIndexUrl
-      )) as RepositoryRegistryResponse | RepositoryIndex;
+      const response = (await this.resourceClient.fetchJson(normalizedIndexUrl)) as
+        | RepositoryRegistryResponse
+        | RepositoryIndex;
 
       // Handle GitHub registry format
       if ('registry' in response && Array.isArray(response.repositories)) {

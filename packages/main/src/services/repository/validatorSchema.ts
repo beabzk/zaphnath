@@ -22,7 +22,9 @@ type AjvCompiler = {
 type AddFormatsFunction = ((ajv: AjvCompiler) => void) | undefined;
 
 const require = createRequire(import.meta.url);
-const Ajv2020 = require('ajv/dist/2020.js') as new (options: Record<string, unknown>) => AjvCompiler;
+const Ajv2020 = require('ajv/dist/2020.js') as new (
+  options: Record<string, unknown>
+) => AjvCompiler;
 
 function createAjvCompiler(): AjvCompiler {
   const ajv = new Ajv2020({

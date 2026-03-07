@@ -18,7 +18,11 @@ import {
   validateRepositoryUrl,
   validateTranslationManifestStructure,
 } from './validatorRules.js';
-import { createSchemaValidators, validateAgainstSchema, type ValidateFunction } from './validatorSchema.js';
+import {
+  createSchemaValidators,
+  validateAgainstSchema,
+  type ValidateFunction,
+} from './validatorSchema.js';
 
 export class ZBRSValidator {
   private securityPolicy: SecurityPolicy;

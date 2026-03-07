@@ -68,9 +68,7 @@ export function VerseComparison({
             const matchingBook =
               books.find((candidate) => candidate.order === bookOrder) ??
               books.find((candidate) => candidate.abbreviation === bookAbbreviation) ??
-              books.find(
-                (candidate) => candidate.name.toLowerCase() === bookName.toLowerCase()
-              );
+              books.find((candidate) => candidate.name.toLowerCase() === bookName.toLowerCase());
 
             if (!matchingBook) {
               return null;
@@ -91,9 +89,7 @@ export function VerseComparison({
         );
 
         if (!ignore) {
-          setVerses(
-            loadedVerses.filter((verse): verse is ComparisonVerse => verse !== null)
-          );
+          setVerses(loadedVerses.filter((verse): verse is ComparisonVerse => verse !== null));
         }
       } catch (error) {
         if (!ignore) {
@@ -112,7 +108,15 @@ export function VerseComparison({
     return () => {
       ignore = true;
     };
-  }, [availableRepos, bookAbbreviation, bookName, bookOrder, chapterNumber, selectedRepos, verseNumber]);
+  }, [
+    availableRepos,
+    bookAbbreviation,
+    bookName,
+    bookOrder,
+    chapterNumber,
+    selectedRepos,
+    verseNumber,
+  ]);
 
   const handleToggleRepo = (repoId: string) => {
     setSelectedRepos((prev) =>

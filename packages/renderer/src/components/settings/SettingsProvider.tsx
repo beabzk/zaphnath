@@ -297,9 +297,7 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
       respectDoNotTrack: settings.advanced.analyticsRespectDoNotTrack,
     });
 
-    performanceMonitor.setEnabled(
-      analyticsEnabled && settings.advanced.analyticsTrackPerformance
-    );
+    performanceMonitor.setEnabled(analyticsEnabled && settings.advanced.analyticsTrackPerformance);
 
     logger.info(
       'Applied runtime diagnostics settings',

@@ -375,7 +375,9 @@ export function AdvancedSettings() {
             <span className="font-medium text-foreground">
               {analyticsActive
                 ? 'Active'
-                : advanced.enableAnalytics && advanced.analyticsRespectDoNotTrack && doNotTrackEnabled
+                : advanced.enableAnalytics &&
+                    advanced.analyticsRespectDoNotTrack &&
+                    doNotTrackEnabled
                   ? 'Paused (Do Not Track enabled)'
                   : 'Disabled'}
             </span>

@@ -3,10 +3,7 @@ import { Button } from '@/components/ui/button';
 import { useNotifications } from '@/stores';
 import type { NotificationState } from '@/types/store';
 
-const notificationIconMap: Record<
-  NotificationState['type'],
-  typeof Info
-> = {
+const notificationIconMap: Record<NotificationState['type'], typeof Info> = {
   info: Info,
   success: CheckCircle2,
   warning: TriangleAlert,

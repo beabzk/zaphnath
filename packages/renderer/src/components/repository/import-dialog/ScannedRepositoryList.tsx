@@ -60,9 +60,7 @@ export function ScannedRepositoryList({
                   </div>
                 )}
               </div>
-              {selectedRepository === repo.path && (
-                <CheckCircle className="h-5 w-5 text-primary" />
-              )}
+              {selectedRepository === repo.path && <CheckCircle className="h-5 w-5 text-primary" />}
             </div>
           </button>
         ))}
@@ -70,4 +68,3 @@ export function ScannedRepositoryList({
     </div>
   );
 }
-

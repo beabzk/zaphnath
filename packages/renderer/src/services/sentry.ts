@@ -19,7 +19,8 @@ const normalizeSentryPrivacySettings = (
 ): SentryPrivacySettings => ({
   enableCrashReporting:
     input?.enableCrashReporting ?? defaultSentryPrivacySettings.enableCrashReporting,
-  enableSessionReplay: input?.enableSessionReplay ?? defaultSentryPrivacySettings.enableSessionReplay,
+  enableSessionReplay:
+    input?.enableSessionReplay ?? defaultSentryPrivacySettings.enableSessionReplay,
 });
 
 const parseSentryPrivacySettingsFromAppSettings = (serializedSettings: string | null) => {
@@ -96,7 +97,11 @@ export const applySentryPrivacySettings = async (
     dsn: import.meta.env.VITE_SENTRY_DSN,
     release: import.meta.env.VITE_SENTRY_RELEASE,
     integrations: buildSessionReplayIntegrations(nextSettings),
-    replaysSessionSampleRate: nextSettings.enableSessionReplay ? (import.meta.env.DEV ? 1.0 : 0.1) : 0,
+    replaysSessionSampleRate: nextSettings.enableSessionReplay
+      ? import.meta.env.DEV
+        ? 1.0
+        : 0.1
+      : 0,
     replaysOnErrorSampleRate: nextSettings.enableSessionReplay ? 1.0 : 0,
   });
 

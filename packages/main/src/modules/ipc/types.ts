@@ -13,4 +13,3 @@ export interface RepositoryIpcHandlerDependencies extends IpcHandlerDependencies
   databaseService: import('../../services/database/index.js').DatabaseService;
   repositoryService: import('../../services/repository/index.js').RepositoryService;
 }
-

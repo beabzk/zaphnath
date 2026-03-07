@@ -38,7 +38,8 @@ const repository: Zaphnath.RepositoryAPI = {
   validate: (url: string) => ipcRenderer.invoke('repository:validate', url),
   getManifest: (url: string) => ipcRenderer.invoke('repository:getManifest', url),
   getSources: () => ipcRenderer.invoke('repository:getSources'),
-  addSource: (source: Zaphnath.RepositorySource) => ipcRenderer.invoke('repository:addSource', source),
+  addSource: (source: Zaphnath.RepositorySource) =>
+    ipcRenderer.invoke('repository:addSource', source),
   scanDirectory: (directoryPath: string) =>
     ipcRenderer.invoke('repository:scanDirectory', directoryPath),
   getBooks: (repositoryId: string) => ipcRenderer.invoke('database:getBooks', repositoryId),

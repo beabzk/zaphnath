@@ -438,7 +438,10 @@ export class RepositoryImporter {
       });
 
       const baseUrl = this.contentService.normalizeRepositoryBaseUrl(options.repository_url);
-      const bookFiles = await this.contentService.resolveBookFiles(manifest, options.repository_url);
+      const bookFiles = await this.contentService.resolveBookFiles(
+        manifest,
+        options.repository_url
+      );
       let checksumWarningEmitted = false;
 
       for (const bookFile of bookFiles) {

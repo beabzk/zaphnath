@@ -30,4 +30,3 @@ export function ImportProgressSummary({ progress }: ImportProgressSummaryProps) 
     </div>
   );
 }
-

@@ -83,8 +83,7 @@ export function SearchInterface() {
           const translations =
             useRepositoryStore.getState().translationsByParent[parentRepository.id] ||
             (await loadTranslations(parentRepository.id));
-          const translation =
-            translations.find((item) => item.id === repositoryId) || null;
+          const translation = translations.find((item) => item.id === repositoryId) || null;
 
           if (!translation) {
             continue;
@@ -424,7 +423,9 @@ export function SearchInterface() {
                 <label className="mb-1 block text-sm font-medium">Testament</label>
                 <select
                   value={filters.testament}
-                  onChange={(e) => handleTestamentChange(e.target.value as SearchFilters['testament'])}
+                  onChange={(e) =>
+                    handleTestamentChange(e.target.value as SearchFilters['testament'])
+                  }
                   className="w-full border border-border/70 bg-background/90 px-2 py-1 text-sm"
                 >
                   <option value="all">All</option>

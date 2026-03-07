@@ -116,9 +116,7 @@ export function UpdatesSettings() {
                   ? 'An update is available.'
                   : 'You are up to date.'}
             </p>
-            {checkResult.message && (
-              <p className="text-xs text-amber-600">{checkResult.message}</p>
-            )}
+            {checkResult.message && <p className="text-xs text-amber-600">{checkResult.message}</p>}
           </div>
         )}
         {checkError && <p className="mt-2 text-xs text-destructive">{checkError}</p>}
