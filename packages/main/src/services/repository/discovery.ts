@@ -1,19 +1,17 @@
 import type {
   RepositoryIndexEntry,
   RepositorySource,
-  ZBRSManifest,
   ZBRSParentManifest,
   ZBRSTranslationManifest,
   TranslationReference,
   ValidationResult,
   SecurityPolicy,
 } from './types.js';
-import { isParentManifest, isTranslationManifest } from './types.js';
-import { NetworkError } from './types.js';
 import { ZBRSValidator } from './validator.js';
 import { RepositoryResourceClient } from './repositoryResourceClient.js';
 import { LocalRepositoryScanner } from './localRepositoryScanner.js';
 import { RepositoryManifestClient } from './repositoryManifestClient.js';
+import { RepositoryManifestDiscovery } from './repositoryManifestDiscovery.js';
 import { RepositoryIndexClient } from './repositoryIndexClient.js';
 import { RepositorySourceRegistry } from './repositorySourceRegistry.js';
 
@@ -21,15 +19,16 @@ export class RepositoryDiscoveryService {
   private validator: ZBRSValidator;
   private resourceClient: RepositoryResourceClient;
   private localScanner: LocalRepositoryScanner;
-  private manifestClient: RepositoryManifestClient;
+  private manifestDiscovery: RepositoryManifestDiscovery;
   private indexClient: RepositoryIndexClient;
   private sourceRegistry: RepositorySourceRegistry;
 
   constructor(securityPolicy?: Partial<SecurityPolicy>) {
     this.validator = new ZBRSValidator(securityPolicy);
     this.resourceClient = new RepositoryResourceClient();
+    const manifestClient = new RepositoryManifestClient(this.resourceClient);
+    this.manifestDiscovery = new RepositoryManifestDiscovery(this.validator, manifestClient);
     this.localScanner = new LocalRepositoryScanner(this.validator);
-    this.manifestClient = new RepositoryManifestClient(this.resourceClient);
     this.indexClient = new RepositoryIndexClient(securityPolicy);
     this.sourceRegistry = new RepositorySourceRegistry();
   }
@@ -62,53 +61,12 @@ export class RepositoryDiscoveryService {
     return this.indexClient.fetchRepositoryIndex(indexUrl);
   }
 
-  public async fetchRepositoryManifest(repositoryUrl: string): Promise<ZBRSManifest> {
-    const manifestUrl = this.manifestClient.resolveRepositoryManifestUrl(repositoryUrl);
-
-    console.log(`Fetching manifest from: ${manifestUrl}`);
-
-    // Validate URL
-    const urlValidation = this.validator.validateRepositoryUrl(manifestUrl);
-    if (!urlValidation.valid) {
-      throw new NetworkError(
-        `Invalid repository URL: ${urlValidation.errors.map((e) => e.message).join(', ')}`,
-        manifestUrl
-      );
-    }
-
-    try {
-      const manifest = await this.manifestClient.fetchRepositoryManifest(repositoryUrl);
-
-      // Validate manifest
-      const validation = this.validator.validateManifest(manifest);
-      if (!validation.valid) {
-        throw new Error(`Invalid manifest: ${validation.errors.map((e) => e.message).join(', ')}`);
-      }
-
-      return manifest;
-    } catch (error) {
-      throw new NetworkError(`Failed to fetch repository manifest: ${error}`, manifestUrl);
-    }
+  public async fetchRepositoryManifest(repositoryUrl: string) {
+    return this.manifestDiscovery.fetchRepositoryManifest(repositoryUrl);
   }
 
   public async validateRepository(repositoryUrl: string): Promise<ValidationResult> {
-    try {
-      const manifest = await this.fetchRepositoryManifest(repositoryUrl);
-      return this.validator.validateManifest(manifest);
-    } catch (error) {
-      return {
-        valid: false,
-        errors: [
-          {
-            code: 'FETCH_ERROR',
-            message: `Failed to validate repository: ${error}`,
-            severity: 'error',
-            name: 'ValidationError',
-          },
-        ],
-        warnings: [],
-      };
-    }
+    return this.manifestDiscovery.validateRepository(repositoryUrl);
   }
 
   // New methods for hierarchical repository support
@@ -117,70 +75,18 @@ export class RepositoryDiscoveryService {
     repositoryUrl: string,
     translationDirectory: string
   ): Promise<ZBRSTranslationManifest> {
-    const manifestUrl = this.manifestClient.resolveTranslationManifestUrl(
-      repositoryUrl,
-      translationDirectory
-    );
-
-    try {
-      return await this.manifestClient.fetchTranslationManifest(
-        repositoryUrl,
-        translationDirectory
-      );
-    } catch (error) {
-      throw new NetworkError(`Failed to fetch translation manifest: ${error}`, manifestUrl);
-    }
+    return this.manifestDiscovery.fetchTranslationManifest(repositoryUrl, translationDirectory);
   }
 
   public async discoverTranslations(repositoryUrl: string): Promise<TranslationReference[]> {
-    try {
-      const manifest = await this.fetchRepositoryManifest(repositoryUrl);
-
-      if (!isParentManifest(manifest)) {
-        // If it's a translation manifest, return it as a single translation
-        if (isTranslationManifest(manifest)) {
-          return [
-            {
-              id: manifest.repository.id,
-              name: manifest.repository.name,
-              directory: '.', // Current directory
-              language: manifest.repository.language,
-              status: 'active' as const,
-              checksum: manifest.technical.checksum,
-              size_bytes: manifest.technical.size_bytes,
-            },
-          ];
-        }
-        throw new Error('Repository is neither a parent nor a translation manifest');
-      }
-
-      return manifest.translations;
-    } catch (error) {
-      throw new NetworkError(`Failed to discover translations: ${error}`, repositoryUrl);
-    }
+    return this.manifestDiscovery.discoverTranslations(repositoryUrl);
   }
 
   public async validateTranslation(
     repositoryUrl: string,
     translationDirectory: string
   ): Promise<ValidationResult> {
-    try {
-      const manifest = await this.fetchTranslationManifest(repositoryUrl, translationDirectory);
-      return this.validator.validateManifest(manifest);
-    } catch (error) {
-      return {
-        valid: false,
-        errors: [
-          {
-            code: 'TRANSLATION_FETCH_ERROR',
-            message: `Failed to validate translation: ${error}`,
-            severity: 'error',
-            name: 'ValidationError',
-          },
-        ],
-        warnings: [],
-      };
-    }
+    return this.manifestDiscovery.validateTranslation(repositoryUrl, translationDirectory);
   }
 
   /**
