@@ -2,6 +2,11 @@ import { RepositoryDiscoveryService } from './discovery.js';
 import { RepositoryBookImporter } from './repositoryBookImporter.js';
 import { RepositoryChecksumValidator } from './repositoryChecksumValidator.js';
 import { RepositoryImportPersistence } from './repositoryImportPersistence.js';
+import {
+  createTranslationBookImportProgressReporter,
+  createTranslationImportCompleteProgress,
+} from './repositoryTranslationImportProgress.js';
+import { loadTranslationManifestFromParent } from './repositoryTranslationManifestLoader.js';
 import type {
   ImportOptions,
   ImportProgress,
@@ -12,7 +17,6 @@ import type {
   ValidationResult,
   ZBRSTranslationManifest,
 } from './types.js';
-import { isTranslationManifest } from './types.js';
 
 type CreateValidationError = (
   code: string,
@@ -83,56 +87,13 @@ export class RepositoryTranslationImporter {
       const importedCount = await this.dependencies.bookImporter.importBooks(
         manifest,
         options.repository_url,
-        (progress) => {
-          const bookImportProgressStart = 60;
-          const bookImportProgressRange = 35;
-
-          if (progress.stage === 'preparing') {
-            this.reportProgress(options, {
-              stage: 'processing',
-              progress: bookImportProgressStart,
-              message: `Preparing to import ${progress.totalBooks} books...`,
-              total_books: progress.totalBooks,
-              processed_books: progress.processedBooks,
-            });
-            return;
-          }
-
-          const normalizedProgress =
-            progress.totalBooks === 0 ? 0 : progress.processedBooks / progress.totalBooks;
-          const mappedProgress = Math.round(
-            bookImportProgressStart + normalizedProgress * bookImportProgressRange
-          );
-
-          if (progress.stage === 'processing') {
-            this.reportProgress(options, {
-              stage: 'processing',
-              progress: mappedProgress,
-              message: `Importing book ${progress.currentBook}...`,
-              current_book: progress.currentBook,
-              total_books: progress.totalBooks,
-              processed_books: progress.processedBooks,
-            });
-            return;
-          }
-
-          this.reportProgress(options, {
-            stage: 'processing',
-            progress: mappedProgress,
-            message: `Imported ${progress.importedCount}/${progress.totalBooks} books`,
-            current_book: progress.currentBook,
-            total_books: progress.totalBooks,
-            processed_books: progress.processedBooks,
-          });
-        }
+        createTranslationBookImportProgressReporter((progress) => {
+          this.reportProgress(options, progress);
+        })
       );
       result.books_imported = importedCount;
 
-      this.reportProgress(options, {
-        stage: 'complete',
-        progress: 100,
-        message: `Import complete! ${importedCount} books imported.`,
-      });
+      this.reportProgress(options, createTranslationImportCompleteProgress(importedCount));
 
       result.success = true;
     } catch (error) {
@@ -159,18 +120,12 @@ export class RepositoryTranslationImporter {
     parentId: string,
     options: ImportOptions
   ): Promise<ImportResult> {
-    const translationUrl =
-      (baseUrl.endsWith('/') ? baseUrl : baseUrl + '/') + translation.directory;
-
     try {
-      const manifest =
-        await this.dependencies.discoveryService.fetchRepositoryManifest(translationUrl);
-
-      if (!isTranslationManifest(manifest)) {
-        throw new Error(
-          `Expected a translation manifest for ${translation.name}, but found a different type.`
-        );
-      }
+      const { manifest, translationUrl } = await loadTranslationManifestFromParent(
+        this.dependencies.discoveryService,
+        baseUrl,
+        translation
+      );
 
       return this.importTranslation(
         manifest,
