@@ -2,7 +2,13 @@ import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { repository } from '@app/preload';
 import { toRendererBooks, toRendererChapterData } from '@/lib/repositoryContent';
-import { createTranslationRepository, toTranslationInfoList } from '@/lib/repositoryTranslations';
+import {
+  mergeRepositoriesWithTranslations,
+  pruneTranslationsByParent,
+  resolveCurrentRepositorySelection,
+  toRepositorySelection,
+} from '@/lib/repositorySelectionState';
+import { toTranslationInfoList } from '@/lib/repositoryTranslations';
 import {
   RepositoryState,
   Repository,
@@ -15,23 +21,6 @@ import {
   ImportProgress,
   ValidationResult,
 } from '@/types/store';
-
-const mergeRepositoriesWithTranslations = (
-  repositories: Repository[],
-  translationsByParent: Record<string, TranslationInfo[]>
-): Repository[] =>
-  repositories.map((repo) =>
-    repo.type === 'parent' ? { ...repo, translations: translationsByParent[repo.id] } : repo
-  );
-
-const toRepositorySelection = (repository: Repository | null): RepositorySelection | null =>
-  repository
-    ? {
-        id: repository.id,
-        type: repository.type,
-        parent_id: repository.parent_id,
-      }
-    : null;
 
 type RepositoryStorePersistedState = {
   currentRepositorySelection?: RepositorySelection | null;
@@ -290,16 +279,12 @@ export const useRepositoryStore = create<RepositoryState>()(
             const repositories = await repository.list();
             const normalizedRepositories = repositories || [];
             const repositorySelection = get().currentRepositorySelection;
-            const activeParentIds = new Set(
-              normalizedRepositories.filter((repo) => repo.type === 'parent').map((repo) => repo.id)
-            );
 
             set(
               (state) => {
-                const nextTranslationsByParent = Object.fromEntries(
-                  Object.entries(state.translationsByParent).filter(([id]) =>
-                    activeParentIds.has(id)
-                  )
+                const nextTranslationsByParent = pruneTranslationsByParent(
+                  state.translationsByParent,
+                  normalizedRepositories
                 );
 
                 return {
@@ -314,72 +299,36 @@ export const useRepositoryStore = create<RepositoryState>()(
               'loadRepositories'
             );
 
-            // Validate currentRepository still exists.
-            // Parent manifests store translations in `repository_translations`,
-            // so selected translation ids may not appear in repository:list.
-            const activeSelection =
-              currentRepository !== null
-                ? toRepositorySelection(currentRepository)
-                : repositorySelection;
+            const selectionResolution = await resolveCurrentRepositorySelection({
+              currentRepository,
+              repositorySelection,
+              repositories: normalizedRepositories,
+              loadTranslations,
+            });
 
-            if (activeSelection) {
-              const directMatch = normalizedRepositories.find(
-                (r: Repository) => r.id === activeSelection.id
-              );
-
-              if (directMatch) {
-                if (!currentRepository || currentRepository.id !== directMatch.id) {
-                  setCurrentRepository(directMatch);
-                }
-                return;
+            if (selectionResolution.kind === 'direct') {
+              if (
+                !currentRepository ||
+                currentRepository.id !== selectionResolution.repository.id
+              ) {
+                setCurrentRepository(selectionResolution.repository);
               }
+              return;
+            }
 
-              const isTranslationSelection =
-                activeSelection.type === 'translation' || Boolean(activeSelection.parent_id);
-
-              if (!isTranslationSelection) {
-                setCurrentRepository(null);
-                return;
-              }
-
-              const parentCandidates = normalizedRepositories.filter(
-                (r: Repository) =>
-                  r.type === 'parent' &&
-                  (!activeSelection.parent_id || r.id === activeSelection.parent_id)
-              );
-
-              let matchedTranslation: {
-                parent: Repository;
-                row: TranslationInfo;
-              } | null = null;
-
-              for (const parent of parentCandidates) {
-                const translations = await loadTranslations(parent.id);
-                const row =
-                  translations.find((translation) => translation.id === activeSelection.id) ?? null;
-
-                if (row) {
-                  matchedTranslation = { parent, row };
-                  break;
-                }
-              }
-
-              if (!matchedTranslation) {
-                setCurrentRepository(null);
-                return;
-              }
-
-              const { parent, row } = matchedTranslation;
-
+            if (selectionResolution.kind === 'translation') {
               set(
-                (state) => ({
-                  currentRepository: createTranslationRepository(parent, row, {
-                    ...(state.currentRepository || currentRepository || activeSelection),
-                  }),
-                }),
+                {
+                  currentRepository: selectionResolution.repository,
+                },
                 false,
                 'syncCurrentTranslation'
               );
+              return;
+            }
+
+            if (selectionResolution.kind === 'clear') {
+              setCurrentRepository(null);
             }
           } catch (error) {
             setError({
