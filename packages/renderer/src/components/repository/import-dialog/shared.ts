@@ -1,14 +1,10 @@
-export interface ValidationResult {
-  valid: boolean;
-  errors: Array<{ code: string; message: string; severity: string }>;
-  warnings: Array<{ code: string; message: string }>;
-}
-
 export type ImportMode = 'full' | 'selective';
 export type ImportSourceType = 'url' | 'file' | 'discover';
 export type ImportResult = Zaphnath.ImportResult;
 export type ImportProgress = Zaphnath.ImportProgress;
 export type RepositoryManifest = Zaphnath.ZBRSManifest;
+export type ValidationResult = Zaphnath.ValidationResult;
+export type ValidationIssue = Zaphnath.ValidationError | Zaphnath.ValidationWarning;
 
 export function isParentManifest(
   manifest: RepositoryManifest | null
@@ -47,4 +43,3 @@ export function getProgressStageLabel(stage: ImportProgress['stage']): string {
       return 'Importing';
   }
 }
-

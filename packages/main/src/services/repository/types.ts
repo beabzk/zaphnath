@@ -239,22 +239,20 @@ export interface ValidationResult {
   warnings: ValidationWarning[];
 }
 
-export interface ValidationError {
+export interface ValidationIssue {
   code: string;
   message: string;
   path?: string;
-  severity: 'error';
   details?: Record<string, unknown>;
   name?: string;
 }
 
-export interface ValidationWarning {
-  code: string;
-  message: string;
-  path?: string;
+export interface ValidationError extends ValidationIssue {
+  severity: 'error';
+}
+
+export interface ValidationWarning extends ValidationIssue {
   severity?: 'warning';
-  details?: Record<string, unknown>;
-  name?: string;
 }
 
 export interface ImportOptions {
