@@ -18,7 +18,7 @@
     "url": "https://github.com/beabzk/zaphnath/issues"
   },
   "main": "packages/entry-point.mjs",
-  "packageManager": "pnpm@10.30.3",
+  "packageManager": "pnpm@11.5.2+sha512.71c631e382066efc25625d5cf029075de07b61b37f6e27350fbd84b1bda5864c8c1967adc280776b45c30a715c0359a3be08fef42d5bb09e2b99029979692916",
   "workspaces": [
     "packages/*"
   ],
@@ -58,26 +58,26 @@
     "sentry:deploy": "sentry-cli releases deploys zaphnath@$(node -p \"require('./package.json').version\") new -e production"
   },
   "devDependencies": {
-    "@electron/rebuild": "^4.0.3",
-    "@eslint/js": "^9.39.3",
+    "@electron/rebuild": "^4.0.4",
+    "@eslint/js": "^9.39.4",
     "@npmcli/map-workspaces": "5.0.0",
     "@types/better-sqlite3": "^7.6.13",
-    "@types/node": "^25.3.0",
-    "@typescript-eslint/eslint-plugin": "^8.56.0",
-    "@typescript-eslint/parser": "^8.56.0",
-    "electron": "^40.6.0",
-    "electron-builder": "^26.8.1",
-    "eslint": "^9.39.3",
+    "@types/node": "^25.9.2",
+    "@typescript-eslint/eslint-plugin": "^8.60.1",
+    "@typescript-eslint/parser": "^8.60.1",
+    "electron": "^40.10.2",
+    "electron-builder": "^26.15.1",
+    "eslint": "^9.39.4",
     "eslint-plugin-react": "^7.37.5",
-    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-hooks": "^7.1.1",
     "glob": "13.0.6",
-    "prettier": "^3.8.1",
-    "vite": "^7.1.11"
+    "prettier": "^3.8.3",
+    "vite": "^7.3.5"
   },
   "dependencies": {
     "@app/main": "workspace:*",
     "@app/preload": "workspace:*",
     "@app/renderer": "workspace:*",
-    "@radix-ui/react-dropdown-menu": "^2.1.16"
+    "@radix-ui/react-dropdown-menu": "^2.1.17"
   }
 }
